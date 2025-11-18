@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { AvatarUploader } from "@/components/avatar-uploader";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc/client";
 
@@ -16,11 +17,16 @@ export default function Home() {
   };
 
   return (
-    <main className="bg-background text-foreground flex min-h-svh flex-col items-center px-6 py-12">
-      <form onSubmit={onSubmit} className="flex w-full max-w-md flex-col gap-4 rounded-lg border border-border p-6 text-left">
+    <main className="bg-background text-foreground flex min-h-svh flex-col items-center gap-10 px-6 py-12">
+      <form
+        onSubmit={onSubmit}
+        className="flex w-full max-w-md flex-col gap-4 rounded-lg border border-border p-6 text-left"
+      >
         <div>
           <h1 className="text-xl font-semibold">创建测试用户</h1>
-          <p className="text-sm text-muted-foreground">提交后会调用 tRPC mutation 写入 Postgres。</p>
+          <p className="text-sm text-muted-foreground">
+            提交后会调用 tRPC mutation 写入 Postgres。
+          </p>
         </div>
         <label className="flex flex-col gap-1 text-sm font-medium">
           邮箱
@@ -49,10 +55,16 @@ export default function Home() {
           {mutation.isPending ? "创建中..." : "添加用户"}
         </Button>
         {mutation.isSuccess && (
-          <p className="text-sm text-emerald-600">创建成功：{mutation.data.email}</p>
+          <p className="text-sm text-emerald-600">
+            创建成功：{mutation.data.email}
+          </p>
         )}
-        {mutation.error && <p className="text-sm text-destructive">{mutation.error.message}</p>}
+        {mutation.error && (
+          <p className="text-sm text-destructive">{mutation.error.message}</p>
+        )}
       </form>
+
+      <AvatarUploader />
     </main>
   );
 }
