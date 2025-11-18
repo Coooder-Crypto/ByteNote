@@ -2,15 +2,15 @@
 
 ### 阶段一 项目初始化与基础工程能力
 
-- [ ] 初始化仓库和基础框架
-  - [ ] 创建项目结构（Next.js）
-  - [ ] 配置包管理工具（pnpm）
-  - [ ] 引入 UI 技术栈（TailwindCSS + shadcn ui）
+- [x] 初始化仓库和基础框架
+  - [x] 创建项目结构（Next.js）
+  - [x] 配置包管理工具（pnpm）
+  - [x] 引入 UI 技术栈（TailwindCSS + shadcn ui）
 
-- [ ] 工程规范与基础工具
-  - [ ] 配置 TypeScript
-  - [ ] 配置 ESLint 和 Prettier
-  - [ ] 配置基础 Git 忽略规则
+- [x] 工程规范与基础工具
+  - [x] 配置 TypeScript
+  - [x] 配置 ESLint 和 Prettier
+  - [x] 配置基础 Git 忽略规则
 
 - [ ] 后端与数据库基础
   - [ ] 通过 Docker 启动本地开发数据库容器（Postgres）
