@@ -28,14 +28,20 @@ model User {
 }
 
 model Note {
-  id        String   @id @default(uuid())
-  title     String
-  content   String   @db.Text
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  title       String
+  content     String   @db.Text
+  markdown    String   @db.Text
+  isPublic    Boolean  @default(false)
+  summary     String?  @db.Text
+  tags        String   @default("[]")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([isPublic])
 }
 
 model Session {
