@@ -4,8 +4,13 @@ import type { PutBlobResult } from "@vercel/blob";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function AvatarUploader() {
+type AvatarUploaderProps = {
+  className?: string;
+};
+
+export function AvatarUploader({ className }: AvatarUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [blob, setBlob] = useState<PutBlobResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,13 +52,7 @@ export function AvatarUploader() {
   };
 
   return (
-    <div className="flex w-full max-w-md flex-col gap-4 rounded-lg border border-border p-6 text-left">
-      <div>
-        <h2 className="text-xl font-semibold">上传头像</h2>
-        <p className="text-sm text-muted-foreground">
-          文件会先到 Next.js 服务器，再上传到 Vercel Blob。
-        </p>
-      </div>
+    <div className={cn("flex w-full flex-col gap-4 text-left", className)}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <input
           ref={inputRef}
@@ -69,7 +68,7 @@ export function AvatarUploader() {
       {error && <p className="text-sm text-destructive">{error}</p>}
       {blob && (
         <div className="space-y-1 rounded-md bg-muted/40 p-4 text-sm">
-          <p className="font-medium">上传成功</p>
+          <p className="text-sm font-medium">上传成功</p>
           <a
             href={blob.url}
             target="_blank"

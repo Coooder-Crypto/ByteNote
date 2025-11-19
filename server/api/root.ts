@@ -1,8 +1,8 @@
-import { userRouter } from "@/server/api/routers/user";
+import { authRouter } from "@/server/api/routers/auth";
 import { router } from "@/server/api/trpc";
 
 export const appRouter = router({
-  user: userRouter,
+  auth: authRouter,
 });
 
 export type AppRouter = typeof appRouter;
