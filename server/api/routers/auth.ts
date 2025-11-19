@@ -100,4 +100,25 @@ export const authRouter = router({
   me: publicProcedure.query(({ ctx }) => {
     return ctx.session?.user ?? null;
   }),
+  updateProfile: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().max(120).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updated = await ctx.prisma.user.update({
+        where: { id: ctx.session!.user.id },
+        data: {
+          name: input.name ?? ctx.session!.user.name,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatarUrl: true,
+        },
+      });
+      return updated;
+    }),
 });

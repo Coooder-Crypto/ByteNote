@@ -1,9 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { AvatarUploader } from "@/components/avatar-uploader";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc/client";
 
 export default function AuthPage() {
@@ -13,173 +16,124 @@ export default function AuthPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  const meQuery = trpc.auth.me.useQuery();
-
+  const router = useRouter();
   const registerMutation = trpc.auth.register.useMutation({
-    onSuccess: () => {
-      meQuery.refetch();
-      setRegisterPassword("");
-    },
+    onSuccess: () => router.push("/profile"),
   });
-
   const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: () => {
-      meQuery.refetch();
-      setLoginPassword("");
-    },
+    onSuccess: () => router.push("/profile"),
   });
-
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      meQuery.refetch();
-    },
-  });
-
-  const user = meQuery.data;
 
   return (
-    <main className="bg-background text-foreground flex min-h-svh flex-col">
-      <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-12">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            registerMutation.mutate({
-              email: registerEmail,
-              password: registerPassword,
-              name: registerName || undefined,
-            });
-          }}
-          className="border-border/60 bg-card flex flex-col gap-4 rounded-xl border p-6 shadow-sm"
-        >
-          <div>
-            <h2 className="text-xl font-semibold">注册账号</h2>
-            <p className="text-muted-foreground text-sm">
-              使用邮箱 + 密码，自动创建 session
-            </p>
-          </div>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            昵称（可选）
-            <input
-              className="border-input bg-background focus-visible:ring-ring/50 rounded-md border px-3 py-2 text-base outline-none focus-visible:ring-[3px]"
-              value={registerName}
-              onChange={(event) => setRegisterName(event.target.value)}
-              placeholder="Byte Note 用户"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            邮箱
-            <input
-              className="border-input bg-background focus-visible:ring-ring/50 rounded-md border px-3 py-2 text-base outline-none focus-visible:ring-[3px]"
-              value={registerEmail}
-              onChange={(event) => setRegisterEmail(event.target.value)}
-              placeholder="you@example.com"
-              type="email"
-              required
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            密码
-            <input
-              className="border-input bg-background focus-visible:ring-ring/50 rounded-md border px-3 py-2 text-base outline-none focus-visible:ring-[3px]"
-              value={registerPassword}
-              onChange={(event) => setRegisterPassword(event.target.value)}
-              placeholder="至少 6 位"
-              type="password"
-              minLength={6}
-              required
-            />
-          </label>
-          <Button type="submit" size="lg" disabled={registerMutation.isPending}>
-            {registerMutation.isPending ? "注册中..." : "注册"}
-          </Button>
-          {registerMutation.error && (
-            <p className="text-destructive text-sm">
-              {registerMutation.error.message}
-            </p>
-          )}
-        </form>
-
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            loginMutation.mutate({
-              email: loginEmail,
-              password: loginPassword,
-            });
-          }}
-          className="border-border/60 bg-card flex flex-col gap-4 rounded-xl border p-6 shadow-sm"
-        >
-          <div>
-            <h2 className="text-xl font-semibold">登录账号</h2>
-            <p className="text-muted-foreground text-sm">
-              成功后将返回用户信息与 cookie
-            </p>
-          </div>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            邮箱
-            <input
-              className="border-input bg-background focus-visible:ring-ring/50 rounded-md border px-3 py-2 text-base outline-none focus-visible:ring-[3px]"
-              value={loginEmail}
-              onChange={(event) => setLoginEmail(event.target.value)}
-              placeholder="you@example.com"
-              type="email"
-              required
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            密码
-            <input
-              className="border-input bg-background focus-visible:ring-ring/50 rounded-md border px-3 py-2 text-base outline-none focus-visible:ring-[3px]"
-              value={loginPassword}
-              onChange={(event) => setLoginPassword(event.target.value)}
-              placeholder="至少 6 位"
-              type="password"
-              minLength={6}
-              required
-            />
-          </label>
-          <Button type="submit" size="lg" disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? "登录中..." : "登录"}
-          </Button>
-          {loginMutation.error && (
-            <p className="text-destructive text-sm">
-              {loginMutation.error.message}
-            </p>
-          )}
-        </form>
-      </section>
-
-      <section className="border-border/60 bg-card mx-auto mb-12 w-full max-w-5xl rounded-xl border p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-muted-foreground text-sm">
-              {user ? `当前登录：${user.name ?? user.email}` : "尚未登录"}
-            </p>
-            <p className="text-muted-foreground text-sm">
-              登录后可直接上传头像，头像 URL 会写回数据库。
-            </p>
-          </div>
-          {user && (
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12">
+      <div className="space-y-2">
+        <h2 className="text-3xl font-semibold">账号中心</h2>
+        <p className="text-sm text-muted-foreground">
+          在这里完成注册或登录操作。
+        </p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>注册账号</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Label className="text-xs">昵称（可选）</Label>
+              <Input
+                value={registerName}
+                onChange={(event) => setRegisterName(event.target.value)}
+                placeholder="Byte Note 用户"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">邮箱</Label>
+              <Input
+                type="email"
+                value={registerEmail}
+                onChange={(event) => setRegisterEmail(event.target.value)}
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+            <div>
+              <Label className="text-xs">密码</Label>
+              <Input
+                type="password"
+                value={registerPassword}
+                onChange={(event) => setRegisterPassword(event.target.value)}
+                placeholder="至少 6 位"
+                minLength={6}
+                required
+              />
+            </div>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => logoutMutation.mutate()}
-              disabled={logoutMutation.isPending}
+              className="w-full"
+              onClick={() =>
+                registerMutation.mutate({
+                  email: registerEmail,
+                  password: registerPassword,
+                  name: registerName || undefined,
+                })
+              }
+              disabled={registerMutation.isPending}
             >
-              {logoutMutation.isPending ? "退出中..." : "退出登录"}
+              {registerMutation.isPending ? "注册中..." : "注册"}
             </Button>
-          )}
-        </div>
-        {user ? (
-          <div className="mt-6 space-y-4">
-            <AvatarUploader />
-          </div>
-        ) : (
-          <p className="text-muted-foreground mt-6 text-sm">
-            请先登录，再试试看 Vercel Blob 上传能力。
-          </p>
-        )}
-      </section>
+            {registerMutation.error && (
+              <p className="text-xs text-destructive">
+                {registerMutation.error.message}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>登录账号</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Label className="text-xs">邮箱</Label>
+              <Input
+                type="email"
+                value={loginEmail}
+                onChange={(event) => setLoginEmail(event.target.value)}
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+            <div>
+              <Label className="text-xs">密码</Label>
+              <Input
+                type="password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                placeholder="至少 6 位"
+                minLength={6}
+                required
+              />
+            </div>
+            <Button
+              className="w-full"
+              onClick={() =>
+                loginMutation.mutate({
+                  email: loginEmail,
+                  password: loginPassword,
+                })
+              }
+              disabled={loginMutation.isPending}
+            >
+              {loginMutation.isPending ? "登录中..." : "登录"}
+            </Button>
+            {loginMutation.error && (
+              <p className="text-xs text-destructive">
+                {loginMutation.error.message}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }

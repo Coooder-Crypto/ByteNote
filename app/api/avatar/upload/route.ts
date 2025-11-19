@@ -41,6 +41,7 @@ export async function POST(request: Request) {
   const blob = await put(`avatars/${filename}`, request.body, {
     access: "public",
     token: process.env.BLOB_READ_WRITE_TOKEN,
+    addRandomSuffix: true,
   });
 
   await prisma.user.update({
