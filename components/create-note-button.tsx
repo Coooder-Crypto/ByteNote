@@ -7,30 +7,19 @@ import { trpc } from "@/lib/trpc/client";
 
 export function CreateNoteButton() {
   const router = useRouter();
-  const mutation = trpc.note.create.useMutation({
-    onSuccess: (note) => {
-      router.push(`/notes/${note.id}`);
-    },
-    onError: (error) => {
-      if (error.data?.code === "UNAUTHORIZED") {
-        router.push("/auth");
-      }
-    },
-  });
+  const meQuery = trpc.auth.me.useQuery();
+
+  const handleClick = () => {
+    if (!meQuery.data) {
+      router.push("/auth");
+      return;
+    }
+    router.push("/notes/new");
+  };
 
   return (
-    <Button
-      size="lg"
-      onClick={() =>
-        mutation.mutate({
-          title: "全新笔记",
-          markdown: "# 新笔记\n\n这里是初始内容。",
-          isPublic: false,
-        })
-      }
-      disabled={mutation.isPending}
-    >
-      {mutation.isPending ? "创建中..." : "立即创建笔记"}
+    <Button size="lg" onClick={handleClick}>
+      立即创建笔记
     </Button>
   );
 }

@@ -31,21 +31,6 @@ export default function NotesPage() {
     () => filteredNotes(publicNotesQuery.data, activeTag),
     [publicNotesQuery.data, activeTag],
   );
-  const createMutation = trpc.note.create.useMutation({
-    onSuccess: (note) => {
-      router.push(`/notes/${note.id}`);
-    },
-  });
-
-  const handleCreate = () => {
-    createMutation.mutate({
-      title: "未命名笔记",
-      markdown: "# 新笔记",
-      isPublic: false,
-      tags: [],
-    });
-  };
-
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-12">
@@ -57,8 +42,8 @@ export default function NotesPage() {
           </Button>
           <Button
             size="sm"
-            onClick={handleCreate}
-            disabled={!enabled || createMutation.isPending}
+            onClick={() => router.push(meQuery.data ? "/notes/new" : "/auth")}
+            disabled={publicNotesQuery.isLoading && !enabled}
           >
             新建笔记
           </Button>

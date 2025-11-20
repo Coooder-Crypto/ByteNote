@@ -32,31 +32,32 @@ export const noteRouter = router({
       };
 
       if (searchTerm) {
-        where.AND = [
-          ...(where.AND ?? []),
-          {
-            OR: [
-              {
-                title: {
-                  contains: searchTerm,
-                  mode: "insensitive",
-                },
+        if (!Array.isArray(where.AND)) {
+          where.AND = where.AND ? [where.AND] : [];
+        }
+
+        where.AND.push({
+          OR: [
+            {
+              title: {
+                contains: searchTerm,
+                mode: "insensitive",
               },
-              {
-                content: {
-                  contains: searchTerm,
-                  mode: "insensitive",
-                },
+            },
+            {
+              content: {
+                contains: searchTerm,
+                mode: "insensitive",
               },
-              {
-                markdown: {
-                  contains: searchTerm,
-                  mode: "insensitive",
-                },
+            },
+            {
+              markdown: {
+                contains: searchTerm,
+                mode: "insensitive",
               },
-            ],
-          },
-        ];
+            },
+          ],
+        });
       }
 
       return ctx.prisma.note.findMany({

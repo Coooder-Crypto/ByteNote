@@ -31,12 +31,17 @@ const emptyState: EditorState = {
   tags: [],
 };
 
-export default function NoteDetailClient({ noteId }: { noteId: string }) {
+export default function NoteDetailClient({
+  noteId,
+}: {
+  noteId?: string;
+}) {
   const router = useRouter();
   const utils = trpc.useUtils();
+  const isCreating = !noteId;
   const noteQuery = trpc.note.detail.useQuery(
     {
-      id: noteId,
+      id: noteId ?? "00000000-0000-0000-0000-000000000000",
     },
     { enabled: Boolean(noteId) },
   );
@@ -69,13 +74,23 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   }, [noteQuery.data]);
 
   const isOwner = useMemo(
-    () => noteQuery.data && meQuery.data?.id === noteQuery.data.userId,
-    [noteQuery.data, meQuery.data?.id],
+    () =>
+      isCreating || (noteQuery.data && meQuery.data?.id === noteQuery.data.userId),
+    [isCreating, noteQuery.data, meQuery.data?.id],
   );
+
+  const createMutation = trpc.note.create.useMutation({
+    onSuccess: (note) => {
+      utils.note.list.invalidate();
+      router.replace(`/notes/${note.id}`);
+    },
+  });
 
   const updateMutation = trpc.note.update.useMutation({
     onSuccess: () => {
-      utils.note.detail.invalidate({ id: noteId });
+      if (noteId) {
+        utils.note.detail.invalidate({ id: noteId });
+      }
       utils.note.list.invalidate();
     },
   });
@@ -87,7 +102,24 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     },
   });
 
-  if (noteQuery.isLoading) {
+  const handleSave = () => {
+    const payload = {
+      title: state.title || "未命名笔记",
+      markdown: state.markdown,
+      isPublic: state.isPublic,
+      tags: state.tags,
+    };
+    if (isCreating) {
+      createMutation.mutate(payload);
+    } else if (noteId) {
+      updateMutation.mutate({
+        id: noteId,
+        ...payload,
+      });
+    }
+  };
+
+  if (!isCreating && noteQuery.isLoading) {
     return (
       <section className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center p-6">
         <p className="text-sm text-muted-foreground">加载中...</p>
@@ -95,7 +127,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     );
   }
 
-  if (!noteQuery.data) {
+  if (!isCreating && !noteQuery.data) {
     return (
       <section className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center p-6">
         <p className="text-sm text-muted-foreground">未找到笔记</p>
@@ -116,26 +148,22 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() =>
-                updateMutation.mutate({
-                  id: noteId,
-                  title: state.title || "未命名笔记",
-                  markdown: state.markdown,
-                  isPublic: state.isPublic,
-                  tags: state.tags,
-                })
-              }
-              disabled={updateMutation.isPending}
+              onClick={handleSave}
+              disabled={createMutation.isPending || updateMutation.isPending}
             >
-              {updateMutation.isPending ? "保存中..." : "保存"}
+              {createMutation.isPending || updateMutation.isPending
+                ? "保存中..."
+                : "保存"}
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteMutation.mutate({ id: noteId })}
-              disabled={deleteMutation.isPending}
-            >
-              删除
-            </Button>
+            {!isCreating && (
+              <Button
+                variant="destructive"
+                onClick={() => deleteMutation.mutate({ id: noteId! })}
+                disabled={deleteMutation.isPending}
+              >
+                删除
+              </Button>
+            )}
           </div>
         )}
       </div>
