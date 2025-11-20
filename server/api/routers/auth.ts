@@ -104,20 +104,45 @@ export const authRouter = router({
     .input(
       z.object({
         name: z.string().max(120).optional(),
+        avatarUrl: z.string().url().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const data: {
+        name?: string | null;
+        avatarUrl?: string | null;
+      } = {};
+
+      if (input.name !== undefined) {
+        data.name = input.name || null;
+      }
+
+      if (input.avatarUrl !== undefined) {
+        data.avatarUrl = input.avatarUrl;
+      }
+
+      const select = {
+        id: true,
+        email: true,
+        name: true,
+        avatarUrl: true,
+      };
+
+      if (Object.keys(data).length === 0) {
+        const current = await ctx.prisma.user.findUnique({
+          where: { id: ctx.session!.user.id },
+          select,
+        });
+        if (!current) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        return current;
+      }
+
       const updated = await ctx.prisma.user.update({
         where: { id: ctx.session!.user.id },
-        data: {
-          name: input.name ?? ctx.session!.user.name,
-        },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          avatarUrl: true,
-        },
+        data,
+        select,
       });
       return updated;
     }),

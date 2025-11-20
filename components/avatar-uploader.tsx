@@ -1,31 +1,37 @@
 "use client";
 
-import type { PutBlobResult } from "@vercel/blob";
-import { useRef, useState } from "react";
+import { type PutBlobResult } from "@vercel/blob";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type AvatarUploaderProps = {
+  value?: string | null;
+  onUploaded?: (url: string) => void;
   className?: string;
 };
 
-export function AvatarUploader({ className }: AvatarUploaderProps) {
+export function AvatarUploader({
+  value,
+  onUploaded,
+  className,
+}: AvatarUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [blob, setBlob] = useState<PutBlobResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(value ?? null);
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const files = inputRef.current?.files;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPreview(value ?? null);
+  }, [value]);
 
-    if (!files?.length) {
-      setError("请选择一个头像文件");
-      return;
-    }
+  const handleClick = () => {
+    inputRef.current?.click();
+  };
 
-    const file = files[0];
+  const handleUpload = async (file: File) => {
     setIsUploading(true);
     setError(null);
 
@@ -42,43 +48,59 @@ export function AvatarUploader({ className }: AvatarUploaderProps) {
         error?: string;
       };
       setError(payload.error ?? "上传失败，请稍后重试。");
-      setBlob(null);
-    } else {
-      const result = (await response.json()) as PutBlobResult;
-      setBlob(result);
+      setIsUploading(false);
+      return;
     }
 
+    const result = (await response.json()) as PutBlobResult;
+    setPreview(result.url);
+    onUploaded?.(result.url);
     setIsUploading(false);
   };
 
+  const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    void handleUpload(file);
+    event.target.value = "";
+  };
+
   return (
-    <div className={cn("flex w-full flex-col gap-4 text-left", className)}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          required
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
-        />
-        <Button type="submit" size="lg" disabled={isUploading}>
-          {isUploading ? "上传中..." : "上传头像"}
-        </Button>
-      </form>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {blob && (
-        <div className="space-y-1 rounded-md bg-muted/40 p-4 text-sm">
-          <p className="text-sm font-medium">上传成功</p>
-          <a
-            href={blob.url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary underline"
-          >
-            {blob.url}
-          </a>
+    <div className={cn("flex flex-col items-center gap-3 text-center", className)}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={onFileChange}
+      />
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isUploading}
+        className="relative h-28 w-28 overflow-hidden rounded-full border border-border/60 bg-muted/50"
+      >
+        {preview ? (
+          <Image
+            src={preview}
+            alt="avatar"
+            fill
+            sizes="112px"
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+            无头像
+          </div>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs text-white opacity-0 transition-opacity hover:opacity-100">
+          {isUploading ? "上传中..." : "点击更换"}
         </div>
-      )}
+      </button>
+      <p className="text-xs text-muted-foreground">
+        支持 JPG / PNG / WEBP，点击头像上传
+      </p>
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

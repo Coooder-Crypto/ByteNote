@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AvatarUploader } from "@/components/avatar-uploader";
 import { ContributionHeatmap } from "@/components/contribution-heatmap";
@@ -36,11 +36,15 @@ export default function ProfilePage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
+  const [pendingAvatar, setPendingAvatar] = useState<string | null>(null);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setEditName(meQuery.data?.name ?? "");
-  }, [meQuery.data?.name]);
+  const handleEditOpenChange = (open: boolean) => {
+    setEditOpen(open);
+    if (open) {
+      setEditName(meQuery.data?.name ?? "");
+      setPendingAvatar(meQuery.data?.avatarUrl ?? null);
+    }
+  };
 
   const user = meQuery.data;
 
@@ -68,15 +72,17 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <Dialog open={editOpen} onOpenChange={handleEditOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>编辑个人资料</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <p className="text-muted-foreground text-xs">头像</p>
-              <AvatarUploader />
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-2">
+              <AvatarUploader
+                value={pendingAvatar ?? user?.avatarUrl ?? null}
+                onUploaded={(url) => setPendingAvatar(url)}
+              />
             </div>
             <div>
               <p className="text-muted-foreground text-xs">昵称</p>
@@ -96,6 +102,7 @@ export default function ProfilePage() {
               onClick={() =>
                 updateProfileMutation.mutate({
                   name: editName || undefined,
+                  avatarUrl: pendingAvatar ?? undefined,
                 })
               }
               disabled={updateProfileMutation.isPending}
