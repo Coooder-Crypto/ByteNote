@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import rehypeSanitize from "rehype-sanitize";
 
+import { NoteTags } from "@/components/note-tags";
+import { TagInput } from "@/components/tag-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc/client";
@@ -19,14 +21,14 @@ type EditorState = {
   title: string;
   markdown: string;
   isPublic: boolean;
-  tags: string;
+  tags: string[];
 };
 
 const emptyState: EditorState = {
   title: "",
   markdown: "",
   isPublic: false,
-  tags: "",
+  tags: [],
 };
 
 export default function NoteDetailClient({ noteId }: { noteId: string }) {
@@ -52,9 +54,14 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
         tags: (() => {
           try {
             const parsed = JSON.parse(noteQuery.data.tags);
-            return Array.isArray(parsed) ? parsed.join(", ") : "";
+            return Array.isArray(parsed)
+              ? parsed.filter(
+                  (tag): tag is string =>
+                    typeof tag === "string" && tag.trim().length > 0,
+                )
+              : [];
           } catch {
-            return "";
+            return [];
           }
         })(),
       });
@@ -96,11 +103,6 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     );
   }
 
-  const parsedTags = state.tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
   return (
     <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-8">
       <div className="flex items-center justify-between">
@@ -120,7 +122,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                   title: state.title || "未命名笔记",
                   markdown: state.markdown,
                   isPublic: state.isPublic,
-                  tags: parsedTags,
+                  tags: state.tags,
                 })
               }
               disabled={updateMutation.isPending}
@@ -147,27 +149,37 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
             }
             placeholder="输入标题"
           />
-          <input
-            className="w-full rounded-lg border border-border/60 bg-card px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            placeholder="输入标签，使用逗号分隔"
-            value={state.tags}
-            onChange={(event) =>
-              setState((prev) => ({ ...prev, tags: event.target.value }))
-            }
-          />
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={state.isPublic}
-              onChange={(event) =>
-                setState((prev) => ({
-                  ...prev,
-                  isPublic: event.target.checked,
-                }))
-              }
-            />
-            公开笔记
-          </label>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="flex-1 space-y-2 lg:max-w-2xl">
+              <p className="text-xs text-muted-foreground">
+                标签（可输入或选择）
+              </p>
+              <TagInput
+                value={state.tags}
+                onChange={(tags) =>
+                  setState((prev) => ({
+                    ...prev,
+                    tags,
+                  }))
+                }
+                placeholder="输入标签或从列表选择"
+                className="w-full"
+              />
+            </div>
+            <label className="flex h-[44px] items-center gap-2 rounded-lg border border-border/60 bg-card px-4 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={state.isPublic}
+                onChange={(event) =>
+                  setState((prev) => ({
+                    ...prev,
+                    isPublic: event.target.checked,
+                  }))
+                }
+              />
+              公开笔记
+            </label>
+          </div>
           <div className="rounded-xl border border-border/60 bg-card p-2 shadow-sm h-[70vh]">
             <MDEditor
               value={state.markdown}
@@ -183,9 +195,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            标签：{parsedTags.join(", ") || "无"}
-          </p>
+          <NoteTags tags={state.tags} />
           <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm h-[70vh] overflow-auto">
             <MarkdownPreview source={state.markdown} />
           </div>

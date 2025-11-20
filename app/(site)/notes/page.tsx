@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
+import { useMemo, useState } from "react";
 
 import PublicNoteCard from "@/components/public-note-card";
 import { Button } from "@/components/ui/button";
+import { NOTE_TAGS, parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
 
 type PublicNote = ComponentProps<typeof PublicNoteCard>["note"];
@@ -14,9 +16,14 @@ export default function NotesPage() {
   const router = useRouter();
   const meQuery = trpc.auth.me.useQuery();
   const enabled = Boolean(meQuery.data);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const publicNotesQuery = trpc.note.list.useQuery(
     { publicOnly: true },
     { enabled },
+  );
+  const visibleNotes = useMemo<PublicNote[]>(
+    () => filteredNotes(publicNotesQuery.data, activeTag),
+    [publicNotesQuery.data, activeTag],
   );
   const createMutation = trpc.note.create.useMutation({
     onSuccess: (note) => {
@@ -51,6 +58,27 @@ export default function NotesPage() {
           </Button>
         </div>
       </header>
+      {enabled && (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={activeTag ? "outline" : "default"}
+            size="sm"
+            onClick={() => setActiveTag(null)}
+          >
+            全部
+          </Button>
+          {NOTE_TAGS.map((tag) => (
+            <Button
+              key={tag.value}
+              variant={activeTag === tag.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTag(tag.value)}
+            >
+              {tag.label}
+            </Button>
+          ))}
+        </div>
+      )}
       <div className="space-y-3">
         {!enabled && (
           <p className="text-muted-foreground text-sm">
@@ -64,18 +92,43 @@ export default function NotesPage() {
         {enabled && publicNotesQuery.isLoading && (
           <p className="text-muted-foreground text-sm">加载中...</p>
         )}
-        {enabled &&
-          publicNotesQuery.data?.map((note: PublicNote) => (
-            <PublicNoteCard
-              key={note.id}
-              note={note}
-              onView={(id) => router.push(`/notes/${id}`)}
-            />
-          ))}
-        {enabled && publicNotesQuery.data?.length === 0 && (
-          <p className="text-muted-foreground text-sm">暂无公开笔记</p>
+        {enabled && (
+          <>
+            {publicNotesQuery.isLoading && (
+              <p className="text-muted-foreground text-sm">加载中...</p>
+            )}
+            {!publicNotesQuery.isLoading &&
+              visibleNotes.map((note) => (
+                <PublicNoteCard
+                  key={note.id}
+                  note={note}
+                  onView={(id) => router.push(`/notes/${id}`)}
+                />
+              ))}
+            {!publicNotesQuery.isLoading && visibleNotes.length === 0 && (
+              <p className="text-muted-foreground text-sm">
+                当前标签下暂无公开笔记
+              </p>
+            )}
+          </>
         )}
       </div>
     </section>
   );
 }
+
+const filteredNotes = (
+  notes: PublicNote[] | undefined,
+  tag: string | null,
+) => {
+  if (!notes) {
+    return [];
+  }
+  if (!tag) {
+    return notes;
+  }
+  return notes.filter((note) => {
+    const parsed = parseStoredTags(note.tags);
+    return parsed.includes(tag);
+  });
+};
