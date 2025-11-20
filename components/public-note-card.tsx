@@ -17,7 +17,7 @@ type NoteCardProps = {
   note: {
     id: string;
     title: string;
-    updatedAt: string;
+    updatedAt: string | Date;
     tags: string | null;
     user?: {
       name: string | null;

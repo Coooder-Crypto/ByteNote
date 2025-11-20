@@ -25,8 +25,6 @@ export function ContributionHeatmap({ className }: ContributionHeatmapProps) {
           username="octocat"
           transformData={() => []}
           loading
-          hideColorLegend
-          hideTotalCount
           blockSize={12}
           blockMargin={3}
           colorScheme="light"

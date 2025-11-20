@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ComponentProps } from "react";
 
 import PublicNoteCard from "@/components/public-note-card";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc/client";
+
+type PublicNote = ComponentProps<typeof PublicNoteCard>["note"];
 
 export default function NotesPage() {
   const router = useRouter();
@@ -62,7 +65,7 @@ export default function NotesPage() {
           <p className="text-muted-foreground text-sm">加载中...</p>
         )}
         {enabled &&
-          publicNotesQuery.data?.map((note) => (
+          publicNotesQuery.data?.map((note: PublicNote) => (
             <PublicNoteCard
               key={note.id}
               note={note}
