@@ -13,7 +13,7 @@ export function CreateNoteButton() {
     },
     onError: (error) => {
       if (error.data?.code === "UNAUTHORIZED") {
-        router.push("/auth");
+        router.push("/profile");
       }
     },
   });
