@@ -7,21 +7,27 @@ import { useMemo, useState } from "react";
 
 import PublicNoteCard from "@/components/public-note-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { NOTE_TAGS, parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
 
 type PublicNote = ComponentProps<typeof PublicNoteCard>["note"];
+type NoteListItem = PublicNote & {
+  summary?: string | null;
+  markdown?: string | null;
+};
 
 export default function NotesPage() {
   const router = useRouter();
   const meQuery = trpc.auth.me.useQuery();
   const enabled = Boolean(meQuery.data);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const publicNotesQuery = trpc.note.list.useQuery(
-    { publicOnly: true },
+    { publicOnly: true, search: searchQuery || undefined },
     { enabled },
   );
-  const visibleNotes = useMemo<PublicNote[]>(
+  const visibleNotes = useMemo<NoteListItem[]>(
     () => filteredNotes(publicNotesQuery.data, activeTag),
     [publicNotesQuery.data, activeTag],
   );
@@ -59,24 +65,32 @@ export default function NotesPage() {
         </div>
       </header>
       {enabled && (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={activeTag ? "outline" : "default"}
-            size="sm"
-            onClick={() => setActiveTag(null)}
-          >
-            全部
-          </Button>
-          {NOTE_TAGS.map((tag) => (
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap gap-2">
             <Button
-              key={tag.value}
-              variant={activeTag === tag.value ? "default" : "outline"}
+              variant={activeTag ? "outline" : "default"}
               size="sm"
-              onClick={() => setActiveTag(tag.value)}
+              onClick={() => setActiveTag(null)}
             >
-              {tag.label}
+              全部
             </Button>
-          ))}
+            {NOTE_TAGS.map((tag) => (
+              <Button
+                key={tag.value}
+                variant={activeTag === tag.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTag(tag.value)}
+              >
+                {tag.label}
+              </Button>
+            ))}
+          </div>
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="搜索标题或内容"
+            className="md:w-64"
+          />
         </div>
       )}
       <div className="space-y-3">
@@ -118,17 +132,21 @@ export default function NotesPage() {
 }
 
 const filteredNotes = (
-  notes: PublicNote[] | undefined,
+  notes: NoteListItem[] | undefined,
   tag: string | null,
 ) => {
   if (!notes) {
     return [];
   }
-  if (!tag) {
-    return notes;
-  }
+
   return notes.filter((note) => {
-    const parsed = parseStoredTags(note.tags);
-    return parsed.includes(tag);
+    const matchesTag = tag
+      ? parseStoredTags(note.tags).includes(tag)
+      : true;
+
+    if (!matchesTag) {
+      return false;
+    }
+    return true;
   });
 };

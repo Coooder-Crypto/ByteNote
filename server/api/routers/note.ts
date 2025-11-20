@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "@/server/api/trpc";
@@ -16,13 +17,47 @@ export const noteRouter = router({
       z
         .object({
           publicOnly: z.boolean().optional(),
+          search: z.string().optional(),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      const where = input?.publicOnly
+      const baseWhere: Prisma.NoteWhereInput = input?.publicOnly
         ? { isPublic: true }
         : { userId: ctx.session!.user.id };
+
+      const searchTerm = input?.search?.trim();
+      const where: Prisma.NoteWhereInput = {
+        ...baseWhere,
+      };
+
+      if (searchTerm) {
+        where.AND = [
+          ...(where.AND ?? []),
+          {
+            OR: [
+              {
+                title: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+              {
+                content: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+              {
+                markdown: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        ];
+      }
 
       return ctx.prisma.note.findMany({
         where,
