@@ -9,11 +9,11 @@ export function CreateNoteButton() {
   const router = useRouter();
   const mutation = trpc.note.create.useMutation({
     onSuccess: (note) => {
-      router.push(`/notes?noteId=${note.id}`);
+      router.push(`/notes/${note.id}`);
     },
     onError: (error) => {
       if (error.data?.code === "UNAUTHORIZED") {
-        router.push("/profile");
+        router.push("/auth");
       }
     },
   });

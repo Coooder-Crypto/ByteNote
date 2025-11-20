@@ -141,7 +141,7 @@ export default function ProfilePage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push(`/notes?noteId=${note.id}`)}
+                      onClick={() => router.push(`/notes/${note.id}`)}
                     >
                       编辑
                     </Button>

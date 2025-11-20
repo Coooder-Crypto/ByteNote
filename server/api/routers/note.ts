@@ -34,6 +34,7 @@ export const noteRouter = router({
           updatedAt: true,
           isPublic: true,
           tags: true,
+          userId: true,
         },
       });
     }),
