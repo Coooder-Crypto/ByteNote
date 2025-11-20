@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AvatarUploader } from "@/components/avatar-uploader";
-import { ContributionHeatmap } from "@/components/contribution-heatmap";
 import { ProfileInfoCard } from "@/components/profile-info-card";
 import { ProfileNoteList } from "@/components/profile-note-list";
 import { Button } from "@/components/ui/button";
@@ -58,7 +57,9 @@ export default function ProfilePage() {
             onLogout={() => logoutMutation.mutate()}
             isLoggingOut={logoutMutation.isPending}
           />
-          <ContributionHeatmap />
+          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+            热力图功能开发中，敬请期待
+          </div>
         </div>
 
         <div className="space-y-4">
