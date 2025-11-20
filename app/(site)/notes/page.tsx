@@ -27,6 +27,16 @@ export default function NotesPage() {
     { publicOnly: true, search: searchQuery || undefined },
     { enabled },
   );
+  const createMutation = trpc.note.create.useMutation({
+    onSuccess: (note) => {
+      router.push(`/notes/${note.id}`);
+    },
+    onError: (error) => {
+      if (error.data?.code === "UNAUTHORIZED") {
+        router.push("/auth");
+      }
+    },
+  });
   const visibleNotes = useMemo<NoteListItem[]>(
     () => filteredNotes(publicNotesQuery.data, activeTag),
     [publicNotesQuery.data, activeTag],
@@ -42,10 +52,17 @@ export default function NotesPage() {
           </Button>
           <Button
             size="sm"
-            onClick={() => router.push(meQuery.data ? "/notes/new" : "/auth")}
-            disabled={publicNotesQuery.isLoading && !enabled}
+            onClick={() =>
+              createMutation.mutate({
+                title: "全新笔记",
+                markdown: "# 新笔记\n\n这里是初始内容。",
+                isPublic: false,
+                tags: [],
+              })
+            }
+            disabled={!enabled || createMutation.isPending}
           >
-            新建笔记
+            {createMutation.isPending ? "创建中..." : "新建笔记"}
           </Button>
         </div>
       </header>

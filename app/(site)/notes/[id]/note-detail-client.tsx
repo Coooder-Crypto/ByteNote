@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import rehypeSanitize from "rehype-sanitize";
 
 import { NoteTags } from "@/components/note-tags";
@@ -31,66 +31,51 @@ const emptyState: EditorState = {
   tags: [],
 };
 
-export default function NoteDetailClient({
-  noteId,
-}: {
-  noteId?: string;
-}) {
+export default function NoteDetailClient({ noteId }: { noteId: string }) {
   const router = useRouter();
   const utils = trpc.useUtils();
-  const isCreating = !noteId;
   const noteQuery = trpc.note.detail.useQuery(
-    {
-      id: noteId ?? "00000000-0000-0000-0000-000000000000",
-    },
+    { id: noteId },
     { enabled: Boolean(noteId) },
   );
   const meQuery = trpc.auth.me.useQuery();
 
   const [state, setState] = useState<EditorState>(emptyState);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
-    if (noteQuery.data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setState({
-        title: noteQuery.data.title,
-        markdown: noteQuery.data.markdown,
-        isPublic: noteQuery.data.isPublic,
-        tags: (() => {
-          try {
-            const parsed = JSON.parse(noteQuery.data.tags);
-            return Array.isArray(parsed)
-              ? parsed.filter(
-                  (tag): tag is string =>
-                    typeof tag === "string" && tag.trim().length > 0,
-                )
-              : [];
-          } catch {
-            return [];
-          }
-        })(),
-      });
-    }
+    if (!noteQuery.data) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState({
+      title: noteQuery.data.title,
+      markdown: noteQuery.data.markdown,
+      isPublic: noteQuery.data.isPublic,
+      tags: (() => {
+        try {
+          const parsed = JSON.parse(noteQuery.data.tags);
+          return Array.isArray(parsed)
+            ? parsed.filter(
+                (tag): tag is string =>
+                  typeof tag === "string" && tag.trim().length > 0,
+              )
+            : [];
+        } catch {
+          return [];
+        }
+      })(),
+    });
+    setIsDirty(false);
   }, [noteQuery.data]);
 
   const isOwner = useMemo(
-    () =>
-      isCreating || (noteQuery.data && meQuery.data?.id === noteQuery.data.userId),
-    [isCreating, noteQuery.data, meQuery.data?.id],
+    () => Boolean(noteQuery.data && meQuery.data?.id === noteQuery.data.userId),
+    [noteQuery.data, meQuery.data?.id],
   );
-
-  const createMutation = trpc.note.create.useMutation({
-    onSuccess: (note) => {
-      utils.note.list.invalidate();
-      router.replace(`/notes/${note.id}`);
-    },
-  });
 
   const updateMutation = trpc.note.update.useMutation({
     onSuccess: () => {
-      if (noteId) {
-        utils.note.detail.invalidate({ id: noteId });
-      }
+      setIsDirty(false);
+      utils.note.detail.invalidate({ id: noteId });
       utils.note.list.invalidate();
     },
   });
@@ -102,24 +87,52 @@ export default function NoteDetailClient({
     },
   });
 
-  const handleSave = () => {
-    const payload = {
+  const isSaving = updateMutation.isPending;
+
+  const handleSave = useCallback(() => {
+    if (!isOwner || !isDirty || isSaving) return;
+    updateMutation.mutate({
+      id: noteId,
       title: state.title || "未命名笔记",
       markdown: state.markdown,
       isPublic: state.isPublic,
       tags: state.tags,
-    };
-    if (isCreating) {
-      createMutation.mutate(payload);
-    } else if (noteId) {
-      updateMutation.mutate({
-        id: noteId,
-        ...payload,
-      });
-    }
-  };
+    });
+  }, [
+    isDirty,
+    isOwner,
+    isSaving,
+    noteId,
+    state.isPublic,
+    state.markdown,
+    state.tags,
+    state.title,
+    updateMutation,
+  ]);
 
-  if (!isCreating && noteQuery.isLoading) {
+  // Auto save every 10s if dirty
+  useEffect(() => {
+    if (!isOwner || !isDirty || isSaving) return;
+    const timer = window.setTimeout(() => {
+      handleSave();
+    }, 10000);
+    return () => window.clearTimeout(timer);
+  }, [handleSave, isDirty, isOwner, isSaving]);
+
+  // Cmd/Ctrl + S shortcut
+  useEffect(() => {
+    if (!isOwner) return;
+    const listener = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, [handleSave, isOwner]);
+
+  if (noteQuery.isLoading) {
     return (
       <section className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center p-6">
         <p className="text-sm text-muted-foreground">加载中...</p>
@@ -127,7 +140,7 @@ export default function NoteDetailClient({
     );
   }
 
-  if (!isCreating && !noteQuery.data) {
+  if (!noteQuery.data) {
     return (
       <section className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center p-6">
         <p className="text-sm text-muted-foreground">未找到笔记</p>
@@ -149,21 +162,17 @@ export default function NoteDetailClient({
             <Button
               variant="outline"
               onClick={handleSave}
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={isSaving}
             >
-              {createMutation.isPending || updateMutation.isPending
-                ? "保存中..."
-                : "保存"}
+              {isSaving ? "保存中..." : "保存"}
             </Button>
-            {!isCreating && (
-              <Button
-                variant="destructive"
-                onClick={() => deleteMutation.mutate({ id: noteId! })}
-                disabled={deleteMutation.isPending}
-              >
-                删除
-              </Button>
-            )}
+            <Button
+              variant="destructive"
+              onClick={() => deleteMutation.mutate({ id: noteId })}
+              disabled={deleteMutation.isPending}
+            >
+              删除
+            </Button>
           </div>
         )}
       </div>
@@ -172,9 +181,10 @@ export default function NoteDetailClient({
         <div className="space-y-4">
           <Input
             value={state.title}
-            onChange={(event) =>
-              setState((prev) => ({ ...prev, title: event.target.value }))
-            }
+            onChange={(event) => {
+              setIsDirty(true);
+              setState((prev) => ({ ...prev, title: event.target.value }));
+            }}
             placeholder="输入标题"
           />
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
@@ -184,12 +194,13 @@ export default function NoteDetailClient({
               </p>
               <TagInput
                 value={state.tags}
-                onChange={(tags) =>
+                onChange={(tags) => {
+                  setIsDirty(true);
                   setState((prev) => ({
                     ...prev,
                     tags,
-                  }))
-                }
+                  }));
+                }}
                 placeholder="输入标签或从列表选择"
                 className="w-full"
               />
@@ -198,12 +209,13 @@ export default function NoteDetailClient({
               <input
                 type="checkbox"
                 checked={state.isPublic}
-                onChange={(event) =>
+                onChange={(event) => {
+                  setIsDirty(true);
                   setState((prev) => ({
                     ...prev,
                     isPublic: event.target.checked,
-                  }))
-                }
+                  }));
+                }}
               />
               公开笔记
             </label>
@@ -211,9 +223,10 @@ export default function NoteDetailClient({
           <div className="rounded-xl border border-border/60 bg-card p-2 shadow-sm h-[70vh]">
             <MDEditor
               value={state.markdown}
-              onChange={(value) =>
-                setState((prev) => ({ ...prev, markdown: value ?? "" }))
-              }
+              onChange={(value) => {
+                setIsDirty(true);
+                setState((prev) => ({ ...prev, markdown: value ?? "" }));
+              }}
               previewOptions={{
                 rehypePlugins: [[rehypeSanitize]],
               }}
