@@ -1,4 +1,38 @@
-## 📌 开发 TODO
+## 项目简介
+
+Byte Note 是字节训练营前端课程的笔记作品，技术栈基于 Next.js 16 (App Router) + tRPC + Prisma + PostgreSQL + TailwindCSS + shadcn/ui。
+
+### 核心功能
+
+- Markdown 笔记编辑与预览（基于 `@uiw/react-md-editor` / `react-markdown-preview`）
+- tRPC API + Prisma ORM + Postgres 数据持久化
+- 用户体系：注册 / 登录 / 会话 / Session Cookie / 头像上传（Vercel Blob）
+- 笔记标签、公开笔记广场、筛选 + 搜索
+- GitHub 风格的贡献热力图 & Profile 仪表盘
+
+## 本地开发
+
+```bash
+pnpm install
+pnpm prisma generate
+pnpm dev
+```
+
+默认 `.env` 使用本地 Postgres 容器或 Vercel Pull 下来的云端连接，请确保 `DATABASE_URL`、`BLOB_READ_WRITE_TOKEN` 已在 `.env` 配置。
+
+## 部署说明
+
+1. 准备 Postgres（本项目使用 Vercel Prisma Postgres，也可以自行部署），配置 `DATABASE_URL`。
+2. 在 Vercel 上创建项目，执行 `vercel link`、`vercel env pull/push` 同步环境变量。
+3. 配置 Blob：`BLOB_READ_WRITE_TOKEN` 需通过 `vercel blob` 或控制台生成（部署项目并开通 Blob 后执行 `vercel env pull`），否则头像上传接口会 403。
+4. 运行 `pnpm build`（脚本里会自动 `prisma generate`），确保通过，再执行 `pnpm dlx vercel deploy --prod --yes`。
+
+需要放行 Prisma 等依赖的安装脚本时，可在本地执行 `pnpm approve-builds`（若 Vercel 仍提示，可改为 `prisma generate && next build` 组合，如本项目）。
+
+<details>
+<summary><strong>📌 开发 TODO</strong></summary>
+
+### 阶段一 项目初始化与基础工程能力
 
 ### 阶段一 项目初始化与基础工程能力
 
@@ -73,14 +107,14 @@
   - [x] 支持在编辑页为笔记添加和移除标签
 
 - [ ] 列表展示与分页
-  - [ ] 列表展示笔记标题 更新时间 标签等基础信息
+  - [x] 列表展示笔记标题 更新时间 标签等基础信息
   - [ ] 实现分页查询接口
 
-- [ ] 搜索与筛选
-  - [ ] 标题关键词搜索
-  - [ ] 内容关键词搜索（先做简单模糊匹配）
-  - [ ] 按标签筛选
-  - [ ] 搜索条件与标签筛选组合使用
+- [x] 搜索与筛选
+  - [x] 标题关键词搜索
+  - [x] 内容关键词搜索（先做简单模糊匹配）
+  - [x] 按标签筛选
+  - [x] 搜索条件与标签筛选组合使用
 
 ---
 
@@ -96,10 +130,10 @@
   - [ ] 首屏加载优化（拆分路由和组件）
   - [ ] 列表渲染优化（笔记列表）
 
-- [ ] 部署与演示
-  - [ ] 选择部署方案（Vercel）
-  - [ ] 完成一次线上部署
-  - [ ] 在 README 中写明访问入口和演示说明
+- [x] 部署与演示
+  - [x] 选择部署方案（Vercel）
+  - [x] 完成一次线上部署
+  - [x] 在 README 中写明访问入口和演示说明
 
 ---
 
@@ -132,3 +166,5 @@
   - [ ] 记录项目中遇到的主要问题
   - [ ] 说明具体解决方案和思路
   - [ ] 反思可以改进的地方和后续演进方向
+
+</details>
