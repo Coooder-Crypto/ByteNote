@@ -102,7 +102,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     .filter(Boolean);
 
   return (
-    <section className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 p-6">
+    <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-8">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">{state.title || "笔记详情"}</h2>
@@ -168,7 +168,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
             />
             公开笔记
           </label>
-          <div className="rounded-xl border border-border/60 bg-card p-2 shadow-sm">
+          <div className="rounded-xl border border-border/60 bg-card p-2 shadow-sm h-[70vh]">
             <MDEditor
               value={state.markdown}
               onChange={(value) =>
@@ -177,7 +177,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
               previewOptions={{
                 rehypePlugins: [[rehypeSanitize]],
               }}
-              height={500}
+              height={550}
             />
           </div>
         </div>
@@ -186,7 +186,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
           <p className="text-sm text-muted-foreground">
             标签：{parsedTags.join(", ") || "无"}
           </p>
-          <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+          <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm h-[70vh] overflow-auto">
             <MarkdownPreview source={state.markdown} />
           </div>
         </div>

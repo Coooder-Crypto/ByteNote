@@ -35,6 +35,13 @@ export const noteRouter = router({
           isPublic: true,
           tags: true,
           userId: true,
+          user: {
+            select: {
+              name: true,
+              email: true,
+              avatarUrl: true,
+            },
+          },
         },
       });
     }),
