@@ -1,8 +1,9 @@
 "use client";
 
 import { Layout, Star, Trash2 } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { signOut } from "next-auth/react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
 
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
@@ -26,17 +27,26 @@ const MOCK_FOLDERS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const meQuery = trpc.auth.me.useQuery();
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      meQuery.refetch();
-      router.push("/auth");
-    },
-  });
+  const currentPath = useMemo(() => {
+    const query = searchParams.toString();
+    return `${pathname}${query ? `?${query}` : ""}`;
+  }, [pathname, searchParams]);
+  const authUrl = useMemo(
+    () => `/auth?callbackUrl=${encodeURIComponent(currentPath || "/")}`,
+    [currentPath],
+  );
 
-  const handleCreate = () => router.push(meQuery.data ? "/notes" : "/auth");
+  const handleCreate = () => router.push(meQuery.data ? "/notes" : authUrl);
+  const handleLogout = useCallback(() => {
+    void signOut({ callbackUrl: currentPath || "/" });
+  }, [currentPath]);
+  const handleLoginRedirect = useCallback(() => {
+    router.push(authUrl);
+  }, [authUrl, router]);
 
   const body = (
     <aside className="border-border/60 bg-card/80 flex h-full w-64 flex-col border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] md:min-h-svh">
@@ -51,8 +61,8 @@ export default function Sidebar() {
       </nav>
       <SideFooter
         user={meQuery.data ?? null}
-        onLogin={() => router.push("/auth")}
-        onLogout={() => logoutMutation.mutate()}
+        onLogin={handleLoginRedirect}
+        onLogout={handleLogout}
       />
     </aside>
   );

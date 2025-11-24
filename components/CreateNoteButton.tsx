@@ -1,19 +1,30 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { trpc } from "@/lib/trpc/client";
 
 export function CreateNoteButton() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentPath = useMemo(() => {
+    const query = searchParams.toString();
+    return `${pathname}${query ? `?${query}` : ""}`;
+  }, [pathname, searchParams]);
+  const authUrl = useMemo(
+    () => `/auth?callbackUrl=${encodeURIComponent(currentPath || "/")}`,
+    [currentPath],
+  );
   const mutation = trpc.note.create.useMutation({
     onSuccess: (note) => {
       router.push(`/notes/${note.id}`);
     },
     onError: (error) => {
       if (error.data?.code === "UNAUTHORIZED") {
-        router.push("/auth");
+        router.push(authUrl);
       }
     },
   });

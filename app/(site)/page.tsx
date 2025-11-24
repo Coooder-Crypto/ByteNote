@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import {
@@ -18,10 +18,20 @@ const parseTags = (raw: string | null | undefined) =>
 
 export default function NotesHomePage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const meQuery = trpc.auth.me.useQuery();
   const enabled = Boolean(meQuery.data);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const currentPath = useMemo(() => {
+    const query = searchParams.toString();
+    return `${pathname}${query ? `?${query}` : ""}`;
+  }, [pathname, searchParams]);
+  const authUrl = useMemo(
+    () => `/auth?callbackUrl=${encodeURIComponent(currentPath || "/")}`,
+    [currentPath],
+  );
 
   const notesQuery = trpc.note.list.useQuery(
     { publicOnly: true, search: searchQuery || undefined },
@@ -32,7 +42,7 @@ export default function NotesHomePage() {
     onSuccess: (note) => router.push(`/notes/${note.id}`),
     onError: (error) => {
       if (error.data?.code === "UNAUTHORIZED") {
-        router.push("/auth");
+        router.push(authUrl);
       }
     },
   });
@@ -85,7 +95,7 @@ export default function NotesHomePage() {
       {!enabled ? (
         <p className="border-border/70 bg-card/80 text-muted-foreground rounded-2xl border border-dashed p-4 text-sm">
           请先
-          <Link href="/auth" className="text-primary underline">
+          <Link href={authUrl} className="text-primary underline">
             登录
           </Link>
           ，即可查看公共笔记。
