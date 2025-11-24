@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { trpc } from "@/lib/trpc/client";
 
 export default function AuthPage() {
@@ -28,7 +28,7 @@ export default function AuthPage() {
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12">
       <div className="space-y-2">
         <h2 className="text-3xl font-semibold">账号中心</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           在这里完成注册或登录操作。
         </p>
       </div>
@@ -81,7 +81,7 @@ export default function AuthPage() {
               {registerMutation.isPending ? "注册中..." : "注册"}
             </Button>
             {registerMutation.error && (
-              <p className="text-xs text-destructive">
+              <p className="text-destructive text-xs">
                 {registerMutation.error.message}
               </p>
             )}
@@ -127,7 +127,7 @@ export default function AuthPage() {
               {loginMutation.isPending ? "登录中..." : "登录"}
             </Button>
             {loginMutation.error && (
-              <p className="text-xs text-destructive">
+              <p className="text-destructive text-xs">
                 {loginMutation.error.message}
               </p>
             )}

@@ -38,15 +38,8 @@ export default function Sidebar() {
 
   const handleCreate = () => router.push(meQuery.data ? "/notes" : "/auth");
 
-  const sidebarClasses = `
-    fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-[#252525] border-r border-slate-100 dark:border-slate-800 
-    transform transition-transform duration-300 ease-in-out
-    ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
-    md:translate-x-0 md:static flex flex-col
-  `;
-
-  const content = (
-    <aside className={sidebarClasses}>
+  const body = (
+    <aside className="border-border/60 bg-card/80 flex h-full w-64 flex-col border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] md:min-h-svh">
       <SideHeader onCreate={handleCreate} />
       <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
         <SideLibrary
@@ -84,11 +77,11 @@ export default function Sidebar() {
       />
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 md:static md:min-h-svh md:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
       >
-        {content}
+        {body}
       </div>
     </>
   );

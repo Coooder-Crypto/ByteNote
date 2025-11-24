@@ -5,17 +5,16 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import rehypeSanitize from "rehype-sanitize";
 
-import { NoteTags } from "@/components/note-tags";
-import { TagInput } from "@/components/tag-input";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NoteTags } from "@/components/NoteTags";
+import { TagInput } from "@/components/TagInput";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { trpc } from "@/lib/trpc/client";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
-const MarkdownPreview = dynamic(
-  () => import("@uiw/react-markdown-preview"),
-  { ssr: false },
-);
+const MarkdownPreview = dynamic(() => import("@uiw/react-markdown-preview"), {
+  ssr: false,
+});
 
 type EditorState = {
   title: string;
@@ -135,7 +134,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   if (noteQuery.isLoading) {
     return (
       <section className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground">加载中...</p>
+        <p className="text-muted-foreground text-sm">加载中...</p>
       </section>
     );
   }
@@ -143,7 +142,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   if (!noteQuery.data) {
     return (
       <section className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground">未找到笔记</p>
+        <p className="text-muted-foreground text-sm">未找到笔记</p>
       </section>
     );
   }
@@ -152,18 +151,16 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">{state.title || "笔记详情"}</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-2xl font-semibold">
+            {state.title || "笔记详情"}
+          </h2>
+          <p className="text-muted-foreground text-sm">
             {isOwner ? "你可以编辑这篇笔记" : "此笔记为只读"}
           </p>
         </div>
         {isOwner && (
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
+            <Button variant="outline" onClick={handleSave} disabled={isSaving}>
               {isSaving ? "保存中..." : "保存"}
             </Button>
             <Button
@@ -189,7 +186,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
           />
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
             <div className="flex-1 space-y-2 lg:max-w-2xl">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 标签（可输入或选择）
               </p>
               <TagInput
@@ -205,7 +202,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                 className="w-full"
               />
             </div>
-            <label className="flex h-[44px] items-center gap-2 rounded-lg border border-border/60 bg-card px-4 text-sm text-muted-foreground">
+            <label className="border-border/60 bg-card text-muted-foreground flex h-[44px] items-center gap-2 rounded-lg border px-4 text-sm">
               <input
                 type="checkbox"
                 checked={state.isPublic}
@@ -220,7 +217,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
               公开笔记
             </label>
           </div>
-          <div className="rounded-xl border border-border/60 bg-card p-2 shadow-sm h-[70vh]">
+          <div className="border-border/60 bg-card h-[70vh] rounded-xl border p-2 shadow-sm">
             <MDEditor
               value={state.markdown}
               onChange={(value) => {
@@ -237,7 +234,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       ) : (
         <div className="space-y-4">
           <NoteTags tags={state.tags} />
-          <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm h-[70vh] overflow-auto">
+          <div className="border-border/60 bg-card h-[70vh] overflow-auto rounded-xl border p-4 shadow-sm">
             <MarkdownPreview source={state.markdown} />
           </div>
         </div>

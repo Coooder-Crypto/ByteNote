@@ -8,7 +8,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/Select";
 import { getTagLabel, NOTE_TAGS } from "@/lib/tags";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +56,7 @@ export function TagInput({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border/70 bg-card px-3 py-2 shadow-sm min-h-[44px]",
+        "border-border/70 bg-card min-h-[44px] rounded-lg border px-3 py-2 shadow-sm",
         className,
       )}
     >
@@ -64,7 +64,7 @@ export function TagInput({
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/40 px-3 py-1 text-xs"
+            className="border-border/80 bg-muted/40 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs"
           >
             {getTagLabel(tag)}
             <button
@@ -78,7 +78,7 @@ export function TagInput({
           </span>
         ))}
         <input
-          className="flex-1 min-w-[100px] sm:min-w-[180px] border-none bg-transparent text-sm outline-none placeholder:text-muted-foreground transition-[width]"
+          className="placeholder:text-muted-foreground min-w-[100px] flex-1 border-none bg-transparent text-sm transition-[width] outline-none sm:min-w-[180px]"
           value={inputValue}
           onChange={(event) => setInputValue(event.target.value)}
           onKeyDown={handleKeyDown}
@@ -89,7 +89,7 @@ export function TagInput({
           key={value.join("|")}
           onValueChange={(selection) => addTag(selection)}
         >
-          <SelectTrigger className="h-10 w-[150px] rounded-lg border border-border/60 bg-background/80 text-xs">
+          <SelectTrigger className="border-border/60 bg-background/80 h-10 w-[150px] rounded-lg border text-xs">
             <SelectValue placeholder="选择标签" />
           </SelectTrigger>
           <SelectContent>

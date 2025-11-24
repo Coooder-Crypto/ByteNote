@@ -1,4 +1,4 @@
-import NoteDetailClient from "./note-detail-client";
+import NoteDetailClient from "./NoteDetailClient";
 
 export default async function NoteDetailPage({
   params,

@@ -5,7 +5,7 @@ import { useCallback, useEffect } from "react";
 
 import { trpc } from "@/lib/trpc/client";
 
-import type { DraftState } from "./use-note-draft";
+import type { DraftState } from "./useNoteDraft";
 
 type UseNoteSyncOptions = {
   noteId: string;
