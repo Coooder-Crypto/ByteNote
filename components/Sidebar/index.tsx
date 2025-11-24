@@ -63,6 +63,7 @@ export default function Sidebar() {
         user={meQuery.data ?? null}
         onLogin={handleLoginRedirect}
         onLogout={handleLogout}
+        onProfileUpdated={() => meQuery.refetch()}
       />
     </aside>
   );
