@@ -16,12 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTheme } from "@/hooks/useTheme";
 import { trpc } from "@/lib/trpc/client";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
-const MarkdownPreview = dynamic(() => import("@uiw/react-markdown-preview"), {
-  ssr: false,
-});
+const MarkdownPreview = dynamic(
+  () => import("@uiw/react-markdown-preview").then((mod) => mod.default),
+  {
+    ssr: false,
+  },
+);
 
 type EditorState = {
   title: string;
@@ -50,6 +54,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   const foldersQuery = trpc.folder.list.useQuery(undefined, {
     enabled: Boolean(meQuery.data),
   });
+  const { theme } = useTheme();
 
   const [state, setState] = useState<EditorState>(emptyState);
   const [isDirty, setIsDirty] = useState(false);
@@ -341,7 +346,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
               previewOptions={{
                 rehypePlugins: [[rehypeSanitize]],
               }}
-              disabled={isTrashed}
+              data-color-mode={theme === "dark" ? "dark" : "light"}
               height={550}
             />
           </div>
@@ -350,7 +355,10 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
         <div className="space-y-4">
           <NoteTags tags={state.tags} />
           <div className="border-border/60 bg-card h-[70vh] overflow-auto rounded-xl border p-4 shadow-sm">
-            <MarkdownPreview source={state.markdown} />
+            <MarkdownPreview
+              source={state.markdown}
+              data-color-mode={theme === "dark" ? "dark" : "light"}
+            />
           </div>
         </div>
       )}
