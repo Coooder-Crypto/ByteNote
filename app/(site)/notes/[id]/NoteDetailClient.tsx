@@ -7,8 +7,8 @@ import rehypeSanitize from "rehype-sanitize";
 
 import { NoteTags } from "@/components/NoteTags";
 import { TagInput } from "@/components/TagInput";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc/client";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });

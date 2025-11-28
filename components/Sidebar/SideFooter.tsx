@@ -1,7 +1,7 @@
 import { LogOut, Moon } from "lucide-react";
 import Image from "next/image";
 
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 
 import { ProfileSettingsDialog } from "./ProfileSettingsDialog";
 

@@ -4,7 +4,7 @@ import { Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AvatarUploader } from "@/components/AvatarUploader";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/Dialog";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 

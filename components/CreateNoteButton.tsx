@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc/client";
 
 export function CreateNoteButton() {

@@ -8,7 +8,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/Select";
+} from "@/components/ui/select";
 import { getTagLabel, NOTE_TAGS } from "@/lib/tags";
 import { cn } from "@/lib/utils";
 
