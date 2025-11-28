@@ -5,7 +5,7 @@ import { protectedProcedure, router } from "@/server/api/trpc";
 export const folderRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session!.user.id;
-    const [folders, noteCounts] = await Promise.all([
+    const [folders, noteCounts, totalCount] = await Promise.all([
       ctx.prisma.folder.findMany({
         where: { userId },
         orderBy: { createdAt: "asc" },
@@ -25,6 +25,12 @@ export const folderRouter = router({
         },
         _count: { _all: true },
       }),
+      ctx.prisma.note.count({
+        where: {
+          userId,
+          deletedAt: null,
+        },
+      }),
     ]);
 
     const countMap = new Map<string, number>();
@@ -34,10 +40,13 @@ export const folderRouter = router({
       }
     });
 
-    return folders.map((folder) => ({
-      ...folder,
-      noteCount: countMap.get(folder.id) ?? 0,
-    }));
+    return {
+      folders: folders.map((folder) => ({
+        ...folder,
+        noteCount: countMap.get(folder.id) ?? 0,
+      })),
+      totalCount,
+    };
   }),
   create: protectedProcedure
     .input(z.object({ name: z.string().min(1).max(60) }))

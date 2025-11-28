@@ -322,7 +322,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">未分组</SelectItem>
-                  {foldersQuery.data?.map((folder) => (
+                  {foldersQuery.data?.folders.map((folder) => (
                     <SelectItem key={folder.id} value={folder.id}>
                       {folder.name}
                     </SelectItem>

@@ -104,7 +104,7 @@ export default function Sidebar() {
         />
         <SideFolders
           folders={
-            foldersQuery.data?.map((folder) => ({
+            foldersQuery.data?.folders.map((folder) => ({
               id: folder.id,
               label: folder.name,
               count: folder.noteCount,
@@ -114,12 +114,6 @@ export default function Sidebar() {
           onSelectFolder={handleFolderSelect}
           onCreateFolder={handleCreateFolder}
           loading={foldersQuery.isLoading || createFolderMutation.isPending}
-          totalCount={
-            foldersQuery.data?.reduce(
-              (sum, folder) => sum + (folder.noteCount ?? 0),
-              0,
-            ) ?? 0
-          }
         />
       </nav>
       <SideFooter

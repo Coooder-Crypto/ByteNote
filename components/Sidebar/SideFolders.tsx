@@ -14,7 +14,6 @@ type SideFoldersProps = {
   loading?: boolean;
   onSelectFolder: (id: string | null) => void;
   onCreateFolder?: () => void;
-  totalCount?: number;
 };
 
 export function SideFolders({
@@ -23,7 +22,6 @@ export function SideFolders({
   loading = false,
   onSelectFolder,
   onCreateFolder,
-  totalCount,
 }: SideFoldersProps) {
   return (
     <div>
@@ -40,15 +38,6 @@ export function SideFolders({
         </button>
       </div>
       <div className="mt-1 space-y-1">
-        <FolderItem
-          folder={{
-            id: "all",
-            label: "全部",
-            count: totalCount ?? folders.length,
-          }}
-          active={!activeFolderId}
-          onClick={() => onSelectFolder(null)}
-        />
         {folders.map((folder) => (
           <FolderItem
             key={folder.id}
