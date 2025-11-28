@@ -6,6 +6,7 @@ import { SessionProvider } from "next-auth/react";
 import { ReactNode, useState } from "react";
 import superjson from "superjson";
 
+import { ThemeProvider } from "@/hooks/useTheme";
 import { trpc } from "@/lib/trpc/client";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -29,11 +30,13 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <SessionProvider>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      </trpc.Provider>
+      <ThemeProvider>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        </trpc.Provider>
+      </ThemeProvider>
     </SessionProvider>
   );
 }

@@ -11,7 +11,7 @@ type PageHeaderProps = {
 
 export default function PageHeader({ total, onCreate }: PageHeaderProps) {
   return (
-    <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+    <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center">
       <div>
         <p className="text-muted-foreground text-sm tracking-[0.3em] uppercase">
           我的笔记
