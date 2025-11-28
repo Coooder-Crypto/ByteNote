@@ -10,6 +10,7 @@ import {
   SearchBar,
   TagsFilter,
 } from "@/components/Dashboard";
+import { CreateNoteDialog } from "@/components/CreateNoteDialog";
 import { NOTE_TAGS, parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
 
@@ -24,6 +25,7 @@ export default function NotesHomePage() {
   const enabled = Boolean(meQuery.data);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
   const filter = useMemo(
     () => searchParams.get("filter") ?? "all",
     [searchParams],
@@ -53,15 +55,6 @@ export default function NotesHomePage() {
     },
     { enabled },
   );
-
-  const createMutation = trpc.note.create.useMutation({
-    onSuccess: (note) => router.push(`/notes/${note.id}`),
-    onError: (error) => {
-      if (error.data?.code === "UNAUTHORIZED") {
-        router.push(authUrl);
-      }
-    },
-  });
 
   const notes = useMemo(() => {
     return (notesQuery.data ?? []).map((note) => ({
@@ -98,12 +91,11 @@ export default function NotesHomePage() {
   }, [notes, searchQuery, selectedTags]);
 
   const handleCreate = () => {
-    if (createMutation.isPending) return;
-    createMutation.mutate({
-      title: "全新笔记",
-      markdown: "# 新笔记\n\n这里是初始内容。",
-      tags: [],
-    });
+    if (!meQuery.data) {
+      router.push(authUrl);
+      return;
+    }
+    setCreateOpen(true);
   };
 
   return (
@@ -138,6 +130,12 @@ export default function NotesHomePage() {
       <NoteList
         notes={filteredNotes}
         emptyMessage={notesQuery.isLoading ? "加载中..." : "暂无符合条件的笔记"}
+      />
+      <CreateNoteDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onUnauthorized={() => router.push(authUrl)}
+        onCreated={(id) => router.push(`/notes/${id}`)}
       />
     </section>
   );

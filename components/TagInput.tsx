@@ -17,6 +17,7 @@ type TagInputProps = {
   onChange: (tags: string[]) => void;
   placeholder?: string;
   className?: string;
+  suggestions?: string[];
 };
 
 export function TagInput({
@@ -24,6 +25,7 @@ export function TagInput({
   onChange,
   placeholder,
   className,
+  suggestions,
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState("");
 
@@ -93,9 +95,9 @@ export function TagInput({
             <SelectValue placeholder="选择标签" />
           </SelectTrigger>
           <SelectContent>
-            {NOTE_TAGS.map((tag) => (
-              <SelectItem key={tag.value} value={tag.value}>
-                {tag.label}
+            {(suggestions ?? NOTE_TAGS.map((tag) => tag.value)).map((tag) => (
+              <SelectItem key={tag} value={tag}>
+                {getTagLabel(tag)}
               </SelectItem>
             ))}
           </SelectContent>

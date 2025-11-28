@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CreateNoteDialog } from "@/components/CreateNoteDialog";
 
 import { SideFolders } from "./SideFolders";
 import { SideFooter } from "./SideFooter";
@@ -35,6 +36,7 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const meQuery = trpc.auth.me.useQuery();
   const foldersQuery = trpc.folder.list.useQuery(undefined, {
     enabled: Boolean(meQuery.data),
@@ -60,7 +62,18 @@ export default function Sidebar() {
     [currentPath],
   );
 
-  const handleCreate = () => router.push(meQuery.data ? "/" : authUrl);
+  const openCreateDialog = useCallback(() => {
+    if (!meQuery.data) {
+      router.push(authUrl);
+      return;
+    }
+    setCreateDialogOpen(true);
+    setMobileOpen(false);
+  }, [authUrl, meQuery.data, router]);
+
+  const handleCreate = useCallback(() => {
+    openCreateDialog();
+  }, [openCreateDialog]);
   const handleLogout = useCallback(() => {
     void signOut({ callbackUrl: currentPath || "/" });
   }, [currentPath]);
@@ -181,6 +194,12 @@ export default function Sidebar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <CreateNoteDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onUnauthorized={() => router.push(authUrl)}
+        onCreated={(id) => router.push(`/notes/${id}`)}
+      />
     </>
   );
 }
