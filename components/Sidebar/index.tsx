@@ -107,7 +107,7 @@ export default function Sidebar() {
   }, [createFolderMutation, newFolderName]);
 
   const body = (
-    <aside className="border-border/60 bg-card/80 flex h-full w-64 flex-col border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] md:min-h-svh">
+    <aside className="border-border/60 bg-card/80 flex h-full w-64 flex-col border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] md:h-svh">
       <SideHeader onCreate={handleCreate} />
       <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
         <SideLibrary
