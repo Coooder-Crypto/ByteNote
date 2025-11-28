@@ -36,7 +36,6 @@ export function CreateNoteButton() {
         mutation.mutate({
           title: "全新笔记",
           markdown: "# 新笔记\n\n这里是初始内容。",
-          isPublic: false,
           tags: [],
         })
       }

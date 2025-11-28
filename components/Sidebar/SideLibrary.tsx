@@ -10,13 +10,28 @@ type NavItem = {
 
 type SideLibraryProps = {
   items: NavItem[];
-  pathname: string | null;
+  currentPath: string;
   onNavigate?: () => void;
 };
 
-export function SideLibrary({ items, pathname, onNavigate }: SideLibraryProps) {
-  const isActive = (path: string) =>
-    pathname === path || pathname?.startsWith(path + "?");
+export function SideLibrary({
+  items,
+  currentPath,
+  onNavigate,
+}: SideLibraryProps) {
+  const normalize = (path: string) => (path.startsWith("/") ? path : `/${path}`);
+  const isActive = (path: string) => {
+    const normalized = normalize(path);
+    const [targetPath, targetQuery] = normalized.split("?");
+    const [currentBase, currentQuery] = currentPath.split("?");
+    if (currentBase !== targetPath) {
+      return false;
+    }
+    if (!targetQuery) {
+      return !currentQuery;
+    }
+    return (currentQuery ?? "").startsWith(targetQuery);
+  };
 
   return (
     <div>

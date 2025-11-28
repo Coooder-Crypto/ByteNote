@@ -6,7 +6,10 @@ type DashboardNote = {
   id: string;
   title: string;
   content: string | null;
-  updatedAt: string;
+  updatedAt: string | Date;
+  deletedAt: string | Date | null;
+  isFavorite: boolean;
+  folderId: string | null;
   tags: string[];
 };
 
@@ -16,6 +19,7 @@ type NoteCardProps = {
 
 export default function NoteCard({ note }: NoteCardProps) {
   const router = useRouter();
+  const isTrashed = Boolean(note.deletedAt);
   const summary =
     note.content?.slice(0, 120).replace(/\n+/g, " ").trim() ?? "暂无内容";
 
@@ -26,6 +30,18 @@ export default function NoteCard({ note }: NoteCardProps) {
     >
       <div className="text-muted-foreground mb-2 flex items-center justify-between text-xs">
         <span>{new Date(note.updatedAt).toLocaleDateString()}</span>
+        <div className="flex items-center gap-2">
+          {note.isFavorite && (
+            <span className="text-amber-600 bg-amber-50 border-amber-200 rounded-full border px-2 py-0.5">
+              收藏
+            </span>
+          )}
+          {isTrashed && (
+            <span className="text-rose-600 bg-rose-50 border-rose-200 rounded-full border px-2 py-0.5">
+              回收站
+            </span>
+          )}
+        </div>
       </div>
       <h3 className="text-foreground line-clamp-2 text-lg font-semibold">
         {note.title || "未命名笔记"}

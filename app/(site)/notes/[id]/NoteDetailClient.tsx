@@ -9,6 +9,13 @@ import { NoteTags } from "@/components/NoteTags";
 import { TagInput } from "@/components/TagInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
@@ -19,14 +26,16 @@ const MarkdownPreview = dynamic(() => import("@uiw/react-markdown-preview"), {
 type EditorState = {
   title: string;
   markdown: string;
-  isPublic: boolean;
+  isFavorite: boolean;
+  folderId: string | null;
   tags: string[];
 };
 
 const emptyState: EditorState = {
   title: "",
   markdown: "",
-  isPublic: false,
+  isFavorite: false,
+  folderId: null,
   tags: [],
 };
 
@@ -38,6 +47,9 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     { enabled: Boolean(noteId) },
   );
   const meQuery = trpc.auth.me.useQuery();
+  const foldersQuery = trpc.folder.list.useQuery(undefined, {
+    enabled: Boolean(meQuery.data),
+  });
 
   const [state, setState] = useState<EditorState>(emptyState);
   const [isDirty, setIsDirty] = useState(false);
@@ -48,7 +60,8 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     setState({
       title: noteQuery.data.title,
       markdown: noteQuery.data.markdown,
-      isPublic: noteQuery.data.isPublic,
+      isFavorite: noteQuery.data.isFavorite,
+      folderId: noteQuery.data.folderId,
       tags: (() => {
         try {
           const parsed = JSON.parse(noteQuery.data.tags);
@@ -82,27 +95,59 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   const deleteMutation = trpc.note.remove.useMutation({
     onSuccess: () => {
       utils.note.list.invalidate();
-      router.push("/notes");
+      router.push("/");
+    },
+  });
+
+  const restoreMutation = trpc.note.restore.useMutation({
+    onSuccess: () => {
+      utils.note.list.invalidate();
+      utils.note.detail.invalidate({ id: noteId });
+    },
+  });
+
+  const destroyMutation = trpc.note.destroy.useMutation({
+    onSuccess: () => {
+      utils.note.list.invalidate();
+      router.push("/");
+    },
+  });
+
+  const favoriteMutation = trpc.note.setFavorite.useMutation({
+    onSuccess: (_, variables) => {
+      setState((prev) => ({ ...prev, isFavorite: variables.isFavorite }));
+      utils.note.detail.invalidate({ id: noteId });
+      utils.note.list.invalidate();
+    },
+  });
+
+  const setFolderMutation = trpc.note.setFolder.useMutation({
+    onSuccess: (_, variables) => {
+      setState((prev) => ({ ...prev, folderId: variables.folderId ?? null }));
+      utils.note.detail.invalidate({ id: noteId });
+      utils.note.list.invalidate();
     },
   });
 
   const isSaving = updateMutation.isPending;
+  const isTrashed = Boolean(noteQuery.data?.deletedAt);
 
   const handleSave = useCallback(() => {
-    if (!isOwner || !isDirty || isSaving) return;
+    if (!isOwner || !isDirty || isSaving || isTrashed) return;
     updateMutation.mutate({
       id: noteId,
       title: state.title || "未命名笔记",
       markdown: state.markdown,
-      isPublic: state.isPublic,
+      folderId: state.folderId,
       tags: state.tags,
     });
   }, [
     isDirty,
     isOwner,
     isSaving,
+    isTrashed,
     noteId,
-    state.isPublic,
+    state.folderId,
     state.markdown,
     state.tags,
     state.title,
@@ -111,16 +156,16 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
 
   // Auto save every 10s if dirty
   useEffect(() => {
-    if (!isOwner || !isDirty || isSaving) return;
+    if (!isOwner || !isDirty || isSaving || isTrashed) return;
     const timer = window.setTimeout(() => {
       handleSave();
     }, 10000);
     return () => window.clearTimeout(timer);
-  }, [handleSave, isDirty, isOwner, isSaving]);
+  }, [handleSave, isDirty, isOwner, isSaving, isTrashed]);
 
   // Cmd/Ctrl + S shortcut
   useEffect(() => {
-    if (!isOwner) return;
+    if (!isOwner || isTrashed) return;
     const listener = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
@@ -129,7 +174,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [handleSave, isOwner]);
+  }, [handleSave, isOwner, isTrashed]);
 
   if (noteQuery.isLoading) {
     return (
@@ -155,24 +200,75 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
             {state.title || "笔记详情"}
           </h2>
           <p className="text-muted-foreground text-sm">
-            {isOwner ? "你可以编辑这篇笔记" : "此笔记为只读"}
+            {isTrashed
+              ? "笔记已在回收站中"
+              : isOwner
+                ? "你可以编辑这篇笔记"
+                : "此笔记为只读"}
           </p>
         </div>
         {isOwner && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "保存中..." : "保存"}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteMutation.mutate({ id: noteId })}
-              disabled={deleteMutation.isPending}
-            >
-              删除
-            </Button>
+            {!isTrashed ? (
+              <>
+                <Button
+                  variant={state.isFavorite ? "secondary" : "outline"}
+                  onClick={() =>
+                    favoriteMutation.mutate({
+                      id: noteId,
+                      isFavorite: !state.isFavorite,
+                    })
+                  }
+                  disabled={favoriteMutation.isPending}
+                >
+                  {favoriteMutation.isPending
+                    ? "更新中..."
+                    : state.isFavorite
+                      ? "取消收藏"
+                      : "收藏"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "保存中..." : "保存"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => deleteMutation.mutate({ id: noteId })}
+                  disabled={deleteMutation.isPending}
+                >
+                  移至回收站
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => restoreMutation.mutate({ id: noteId })}
+                  disabled={restoreMutation.isPending}
+                >
+                  {restoreMutation.isPending ? "恢复中..." : "恢复笔记"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => destroyMutation.mutate({ id: noteId })}
+                  disabled={destroyMutation.isPending}
+                >
+                  {destroyMutation.isPending ? "删除中..." : "彻底删除"}
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>
+
+      {isTrashed && (
+        <p className="border-border/60 bg-amber-50 text-amber-700 rounded-lg border px-4 py-3 text-sm">
+          该笔记已在回收站，恢复后才能编辑。
+        </p>
+      )}
 
       {isOwner ? (
         <div className="space-y-4">
@@ -202,20 +298,38 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                 className="w-full"
               />
             </div>
-            <label className="border-border/60 bg-card text-muted-foreground flex h-[44px] items-center gap-2 rounded-lg border px-4 text-sm">
-              <input
-                type="checkbox"
-                checked={state.isPublic}
-                onChange={(event) => {
+            <div className="flex flex-col gap-2">
+              <p className="text-muted-foreground text-xs">分组</p>
+              <Select
+                value={state.folderId ?? "none"}
+                onValueChange={(value) => {
+                  const nextFolderId = value === "none" ? null : value;
                   setIsDirty(true);
-                  setState((prev) => ({
-                    ...prev,
-                    isPublic: event.target.checked,
-                  }));
+                  setState((prev) => ({ ...prev, folderId: nextFolderId }));
+                  setFolderMutation.mutate({
+                    id: noteId,
+                    folderId: nextFolderId,
+                  });
                 }}
-              />
-              公开笔记
-            </label>
+                disabled={
+                  foldersQuery.isLoading ||
+                  setFolderMutation.isPending ||
+                  isTrashed
+                }
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="选择分组" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">未分组</SelectItem>
+                  {foldersQuery.data?.map((folder) => (
+                    <SelectItem key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="border-border/60 bg-card h-[70vh] rounded-xl border p-2 shadow-sm">
             <MDEditor
@@ -227,6 +341,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
               previewOptions={{
                 rehypePlugins: [[rehypeSanitize]],
               }}
+              disabled={isTrashed}
               height={550}
             />
           </div>

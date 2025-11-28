@@ -11,7 +11,7 @@ export default function AuthPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/notes";
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
   useEffect(() => {
     if (status === "authenticated" && session) {

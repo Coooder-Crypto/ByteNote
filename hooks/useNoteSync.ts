@@ -41,7 +41,7 @@ export function useNoteSync({
     onSuccess: () => {
       onDeleted?.();
       utils.note.list.invalidate();
-      router.push("/notes");
+      router.push("/");
     },
   });
 
@@ -51,7 +51,8 @@ export function useNoteSync({
       id: noteId,
       title: state.title || "未命名笔记",
       markdown: state.markdown,
-      isPublic: state.isPublic,
+      isFavorite: state.isFavorite,
+      folderId: state.folderId ?? null,
       tags: state.tags,
     });
   }, [
@@ -59,7 +60,8 @@ export function useNoteSync({
     isOnline,
     isOwner,
     noteId,
-    state.isPublic,
+    state.isFavorite,
+    state.folderId,
     state.markdown,
     state.tags,
     state.title,

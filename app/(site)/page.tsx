@@ -24,6 +24,14 @@ export default function NotesHomePage() {
   const enabled = Boolean(meQuery.data);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const filter = useMemo(
+    () => searchParams.get("filter") ?? "all",
+    [searchParams],
+  );
+  const folderId = useMemo(
+    () => searchParams.get("folderId") ?? undefined,
+    [searchParams],
+  );
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
     return `${pathname}${query ? `?${query}` : ""}`;
@@ -34,7 +42,15 @@ export default function NotesHomePage() {
   );
 
   const notesQuery = trpc.note.list.useQuery(
-    { publicOnly: true, search: searchQuery || undefined },
+    {
+      filter: (["all", "favorite", "trash"] as const).includes(
+        filter as "all" | "favorite" | "trash",
+      )
+        ? (filter as "all" | "favorite" | "trash")
+        : "all",
+      folderId,
+      search: searchQuery || undefined,
+    },
     { enabled },
   );
 
@@ -53,6 +69,9 @@ export default function NotesHomePage() {
       title: note.title,
       content: note.content ?? note.markdown,
       updatedAt: note.updatedAt,
+      deletedAt: note.deletedAt,
+      isFavorite: note.isFavorite,
+      folderId: note.folderId,
       tags: parseTags(note.tags),
     }));
   }, [notesQuery.data]);
@@ -83,7 +102,6 @@ export default function NotesHomePage() {
     createMutation.mutate({
       title: "全新笔记",
       markdown: "# 新笔记\n\n这里是初始内容。",
-      isPublic: false,
       tags: [],
     });
   };
@@ -98,7 +116,7 @@ export default function NotesHomePage() {
           <Link href={authUrl} className="text-primary underline">
             登录
           </Link>
-          ，即可查看公共笔记。
+          ，即可管理你的笔记。
         </p>
       ) : (
         <div className="space-y-4">

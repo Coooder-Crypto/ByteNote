@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "@/server/api/trpc";
@@ -6,9 +7,9 @@ import { protectedProcedure, router } from "@/server/api/trpc";
 const noteInput = z.object({
   title: z.string().min(1).max(120),
   markdown: z.string().min(1),
-  isPublic: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   summary: z.string().optional(),
+  folderId: z.string().uuid().optional().nullable(),
 });
 
 export const noteRouter = router({
@@ -16,20 +17,33 @@ export const noteRouter = router({
     .input(
       z
         .object({
-          publicOnly: z.boolean().optional(),
           search: z.string().optional(),
+          filter: z.enum(["all", "favorite", "trash"]).optional(),
+          folderId: z.string().uuid().optional(),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      const baseWhere: Prisma.NoteWhereInput = input?.publicOnly
-        ? { isPublic: true }
-        : { userId: ctx.session!.user.id };
+      const filter = input?.filter ?? "all";
+      const where: Prisma.NoteWhereInput = {
+        userId: ctx.session!.user.id,
+      };
+
+      if (filter === "trash") {
+        where.deletedAt = { not: null };
+      } else {
+        where.deletedAt = null;
+      }
+
+      if (filter === "favorite") {
+        where.isFavorite = true;
+      }
+
+      if (input?.folderId) {
+        where.folderId = input.folderId;
+      }
 
       const searchTerm = input?.search?.trim();
-      const where: Prisma.NoteWhereInput = {
-        ...baseWhere,
-      };
 
       if (searchTerm) {
         if (!Array.isArray(where.AND)) {
@@ -68,7 +82,11 @@ export const noteRouter = router({
           title: true,
           summary: true,
           updatedAt: true,
-          isPublic: true,
+          markdown: true,
+          content: true,
+          isFavorite: true,
+          deletedAt: true,
+          folderId: true,
           tags: true,
           userId: true,
           user: {
@@ -87,10 +105,7 @@ export const noteRouter = router({
       const note = await ctx.prisma.note.findFirst({
         where: {
           id: input.id,
-          OR: [
-            { userId: ctx.session!.user.id },
-            { isPublic: true },
-          ],
+          userId: ctx.session!.user.id,
         },
       });
 
@@ -105,8 +120,10 @@ export const noteRouter = router({
           markdown: input.markdown,
           content: input.markdown,
           summary: input.summary ?? "",
-          isPublic: input.isPublic ?? false,
+          isFavorite: false,
           tags: JSON.stringify(input.tags ?? []),
+          folderId: input.folderId ?? null,
+          deletedAt: null,
           userId: ctx.session!.user.id,
         },
       });
@@ -119,30 +136,113 @@ export const noteRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      return ctx.prisma.note.update({
+      const updated = await ctx.prisma.note.updateMany({
         where: {
           id,
           userId: ctx.session!.user.id,
+          deletedAt: null,
         },
         data: {
           title: rest.title,
           markdown: rest.markdown,
           content: rest.markdown,
           summary: rest.summary ?? "",
-          isPublic: rest.isPublic ?? false,
           tags: JSON.stringify(rest.tags ?? []),
+          folderId: rest.folderId ?? null,
         },
       });
+
+      if (!updated.count) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      return ctx.prisma.note.findUnique({ where: { id } });
     }),
   remove: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.prisma.note.delete({
+      const result = await ctx.prisma.note.updateMany({
+        where: {
+          id: input.id,
+          userId: ctx.session!.user.id,
+          deletedAt: null,
+        },
+        data: { deletedAt: new Date() },
+      });
+      if (!result.count) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      return { success: true };
+    }),
+  restore: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.prisma.note.updateMany({
         where: {
           id: input.id,
           userId: ctx.session!.user.id,
         },
+        data: { deletedAt: null },
       });
+      if (!result.count) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      return { success: true };
+    }),
+  destroy: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.prisma.note.deleteMany({
+        where: {
+          id: input.id,
+          userId: ctx.session!.user.id,
+          deletedAt: { not: null },
+        },
+      });
+      if (!result.count) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      return { success: true };
+    }),
+  setFavorite: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        isFavorite: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.prisma.note.updateMany({
+        where: {
+          id: input.id,
+          userId: ctx.session!.user.id,
+        },
+        data: { isFavorite: input.isFavorite },
+      });
+      if (!result.count) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      return { success: true };
+    }),
+  setFolder: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        folderId: z.string().uuid().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.prisma.note.updateMany({
+        where: {
+          id: input.id,
+          userId: ctx.session!.user.id,
+          deletedAt: null,
+        },
+        data: { folderId: input.folderId },
+      });
+      if (!result.count) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
       return { success: true };
     }),
 });

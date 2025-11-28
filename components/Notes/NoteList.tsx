@@ -6,7 +6,10 @@ type DashboardNote = {
   id: string;
   title: string;
   content: string | null;
-  updatedAt: string;
+  updatedAt: string | Date;
+  deletedAt: string | Date | null;
+  isFavorite: boolean;
+  folderId: string | null;
   tags: string[];
 };
 
