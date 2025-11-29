@@ -1,10 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { UserPlus, X } from "lucide-react";
+import { Loader2, UserPlus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc/client";
 
@@ -17,10 +23,15 @@ type CollaboratorDialogProps = {
 export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorDialogProps) {
   const utils = trpc.useUtils();
   const listQuery = trpc.collaborator.list.useQuery({ noteId }, { enabled: open });
+  const searchQuery = trpc.user.search.useQuery(
+    { keyword: "" },
+    { enabled: false },
+  );
   const addMutation = trpc.collaborator.add.useMutation({
     onSuccess: () => {
       utils.collaborator.list.invalidate({ noteId });
       setEmail("");
+      setSearchResults([]);
     },
   });
   const removeMutation = trpc.collaborator.remove.useMutation({
@@ -28,16 +39,35 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
   });
 
   const [email, setEmail] = useState("");
+  const [searchResults, setSearchResults] = useState<
+    { id: string; name: string | null; email: string | null; avatarUrl: string | null }[]
+  >([]);
+  const [searching, setSearching] = useState(false);
 
   const collaborators = useMemo(
     () => listQuery.data ?? [],
     [listQuery.data],
   );
 
-  const handleInvite = () => {
+  const handleSearch = async () => {
     if (!email.trim()) return;
-    // TODO: lookup userId by email via backend; placeholder rejects for now.
-    alert("请实现按邮箱查找用户后调用 add API");
+    setSearching(true);
+    try {
+      const data = await searchQuery.refetch({ throwOnError: false, cancelRefetch: false });
+      const results =
+        data.data?.filter(
+          (u) =>
+            u.email?.toLowerCase().includes(email.toLowerCase()) ||
+            (u.name ?? "").toLowerCase().includes(email.toLowerCase()),
+        ) ?? [];
+      setSearchResults(results.slice(0, 5));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleInvite = (userId: string) => {
+    addMutation.mutate({ noteId, userId, role: "editor" });
   };
 
   return (
@@ -51,13 +81,33 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
             <Input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="输入协作者邮箱"
+              placeholder="输入协作者邮箱或姓名"
             />
-            <Button onClick={handleInvite} disabled={addMutation.isPending} className="gap-2">
-              <UserPlus className="size-4" />
-              邀请
+            <Button onClick={handleSearch} disabled={searching} className="gap-2">
+              {searching ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+              查找
             </Button>
           </div>
+          {searchResults.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-border/60 bg-card/60 p-3">
+              {searchResults.map((user) => (
+                <div key={user.id} className="flex items-center justify-between text-sm">
+                  <div>
+                    <p className="font-medium">{user.name ?? user.email}</p>
+                    <p className="text-muted-foreground text-xs">{user.email}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={addMutation.isPending}
+                    onClick={() => handleInvite(user.id)}
+                  >
+                    邀请
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="space-y-2">
             <p className="text-muted-foreground text-xs">已有协作者</p>
             <div className="space-y-2">

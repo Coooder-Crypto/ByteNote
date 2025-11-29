@@ -18,6 +18,7 @@ export const collaboratorRouter = router({
         select: {
           id: true,
           role: true,
+          userId: true,
           user: {
             select: {
               id: true,
@@ -45,7 +46,7 @@ export const collaboratorRouter = router({
       if (!note) {
         throw new Error("Forbidden");
       }
-      await ctx.prisma.noteCollaborator.upsert({
+      const collaborator = await ctx.prisma.noteCollaborator.upsert({
         where: { noteId_userId: { noteId: input.noteId, userId: input.userId } },
         update: { role: input.role },
         create: {
@@ -53,8 +54,20 @@ export const collaboratorRouter = router({
           userId: input.userId,
           role: input.role,
         },
+        select: {
+          id: true,
+          role: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+            },
+          },
+        },
       });
-      return { success: true };
+      return collaborator;
     }),
   remove: protectedProcedure
     .input(z.object({ noteId: z.string().uuid(), userId: z.string().uuid() }))
