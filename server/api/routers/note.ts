@@ -10,6 +10,7 @@ const noteInput = z.object({
   tags: z.array(z.string()).optional(),
   summary: z.string().optional(),
   folderId: z.string().uuid().optional().nullable(),
+  version: z.number().optional(),
 });
 
 export const noteRouter = router({
@@ -90,6 +91,7 @@ export const noteRouter = router({
           folderId: true,
           tags: true,
           userId: true,
+          version: true,
           user: {
             select: {
               name: true,
@@ -107,6 +109,21 @@ export const noteRouter = router({
         where: {
           id: input.id,
           userId: ctx.session!.user.id,
+        },
+        select: {
+          id: true,
+          title: true,
+          markdown: true,
+          content: true,
+          summary: true,
+          tags: true,
+          folderId: true,
+          userId: true,
+          createdAt: true,
+          updatedAt: true,
+          version: true,
+          isFavorite: true,
+          deletedAt: true,
         },
       });
 
@@ -142,6 +159,7 @@ export const noteRouter = router({
           id,
           userId: ctx.session!.user.id,
           deletedAt: null,
+          ...(typeof rest.version === "number" ? { version: rest.version } : {}),
         },
         data: {
           title: rest.title,
@@ -150,6 +168,7 @@ export const noteRouter = router({
           summary: rest.summary ?? "",
           tags: JSON.stringify(rest.tags ?? []),
           folderId: rest.folderId ?? null,
+          version: { increment: 1 },
         },
       });
 
@@ -157,7 +176,20 @@ export const noteRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      return ctx.prisma.note.findUnique({ where: { id } });
+      return ctx.prisma.note.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          markdown: true,
+          content: true,
+          tags: true,
+          folderId: true,
+          version: true,
+          updatedAt: true,
+          createdAt: true,
+        },
+      });
     }),
   remove: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
