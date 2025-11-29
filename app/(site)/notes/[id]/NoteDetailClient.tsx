@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { NoteTags } from "@/components/NoteTags";
 import { CollaborativeEditor } from "@/components/Notes/CollaborativeEditor";
+import { CollaboratorDialog } from "@/components/Notes/CollaboratorDialog";
 import { TagInput } from "@/components/TagInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,6 +129,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
 
   const isSaving = updateMutation.isPending;
   const isTrashed = Boolean(noteQuery.data?.deletedAt);
+  const [collabOpen, setCollabOpen] = useState(false);
 
   const handleSave = useCallback(() => {
     if (!isOwner || !isDirty || isSaving || isTrashed) return;
@@ -248,6 +250,9 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                 >
                   移至回收站
                 </Button>
+                <Button variant="ghost" onClick={() => setCollabOpen(true)}>
+                  协作者
+                </Button>
               </>
             ) : (
               <>
@@ -358,6 +363,11 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
           </div>
         </div>
       )}
+      <CollaboratorDialog
+        noteId={noteId}
+        open={collabOpen}
+        onOpenChange={setCollabOpen}
+      />
     </section>
   );
 }

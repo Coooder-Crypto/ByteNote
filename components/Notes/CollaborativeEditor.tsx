@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import * as Y from "yjs";
-import { Awareness } from "y-protocols/awareness";
+import type Pusher from "pusher-js";
 
 import { Button } from "@/components/ui/button";
 import { createPusherClient } from "@/lib/pusher/client";
@@ -18,6 +17,8 @@ type UserInfo = {
   color?: string;
 };
 
+const FIELD = "note";
+
 type Props = {
   noteId: string;
   initialContent: string;
@@ -25,12 +26,6 @@ type Props = {
   version: number;
   onDirtyChange?: (dirty: boolean) => void;
   onRemoteUpdate?: () => void;
-};
-
-type CursorPayload = {
-  from: number;
-  to: number;
-  user: UserInfo;
 };
 
 export function CollaborativeEditor({
@@ -42,34 +37,21 @@ export function CollaborativeEditor({
   onRemoteUpdate,
 }: Props) {
   const doc = useMemo(() => new Y.Doc(), []);
-  const awareness = useMemo(() => new Awareness(doc), [doc]);
-  const channelRef = useRef<ReturnType<typeof createPusherClient>["subscribe"] | null>(null);
-  const pusherRef = useRef<ReturnType<typeof createPusherClient> | null>(null);
+  const channelRef = useRef<Pusher.Channel | null>(null);
   const [currentVersion, setCurrentVersion] = useState(version);
-  const dirtyRef = useRef(false);
 
-  // Initialize Y.Doc with initial content
+  // Initialize Y.Doc once (avoid type conflicts by using distinct field name)
   useEffect(() => {
-    const fragment = doc.getXmlFragment("content");
-    doc.transact(() => {
-      fragment.delete(0, fragment.length);
-      const textNode = new Y.XmlText();
-      textNode.insert(0, initialContent);
-      fragment.insert(0, [textNode]);
-    });
-    awareness.setLocalState({
-      user: {
-        ...user,
-        color: user.color ?? "#0ea5e9",
-      },
-    });
-  }, [awareness, doc, initialContent, user]);
+    const fragment = doc.getXmlFragment(FIELD);
+    if (fragment.length === 0 && initialContent) {
+      // As we don't have PM JSON here, we just leave empty; loading initial content will be handled by server state
+    }
+  }, [doc, initialContent]);
 
   // Setup Pusher channel
   useEffect(() => {
     const pusher = createPusherClient();
     if (!pusher) return;
-    pusherRef.current = pusher;
     const channel = pusher.subscribe(`presence-note-${noteId}`);
     channelRef.current = channel;
 
@@ -83,27 +65,19 @@ export function CollaborativeEditor({
       onRemoteUpdate?.();
     };
 
-    const handleCursor = (payload: CursorPayload) => {
-      if (!payload?.user) return;
-      awareness.setLocalStateField("remoteCursor", payload);
-    };
-
     channel.bind("client-y-update", handleUpdate);
-    channel.bind("client-cursor", handleCursor);
 
     return () => {
       channel.unbind("client-y-update", handleUpdate);
-      channel.unbind("client-cursor", handleCursor);
       pusher.unsubscribe(`presence-note-${noteId}`);
       pusher.disconnect();
     };
-  }, [doc, noteId, onRemoteUpdate, awareness]);
+  }, [doc, noteId, onRemoteUpdate]);
 
   // Broadcast local updates
   useEffect(() => {
     const handler = (update: Uint8Array, origin: unknown) => {
       if (origin === "remote") return;
-      dirtyRef.current = true;
       onDirtyChange?.(true);
       const channel = channelRef.current;
       if (!channel) return;
@@ -115,26 +89,6 @@ export function CollaborativeEditor({
     };
   }, [currentVersion, doc, onDirtyChange]);
 
-  // Broadcast cursor position
-  useEffect(() => {
-    const channel = channelRef.current;
-    if (!channel) return;
-    const awarenessHandler = () => {
-      const state = awareness.getLocalState();
-      const cursor = state?.selection;
-      if (!cursor) return;
-      channel.trigger("client-cursor", {
-        from: cursor.anchor,
-        to: cursor.head,
-        user,
-      });
-    };
-    awareness.on("change", awarenessHandler);
-    return () => {
-      awareness.off("change", awarenessHandler);
-    };
-  }, [awareness, user]);
-
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -142,14 +96,7 @@ export function CollaborativeEditor({
       }),
       Collaboration.configure({
         document: doc,
-        field: "content",
-      }),
-      CollaborationCursor.configure({
-        provider: { awareness },
-        user: {
-          name: user.name,
-          color: user.color ?? "#0ea5e9",
-        },
+        field: FIELD,
       }),
     ],
     autofocus: true,
@@ -170,8 +117,6 @@ export function CollaborativeEditor({
           variant="ghost"
           size="sm"
           onClick={() => {
-            if (!editor) return;
-            dirtyRef.current = false;
             onDirtyChange?.(false);
           }}
         >
