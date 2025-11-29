@@ -1,12 +1,12 @@
 "use client";
 
-import { Layout, Star, Trash2 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { Layout, Star, Trash2, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { trpc } from "@/lib/trpc/client";
-import { cn } from "@/lib/utils";
+import { CreateNoteDialog } from "@/components/CreateNoteDialog";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { CreateNoteDialog } from "@/components/CreateNoteDialog";
+import { trpc } from "@/lib/trpc/client";
+import { cn } from "@/lib/utils";
 
 import { SideFolders } from "./SideFolders";
 import { SideFooter } from "./SideFooter";
@@ -26,6 +26,7 @@ import { SideLibrary } from "./SideLibrary";
 const NAV_ITEMS = [
   { icon: Layout, label: "所有笔记", path: "/" },
   { icon: Star, label: "收藏", path: "/?filter=favorite" },
+  { icon: Users, label: "协作笔记", path: "/?filter=collab" },
   { icon: Trash2, label: "回收站", path: "/?filter=trash" },
 ];
 
@@ -186,7 +187,8 @@ export default function Sidebar() {
             <Button
               onClick={submitCreateFolder}
               disabled={
-                createFolderMutation.isPending || newFolderName.trim().length === 0
+                createFolderMutation.isPending ||
+                newFolderName.trim().length === 0
               }
             >
               {createFolderMutation.isPending ? "创建中..." : "创建"}

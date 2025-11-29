@@ -20,11 +20,15 @@ export default function NotesHomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<"updatedAt" | "createdAt">("updatedAt");
-  const filter = useMemo(
-    () => searchParams.get("filter") ?? "all",
-    [searchParams],
+  const [sortKey, setSortKey] = useState<"updatedAt" | "createdAt">(
+    "updatedAt",
   );
+  const filter = useMemo<"all" | "favorite" | "trash" | "collab">(() => {
+    const raw = searchParams.get("filter");
+    if (raw === "favorite" || raw === "trash" || raw === "collab") return raw;
+    return "all";
+  }, [searchParams]);
+  const collaborativeOnly = filter === "collab";
   const folderId = useMemo(
     () => searchParams.get("folderId") ?? undefined,
     [searchParams],
@@ -40,13 +44,10 @@ export default function NotesHomePage() {
 
   const notesQuery = trpc.note.list.useQuery(
     {
-      filter: (["all", "favorite", "trash"] as const).includes(
-        filter as "all" | "favorite" | "trash",
-      )
-        ? (filter as "all" | "favorite" | "trash")
-        : "all",
+      filter,
       folderId,
       search: searchQuery || undefined,
+      collaborativeOnly: collaborativeOnly || undefined,
     },
     { enabled },
   );

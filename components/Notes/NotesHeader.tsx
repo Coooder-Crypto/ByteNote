@@ -8,7 +8,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +66,7 @@ export default function NotesHeader({
             className="h-11 rounded-xl"
           />
         </div>
-        <div className="flex flex-col gap-2 md:w-[480px]">
+        <div className="flex flex-col gap-2 md:w-[520px]">
           <div className="border-border/60 bg-card/80 flex flex-wrap gap-2 rounded-xl border px-3 py-2 text-sm">
             {sortedTags.map((tag) => {
               const active = selectedTags.includes(tag);
@@ -90,7 +89,7 @@ export default function NotesHeader({
               <span className="text-muted-foreground text-xs">暂无标签</span>
             )}
           </div>
-          <div className="flex items-center gap-2 self-end">
+          <div className="flex items-center gap-3 self-end">
             <Select
               open={sortOpen}
               onOpenChange={setSortOpen}

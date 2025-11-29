@@ -20,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { trpc } from "@/lib/trpc/client";
 import { NOTE_TAGS } from "@/lib/tags";
+import { trpc } from "@/lib/trpc/client";
 
 const DEFAULT_MARKDOWN = "# 新笔记\n\n这里是初始内容。";
 
@@ -58,16 +58,15 @@ export function CreateNoteDialog({
   const [title, setTitle] = useState("全新笔记");
   const [tags, setTags] = useState<string[]>([]);
   const [folderId, setFolderId] = useState<string | null>(null);
+  const [isCollaborative, setIsCollaborative] = useState(false);
 
-  const suggestedTags = useMemo(
-    () => NOTE_TAGS.map((tag) => tag.value),
-    [],
-  );
+  const suggestedTags = useMemo(() => NOTE_TAGS.map((tag) => tag.value), []);
 
   const resetForm = () => {
     setTitle("全新笔记");
     setTags([]);
     setFolderId(null);
+    setIsCollaborative(false);
   };
 
   useEffect(() => {
@@ -83,6 +82,7 @@ export function CreateNoteDialog({
       markdown: DEFAULT_MARKDOWN,
       tags,
       folderId: folderId ?? undefined,
+      isCollaborative,
     });
   };
 
@@ -91,7 +91,9 @@ export function CreateNoteDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>新建笔记</DialogTitle>
-          <DialogDescription>填写基础信息后创建笔记并进入编辑页。</DialogDescription>
+          <DialogDescription>
+            填写基础信息后创建笔记并进入编辑页。
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
@@ -133,6 +135,20 @@ export function CreateNoteDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="create-collab"
+              type="checkbox"
+              checked={isCollaborative}
+              onChange={(e) => setIsCollaborative(e.target.checked)}
+            />
+            <label
+              htmlFor="create-collab"
+              className="text-muted-foreground text-sm"
+            >
+              创建为协作笔记
+            </label>
           </div>
         </div>
         <DialogFooter className="gap-2">
