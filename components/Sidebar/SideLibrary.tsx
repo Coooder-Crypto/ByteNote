@@ -14,12 +14,13 @@ type SideLibraryProps = {
   onNavigate?: () => void;
 };
 
-export function SideLibrary({
+export default function SideLibrary({
   items,
   currentPath,
   onNavigate,
 }: SideLibraryProps) {
-  const normalize = (path: string) => (path.startsWith("/") ? path : `/${path}`);
+  const normalize = (path: string) =>
+    path.startsWith("/") ? path : `/${path}`;
   const isActive = (path: string) => {
     const normalized = normalize(path);
     const [targetPath, targetQuery] = normalized.split("?");

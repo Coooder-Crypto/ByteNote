@@ -12,7 +12,11 @@ type FolderItemProps = {
   onClick?: () => void;
 };
 
-export function FolderItem({ folder, active = false, onClick }: FolderItemProps) {
+export function FolderItem({
+  folder,
+  active = false,
+  onClick,
+}: FolderItemProps) {
   return (
     <button
       onClick={onClick}

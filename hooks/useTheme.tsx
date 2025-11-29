@@ -2,12 +2,12 @@
 
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 
 type Theme = "light" | "dark";
@@ -55,7 +55,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme((theme === "dark" ? "light" : "dark"));
+    setTheme(theme === "dark" ? "light" : "dark");
   }, [setTheme, theme]);
 
   const value = useMemo(
@@ -68,7 +68,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [theme, setTheme, toggleTheme, ready],
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {

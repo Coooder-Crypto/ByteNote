@@ -29,7 +29,7 @@ type ProfileSettingsDialogProps = {
   className?: string;
 };
 
-export function ProfileSettingsDialog({
+export default function ProfileSettingsDialog({
   user,
   onUpdated,
   className,

@@ -3,27 +3,22 @@ import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
+import { useUserStore } from "@/hooks/useUserStore";
 
-import { ProfileSettingsDialog } from "./ProfileSettingsDialog";
+import ProfileSettingsDialog from "./ProfileSettingsDialog";
 
 type SideFooterProps = {
-  user?: {
-    name: string | null;
-    email: string;
-    id: string;
-    avatarUrl: string | null;
-  } | null;
   onLogin: () => void;
   onLogout: () => void;
   onProfileUpdated?: () => void;
 };
 
-export function SideFooter({
-  user,
+export default function SideFooter({
   onLogin,
   onLogout,
   onProfileUpdated,
 }: SideFooterProps) {
+  const { user } = useUserStore();
   const { theme, toggleTheme, ready } = useTheme();
   return (
     <div className="border-border/60 border-t px-4 py-4">
@@ -93,7 +88,7 @@ export function SideFooter({
           </Button>
           <Button
             variant="ghost"
-            className="w-full text-muted-foreground gap-2 rounded-lg"
+            className="text-muted-foreground w-full gap-2 rounded-lg"
             onClick={toggleTheme}
             disabled={!ready}
             aria-label="切换主题"

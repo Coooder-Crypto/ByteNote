@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CollaborativeEditor } from "@/components/Notes/CollaborativeEditor";
@@ -16,31 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-<<<<<<< HEAD
-import { useTheme } from "@/hooks/useTheme";
-import { trpc } from "@/lib/trpc/client";
-
-const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
-const MarkdownPreview = dynamic(
-  () => import("@uiw/react-markdown-preview").then((mod) => mod.default),
-  {
-    ssr: false,
-  },
-);
-
-=======
+import { useNoteMutations } from "@/hooks/useNoteMutations";
 import { createPusherClient } from "@/lib/pusher/client";
 import { trpc } from "@/lib/trpc/client";
 
->>>>>>> dev
 type EditorState = {
   title: string;
   markdown: string;
   isFavorite: boolean;
-<<<<<<< HEAD
-=======
   isCollaborative: boolean;
->>>>>>> dev
   folderId: string | null;
   tags: string[];
   version: number;
@@ -50,18 +33,40 @@ const emptyState: EditorState = {
   title: "",
   markdown: "",
   isFavorite: false,
-<<<<<<< HEAD
-=======
   isCollaborative: false,
->>>>>>> dev
   folderId: null,
   tags: [],
   version: 1,
 };
 
+type NoteDetailUIProps = {
+  state: EditorState;
+  canEdit: boolean;
+  isOwner: boolean;
+  isTrashed: boolean;
+  folders?: { id: string; name: string }[];
+  isSaving: boolean;
+  onTitleChange: (val: string) => void;
+  onTagsChange: (tags: string[]) => void;
+  onFolderChange: (folderId: string | null) => void;
+  onCollaborativeToggle: (val: boolean) => void;
+  onContentChange: (val: string) => void;
+  onDirtyChange: (dirty: boolean) => void;
+  onFavorite: () => void;
+  onSave: () => void;
+  onDelete: () => void;
+  onRestore: () => void;
+  onDestroy: () => void;
+  onOpenCollab: () => void;
+  favoritePending: boolean;
+  deletePending: boolean;
+  restorePending: boolean;
+  destroyPending: boolean;
+  folderPending: boolean;
+  noteId: string;
+};
+
 export default function NoteDetailClient({ noteId }: { noteId: string }) {
-  const router = useRouter();
-  const utils = trpc.useUtils();
   const noteQuery = trpc.note.detail.useQuery(
     { id: noteId },
     { enabled: Boolean(noteId) },
@@ -70,10 +75,6 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   const foldersQuery = trpc.folder.list.useQuery(undefined, {
     enabled: Boolean(meQuery.data),
   });
-<<<<<<< HEAD
-  const { theme } = useTheme();
-=======
->>>>>>> dev
 
   const [state, setState] = useState<EditorState>(emptyState);
   const [isDirty, setIsDirty] = useState(false);
@@ -87,13 +88,9 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       title: noteQuery.data.title,
       markdown: noteQuery.data.markdown,
       isFavorite: noteQuery.data.isFavorite,
-<<<<<<< HEAD
-      folderId: noteQuery.data.folderId,
-=======
       isCollaborative: noteQuery.data.isCollaborative,
       folderId: noteQuery.data.folderId,
       version: noteQuery.data.version,
->>>>>>> dev
       tags: (() => {
         try {
           const parsed = JSON.parse(noteQuery.data.tags);
@@ -109,7 +106,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       })(),
     });
     setIsDirty(false);
-  }, [noteQuery.data]);
+  }, [noteQuery.data, setState]);
 
   const isOwner = useMemo(
     () => Boolean(noteQuery.data && meQuery.data?.id === noteQuery.data.userId),
@@ -132,49 +129,20 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   const canEdit = isOwner || isCollaborator;
   const isTrashed = Boolean(noteQuery.data?.deletedAt);
 
-  const updateMutation = trpc.note.update.useMutation({
-    onSuccess: () => {
-      setIsDirty(false);
-      utils.note.detail.invalidate({ id: noteId });
-      utils.note.list.invalidate();
-    },
-  });
-
-  const deleteMutation = trpc.note.remove.useMutation({
-    onSuccess: () => {
-      utils.note.list.invalidate();
-      router.push("/");
-    },
-  });
-  const restoreMutation = trpc.note.restore.useMutation({
-    onSuccess: () => {
-      utils.note.list.invalidate();
-      utils.note.detail.invalidate({ id: noteId });
-    },
-  });
-  const destroyMutation = trpc.note.destroy.useMutation({
-    onSuccess: () => {
-      utils.note.list.invalidate();
-      router.push("/");
-    },
-  });
-  const favoriteMutation = trpc.note.setFavorite.useMutation({
-    onSuccess: (_, variables) => {
-      setState((prev) => ({ ...prev, isFavorite: variables.isFavorite }));
-      utils.note.detail.invalidate({ id: noteId });
-      utils.note.list.invalidate();
-    },
-  });
-  const setFolderMutation = trpc.note.setFolder.useMutation({
-    onSuccess: (_, variables) => {
-      setState((prev) => ({ ...prev, folderId: variables.folderId ?? null }));
-      utils.note.detail.invalidate({ id: noteId });
-      utils.note.list.invalidate();
-    },
+  const {
+    updateMutation,
+    deleteMutation,
+    restoreMutation,
+    destroyMutation,
+    favoriteMutation,
+    setFolderMutation,
+  } = useNoteMutations({
+    noteId,
+    onStateChange: setState,
+    onDirtyChange: setIsDirty,
   });
 
   const isSaving = updateMutation.isPending;
-  const isTrashed = Boolean(noteQuery.data?.deletedAt);
 
   const handleSave = useCallback(() => {
     if (!canEdit || !isDirty || isSaving || isTrashed) return;
@@ -268,6 +236,89 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   }
 
   return (
+    <NoteDetailUI
+      state={state}
+      canEdit={canEdit}
+      isOwner={isOwner}
+      isTrashed={isTrashed}
+      folders={foldersQuery.data?.folders}
+      isSaving={isSaving}
+      onTitleChange={(val) => {
+        setIsDirty(true);
+        setState((prev) => ({ ...prev, title: val }));
+      }}
+      onTagsChange={(tags) => {
+        setIsDirty(true);
+        setState((prev) => ({ ...prev, tags }));
+      }}
+      onFolderChange={(folderId) => {
+        setIsDirty(true);
+        setState((prev) => ({ ...prev, folderId }));
+        if (isOwner) {
+          setFolderMutation.mutate({ id: noteId, folderId });
+        }
+      }}
+      onCollaborativeToggle={(val) => {
+        setIsDirty(true);
+        setState((prev) => ({ ...prev, isCollaborative: val }));
+      }}
+      onContentChange={(val) => {
+        setIsDirty(true);
+        setState((prev) => ({ ...prev, markdown: val }));
+      }}
+      onFavorite={() =>
+        favoriteMutation.mutate({ id: noteId, isFavorite: !state.isFavorite })
+      }
+      onSave={handleSave}
+      onDelete={() => deleteMutation.mutate({ id: noteId })}
+      onRestore={() => restoreMutation.mutate({ id: noteId })}
+      onDestroy={() => destroyMutation.mutate({ id: noteId })}
+      onOpenCollab={() => setCollabOpen(true)}
+      favoritePending={favoriteMutation.isPending}
+      deletePending={deleteMutation.isPending}
+      restorePending={restoreMutation.isPending}
+      destroyPending={destroyMutation.isPending}
+      folderPending={setFolderMutation.isPending || foldersQuery.isLoading}
+      noteId={noteId}
+      collabOpen={collabOpen}
+      onCollabOpenChange={setCollabOpen}
+      onDirtyChange={setIsDirty}
+    />
+  );
+}
+
+function NoteDetailUI({
+  state,
+  canEdit,
+  isOwner,
+  isTrashed,
+  folders,
+  isSaving,
+  onTitleChange,
+  onTagsChange,
+  onFolderChange,
+  onCollaborativeToggle,
+  onContentChange,
+  onFavorite,
+  onSave,
+  onDelete,
+  onRestore,
+  onDestroy,
+  onOpenCollab,
+  favoritePending,
+  deletePending,
+  restorePending,
+  destroyPending,
+  folderPending,
+  noteId,
+  collabOpen,
+  onCollabOpenChange,
+  onDirtyChange,
+}: NoteDetailUIProps & {
+  collabOpen: boolean;
+  onCollabOpenChange: (open: boolean) => void;
+}) {
+  return (
     <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-8">
       <div className="flex items-center justify-between">
         <div>
@@ -288,37 +339,28 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
               <>
                 <Button
                   variant={state.isFavorite ? "secondary" : "outline"}
-                  onClick={() =>
-                    favoriteMutation.mutate({
-                      id: noteId,
-                      isFavorite: !state.isFavorite,
-                    })
-                  }
-                  disabled={favoriteMutation.isPending || !isOwner}
+                  onClick={onFavorite}
+                  disabled={favoritePending || !isOwner}
                 >
-                  {favoriteMutation.isPending
+                  {favoritePending
                     ? "更新中..."
                     : state.isFavorite
                       ? "取消收藏"
                       : "收藏"}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                >
+                <Button variant="outline" onClick={onSave} disabled={isSaving}>
                   {isSaving ? "保存中..." : "保存"}
                 </Button>
                 {isOwner && (
                   <>
                     <Button
                       variant="destructive"
-                      onClick={() => deleteMutation.mutate({ id: noteId })}
-                      disabled={deleteMutation.isPending}
+                      onClick={onDelete}
+                      disabled={deletePending}
                     >
                       移至回收站
                     </Button>
-                    <Button variant="ghost" onClick={() => setCollabOpen(true)}>
+                    <Button variant="ghost" onClick={onOpenCollab}>
                       协作者
                     </Button>
                   </>
@@ -330,17 +372,17 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                   <>
                     <Button
                       variant="outline"
-                      onClick={() => restoreMutation.mutate({ id: noteId })}
-                      disabled={restoreMutation.isPending}
+                      onClick={onRestore}
+                      disabled={restorePending}
                     >
-                      {restoreMutation.isPending ? "恢复中..." : "恢复笔记"}
+                      {restorePending ? "恢复中..." : "恢复笔记"}
                     </Button>
                     <Button
                       variant="destructive"
-                      onClick={() => destroyMutation.mutate({ id: noteId })}
-                      disabled={destroyMutation.isPending}
+                      onClick={onDestroy}
+                      disabled={destroyPending}
                     >
-                      {destroyMutation.isPending ? "删除中..." : "彻底删除"}
+                      {destroyPending ? "删除中..." : "彻底删除"}
                     </Button>
                   </>
                 )}
@@ -359,10 +401,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
         <div className="space-y-4">
           <Input
             value={state.title}
-            onChange={(event) => {
-              setIsDirty(true);
-              setState((prev) => ({ ...prev, title: event.target.value }));
-            }}
+            onChange={(event) => onTitleChange(event.target.value)}
             placeholder="输入标题"
           />
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
@@ -372,10 +411,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
               </p>
               <TagInput
                 value={state.tags}
-                onChange={(tags) => {
-                  setIsDirty(true);
-                  setState((prev) => ({ ...prev, tags }));
-                }}
+                onChange={onTagsChange}
                 placeholder="输入标签或从列表选择"
                 className="w-full"
               />
@@ -386,28 +422,16 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                 value={state.folderId ?? "none"}
                 onValueChange={(value) => {
                   const nextFolderId = value === "none" ? null : value;
-                  setIsDirty(true);
-                  setState((prev) => ({ ...prev, folderId: nextFolderId }));
-                  if (isOwner) {
-                    setFolderMutation.mutate({
-                      id: noteId,
-                      folderId: nextFolderId,
-                    });
-                  }
+                  onFolderChange(nextFolderId);
                 }}
-                disabled={
-                  foldersQuery.isLoading ||
-                  setFolderMutation.isPending ||
-                  isTrashed ||
-                  !isOwner
-                }
+                disabled={folderPending || isTrashed || !isOwner}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="选择分组" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">未分组</SelectItem>
-                  {foldersQuery.data?.folders.map((folder) => (
+                  {folders?.map((folder) => (
                     <SelectItem key={folder.id} value={folder.id}>
                       {folder.name}
                     </SelectItem>
@@ -419,11 +443,9 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                   id="collab"
                   type="checkbox"
                   checked={state.isCollaborative}
-                  onChange={(event) => {
-                    const val = event.target.checked;
-                    setIsDirty(true);
-                    setState((prev) => ({ ...prev, isCollaborative: val }));
-                  }}
+                  onChange={(event) =>
+                    onCollaborativeToggle(event.target.checked)
+                  }
                   disabled={isTrashed || !isOwner}
                 />
                 <label
@@ -440,11 +462,8 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
             <CollaborativeEditor
               noteId={noteId}
               initialMarkdown={state.markdown}
-              onChange={(val) => {
-                setIsDirty(true);
-                setState((prev) => ({ ...prev, markdown: val }));
-              }}
-              onDirtyChange={(dirty) => setIsDirty(dirty)}
+              onChange={onContentChange}
+              onDirtyChange={onDirtyChange}
             />
           </div>
         </div>
@@ -463,7 +482,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       <CollaboratorDialog
         noteId={noteId}
         open={collabOpen}
-        onOpenChange={setCollabOpen}
+        onOpenChange={onCollabOpenChange}
       />
     </section>
   );

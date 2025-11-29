@@ -1,22 +1,18 @@
 import { Plus } from "lucide-react";
 
+import type { FolderListItem } from "@/types/entities";
+
 import { FolderItem } from "./FolderItem";
 
-type FolderInfo = {
-  id: string;
-  label: string;
-  count: number;
-};
-
 type SideFoldersProps = {
-  folders: FolderInfo[];
+  folders: FolderListItem[];
   activeFolderId: string | null;
   loading?: boolean;
   onSelectFolder: (id: string | null) => void;
   onCreateFolder?: () => void;
 };
 
-export function SideFolders({
+export default function SideFolders({
   folders,
   activeFolderId,
   loading = false,
