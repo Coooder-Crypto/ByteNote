@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Star, Trash2 } from "lucide-react";
+import { Layout, Star, Trash2, Users } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,6 +26,7 @@ import { SideLibrary } from "./SideLibrary";
 const NAV_ITEMS = [
   { icon: Layout, label: "所有笔记", path: "/" },
   { icon: Star, label: "收藏", path: "/?filter=favorite" },
+  { icon: Users, label: "协作笔记", path: "/?filter=collab" },
   { icon: Trash2, label: "回收站", path: "/?filter=trash" },
 ];
 

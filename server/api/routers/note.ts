@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { pusherServer } from "@/lib/pusher/server";
 import { protectedProcedure, router } from "@/server/api/trpc";
 
 const noteInput = z.object({
@@ -10,6 +11,8 @@ const noteInput = z.object({
   tags: z.array(z.string()).optional(),
   summary: z.string().optional(),
   folderId: z.string().uuid().optional().nullable(),
+  version: z.number().optional(),
+  isCollaborative: z.boolean().optional(),
 });
 
 export const noteRouter = router({
@@ -18,15 +21,19 @@ export const noteRouter = router({
       z
         .object({
           search: z.string().optional(),
-          filter: z.enum(["all", "favorite", "trash"]).optional(),
+          filter: z.enum(["all", "favorite", "trash", "collab"]).optional(),
           folderId: z.string().uuid().optional(),
+          collaborativeOnly: z.boolean().optional(),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
       const filter = input?.filter ?? "all";
       const where: Prisma.NoteWhereInput = {
-        userId: ctx.session!.user.id,
+        OR: [
+          { userId: ctx.session!.user.id },
+          { collaborators: { some: { userId: ctx.session!.user.id } } },
+        ],
       };
 
       if (filter === "trash") {
@@ -39,8 +46,15 @@ export const noteRouter = router({
         where.isFavorite = true;
       }
 
+      if (filter === "collab") {
+        where.isCollaborative = true;
+      }
+
       if (input?.folderId) {
         where.folderId = input.folderId;
+      }
+      if (input?.collaborativeOnly) {
+        where.isCollaborative = true;
       }
 
       const searchTerm = input?.search?.trim();
@@ -86,10 +100,15 @@ export const noteRouter = router({
           markdown: true,
           content: true,
           isFavorite: true,
+          isCollaborative: true,
           deletedAt: true,
           folderId: true,
           tags: true,
           userId: true,
+          version: true,
+          collaborators: {
+            select: { userId: true, role: true },
+          },
           user: {
             select: {
               name: true,
@@ -106,7 +125,28 @@ export const noteRouter = router({
       const note = await ctx.prisma.note.findFirst({
         where: {
           id: input.id,
-          userId: ctx.session!.user.id,
+          OR: [
+            { userId: ctx.session!.user.id },
+            { collaborators: { some: { userId: ctx.session!.user.id } } },
+          ],
+        },
+        select: {
+          id: true,
+          title: true,
+          markdown: true,
+          summary: true,
+          tags: true,
+          folderId: true,
+          userId: true,
+          createdAt: true,
+          updatedAt: true,
+          version: true,
+          isFavorite: true,
+          deletedAt: true,
+          isCollaborative: true,
+          collaborators: {
+            select: { userId: true, role: true },
+          },
         },
       });
 
@@ -115,19 +155,28 @@ export const noteRouter = router({
   create: protectedProcedure
     .input(noteInput)
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.note.create({
+      const note = await ctx.prisma.note.create({
         data: {
           title: input.title,
           markdown: input.markdown,
           content: input.markdown,
           summary: input.summary ?? "",
           isFavorite: false,
+          isCollaborative: input.isCollaborative ?? false,
           tags: JSON.stringify(input.tags ?? []),
           folderId: input.folderId ?? null,
           deletedAt: null,
           userId: ctx.session!.user.id,
         },
       });
+      if (note.isCollaborative) {
+        await ctx.prisma.noteCollaborator.upsert({
+          where: { noteId_userId: { noteId: note.id, userId: ctx.session!.user.id } },
+          update: { role: "owner" },
+          create: { noteId: note.id, userId: ctx.session!.user.id, role: "owner" },
+        });
+      }
+      return note;
     }),
   update: protectedProcedure
     .input(
@@ -137,27 +186,81 @@ export const noteRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      const updated = await ctx.prisma.note.updateMany({
-        where: {
-          id,
-          userId: ctx.session!.user.id,
-          deletedAt: null,
-        },
-        data: {
-          title: rest.title,
-          markdown: rest.markdown,
-          content: rest.markdown,
-          summary: rest.summary ?? "",
-          tags: JSON.stringify(rest.tags ?? []),
-          folderId: rest.folderId ?? null,
-        },
+      const result = await ctx.prisma.$transaction(async (tx) => {
+        const updated = await tx.note.updateMany({
+          where: {
+            id,
+            OR: [
+              { userId: ctx.session!.user.id },
+              { collaborators: { some: { userId: ctx.session!.user.id } } },
+            ],
+            deletedAt: null,
+            ...(typeof rest.version === "number" ? { version: rest.version } : {}),
+          },
+          data: {
+            title: rest.title,
+            markdown: rest.markdown,
+            content: rest.markdown,
+            summary: rest.summary ?? "",
+            tags: JSON.stringify(rest.tags ?? []),
+            folderId: rest.folderId ?? null,
+            isCollaborative: rest.isCollaborative ?? false,
+            version: { increment: 1 },
+          },
+        });
+
+        if (!updated.count) {
+          return null;
+        }
+
+        if (rest.isCollaborative) {
+          await tx.noteCollaborator.upsert({
+            where: { noteId_userId: { noteId: id, userId: ctx.session!.user.id } },
+            update: { role: "owner" },
+            create: { noteId: id, userId: ctx.session!.user.id, role: "owner" },
+          });
+        } else {
+          await tx.noteCollaborator.deleteMany({
+            where: { noteId: id },
+          });
+        }
+
+        return tx.note.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            title: true,
+            markdown: true,
+            content: true,
+            tags: true,
+            folderId: true,
+            version: true,
+            updatedAt: true,
+            createdAt: true,
+            isCollaborative: true,
+          },
+        });
       });
 
-      if (!updated.count) {
+      if (!result) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      return ctx.prisma.note.findUnique({ where: { id } });
+      try {
+        if (pusherServer && result.isCollaborative) {
+          await pusherServer.trigger(`presence-note-${id}`, "server-note-saved", {
+            noteId: id,
+            title: result.title,
+            markdown: result.markdown,
+            updatedAt: result.updatedAt,
+            version: result.version,
+          });
+        }
+      } catch (error) {
+        console.warn("[pusher] broadcast note update failed", error);
+      }
+
+      return result;
     }),
   remove: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
