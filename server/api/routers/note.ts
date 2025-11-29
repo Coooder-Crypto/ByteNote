@@ -114,7 +114,6 @@ export const noteRouter = router({
           id: true,
           title: true,
           markdown: true,
-          content: true,
           summary: true,
           tags: true,
           folderId: true,

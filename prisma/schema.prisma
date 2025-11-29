@@ -23,6 +23,7 @@ model User {
   notes         Note[]
   folders       Folder[]
   accounts      Account[]
+  collaborations NoteCollaborator[]
   sessions      Session[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
@@ -57,6 +58,7 @@ model Note {
   tags        String   @default("[]")
   deletedAt   DateTime?
   version     Int      @default(1)
+  collaborators NoteCollaborator[]
   folder      Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
   folderId    String?
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -68,6 +70,20 @@ model Note {
   @@index([isFavorite])
   @@index([deletedAt])
   @@index([folderId])
+}
+
+model NoteCollaborator {
+  id        String   @id @default(uuid())
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  noteId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String   @default("editor") // editor | viewer
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([noteId, userId])
+  @@index([userId])
 }
 
 model Folder {

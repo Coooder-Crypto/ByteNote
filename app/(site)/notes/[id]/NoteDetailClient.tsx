@@ -1,11 +1,10 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import rehypeSanitize from "rehype-sanitize";
 
 import { NoteTags } from "@/components/NoteTags";
+import { CollaborativeEditor } from "@/components/Notes/CollaborativeEditor";
 import { TagInput } from "@/components/TagInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,16 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useTheme } from "@/hooks/useTheme";
 import { trpc } from "@/lib/trpc/client";
-
-const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
-const MarkdownPreview = dynamic(
-  () => import("@uiw/react-markdown-preview").then((mod) => mod.default),
-  {
-    ssr: false,
-  },
-);
 
 type EditorState = {
   title: string;
@@ -33,6 +23,7 @@ type EditorState = {
   isFavorite: boolean;
   folderId: string | null;
   tags: string[];
+  version: number;
 };
 
 const emptyState: EditorState = {
@@ -41,6 +32,7 @@ const emptyState: EditorState = {
   isFavorite: false,
   folderId: null,
   tags: [],
+  version: 1,
 };
 
 export default function NoteDetailClient({ noteId }: { noteId: string }) {
@@ -54,7 +46,6 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   const foldersQuery = trpc.folder.list.useQuery(undefined, {
     enabled: Boolean(meQuery.data),
   });
-  const { theme } = useTheme();
 
   const [state, setState] = useState<EditorState>(emptyState);
   const [isDirty, setIsDirty] = useState(false);
@@ -67,6 +58,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       markdown: noteQuery.data.markdown,
       isFavorite: noteQuery.data.isFavorite,
       folderId: noteQuery.data.folderId,
+      version: noteQuery.data.version,
       tags: (() => {
         try {
           const parsed = JSON.parse(noteQuery.data.tags);
@@ -145,6 +137,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       markdown: state.markdown,
       folderId: state.folderId,
       tags: state.tags,
+      version: state.version,
     });
   }, [
     isDirty,
@@ -152,6 +145,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     isSaving,
     isTrashed,
     noteId,
+    state.version,
     state.folderId,
     state.markdown,
     state.tags,
@@ -196,6 +190,14 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       </section>
     );
   }
+
+  const currentUser = meQuery.data
+    ? {
+        id: meQuery.data.id,
+        name: meQuery.data.name ?? meQuery.data.email,
+        avatar: meQuery.data.avatarUrl ?? undefined,
+      }
+    : null;
 
   return (
     <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-8">
@@ -336,29 +338,23 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
               </Select>
             </div>
           </div>
-          <div className="border-border/60 bg-card h-[70vh] rounded-xl border p-2 shadow-sm">
-            <MDEditor
-              value={state.markdown}
-              onChange={(value) => {
-                setIsDirty(true);
-                setState((prev) => ({ ...prev, markdown: value ?? "" }));
-              }}
-              previewOptions={{
-                rehypePlugins: [[rehypeSanitize]],
-              }}
-              data-color-mode={theme === "dark" ? "dark" : "light"}
-              height={550}
-            />
-          </div>
+          <CollaborativeEditor
+            noteId={noteId}
+            initialContent={state.markdown}
+            user={currentUser}
+            version={state.version}
+            onDirtyChange={(dirty) => setIsDirty(dirty)}
+            onRemoteUpdate={() => {
+              utils.note.detail.invalidate({ id: noteId });
+            }}
+          />
         </div>
       ) : (
         <div className="space-y-4">
           <NoteTags tags={state.tags} />
           <div className="border-border/60 bg-card h-[70vh] overflow-auto rounded-xl border p-4 shadow-sm">
-            <MarkdownPreview
-              source={state.markdown}
-              data-color-mode={theme === "dark" ? "dark" : "light"}
-            />
+            <p className="text-muted-foreground text-sm">仅作者可编辑</p>
+            <div className="mt-3 whitespace-pre-wrap text-sm">{state.markdown}</div>
           </div>
         </div>
       )}
