@@ -39,7 +39,7 @@ export default function SideFooter({
               </div>
             ) : (
               <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold">
-                {user.name?.[0] ?? user.email[0]}
+                {user.name?.[0] ?? user.email?.[0] ?? "?"}
               </div>
             )}
             <div className="flex-1">

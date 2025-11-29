@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -17,14 +18,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
+import type { BnUser } from "@/types/entities";
 
 type ProfileSettingsDialogProps = {
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-    avatarUrl: string | null;
-  };
+  user: BnUser;
   onUpdated?: () => void;
   className?: string;
 };

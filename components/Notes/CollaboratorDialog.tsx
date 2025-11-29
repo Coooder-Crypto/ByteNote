@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc/client";
+import type { BnUser } from "@/types/entities";
 
 type CollaboratorDialogProps = {
   noteId: string;
@@ -35,9 +36,7 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
   });
 
   const [email, setEmail] = useState("");
-  const [searchResults, setSearchResults] = useState<
-    { id: string; name: string | null; email: string | null; avatarUrl: string | null }[]
-  >([]);
+  const [searchResults, setSearchResults] = useState<BnUser[]>([]);
   const [searching, setSearching] = useState(false);
 
   const collaborators = useMemo(

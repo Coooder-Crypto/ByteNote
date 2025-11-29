@@ -18,6 +18,7 @@ import {
 import { useNoteMutations } from "@/hooks/useNoteMutations";
 import { createPusherClient } from "@/lib/pusher/client";
 import { trpc } from "@/lib/trpc/client";
+import type { BnFolder } from "@/types/entities";
 
 type EditorState = {
   title: string;
@@ -44,7 +45,7 @@ type NoteDetailUIProps = {
   canEdit: boolean;
   isOwner: boolean;
   isTrashed: boolean;
-  folders?: { id: string; name: string }[];
+  folders?: BnFolder[];
   isSaving: boolean;
   onTitleChange: (val: string) => void;
   onTagsChange: (tags: string[]) => void;
@@ -241,7 +242,11 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       canEdit={canEdit}
       isOwner={isOwner}
       isTrashed={isTrashed}
-      folders={foldersQuery.data?.folders}
+      folders={foldersQuery.data?.folders.map((folder) => ({
+        id: folder.id,
+        label: folder.name,
+        count: folder.noteCount,
+      }))}
       isSaving={isSaving}
       onTitleChange={(val) => {
         setIsDirty(true);
@@ -433,7 +438,7 @@ function NoteDetailUI({
                   <SelectItem value="none">未分组</SelectItem>
                   {folders?.map((folder) => (
                     <SelectItem key={folder.id} value={folder.id}>
-                      {folder.name}
+                      {folder.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

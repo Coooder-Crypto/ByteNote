@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type Pusher from "pusher-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 

@@ -24,6 +24,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 const STORAGE_KEY = "byte-note-theme";
 
 const applyThemeClass = (theme: Theme) => {
+  if (typeof document === "undefined") return;
   const root = document.documentElement;
   if (theme === "dark") {
     root.classList.add("dark");
@@ -32,26 +33,28 @@ const applyThemeClass = (theme: Theme) => {
   }
 };
 
+const getInitialTheme = (): Theme => {
+  if (typeof window === "undefined") return "light";
+  const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
+  const prefersDark =
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return stored ?? (prefersDark ? "dark" : "light");
+};
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
-  const [ready, setReady] = useState(false);
+  const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
+  const [ready] = useState(() => typeof window !== "undefined");
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    const prefersDark =
-      typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = stored ?? (prefersDark ? "dark" : "light");
-    setThemeState(initial);
-    applyThemeClass(initial);
-    setReady(true);
-  }, []);
+    applyThemeClass(theme);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, theme);
+    }
+  }, [theme]);
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
-    localStorage.setItem(STORAGE_KEY, next);
-    applyThemeClass(next);
   }, []);
 
   const toggleTheme = useCallback(() => {

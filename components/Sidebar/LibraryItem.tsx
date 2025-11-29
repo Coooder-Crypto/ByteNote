@@ -1,16 +1,10 @@
-import { type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
-
-type NavItem = {
-  icon: LucideIcon;
-  label: string;
-  path: string;
-};
+import type { BnNav } from "@/types/entities";
 
 type LibraryItemProps = {
-  item: NavItem;
+  item: BnNav;
   active: boolean;
   onNavigate?: () => void;
 };

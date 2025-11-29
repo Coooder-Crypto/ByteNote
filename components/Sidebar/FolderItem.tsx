@@ -1,18 +1,14 @@
 import { Folder } from "lucide-react";
 
-type FolderInfo = {
-  id: string;
-  label: string;
-  count: number;
-};
+import type { BnFolder } from "@/types/entities";
 
 type FolderItemProps = {
-  folder: FolderInfo;
+  folder: BnFolder;
   active?: boolean;
   onClick?: () => void;
 };
 
-export function FolderItem({
+export default function FolderItem({
   folder,
   active = false,
   onClick,

@@ -1,11 +1,11 @@
 import { Plus } from "lucide-react";
 
-import type { FolderListItem } from "@/types/entities";
+import type { BnFolder } from "@/types/entities";
 
-import { FolderItem } from "./FolderItem";
+import FolderItem from "./FolderItem";
 
 type SideFoldersProps = {
-  folders: FolderListItem[];
+  folders: BnFolder[];
   activeFolderId: string | null;
   loading?: boolean;
   onSelectFolder: (id: string | null) => void;

@@ -81,11 +81,17 @@ export default function Sidebar() {
             />
             <SideFolders
               folders={
-                foldersQuery.data?.folders.map((folder) => ({
-                  id: folder.id,
-                  label: folder.name,
-                  count: folder.noteCount,
-                })) ?? []
+                foldersQuery.data?.folders.map(
+                  (folder: {
+                    id: string;
+                    name: string;
+                    noteCount: number;
+                  }) => ({
+                    id: folder.id,
+                    label: folder.name,
+                    count: folder.noteCount,
+                  }),
+                ) ?? []
               }
               activeFolderId={new URLSearchParams(
                 currentPath.split("?")[1] ?? "",

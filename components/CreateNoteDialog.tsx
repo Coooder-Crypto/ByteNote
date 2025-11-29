@@ -25,7 +25,7 @@ import { trpc } from "@/lib/trpc/client";
 
 const DEFAULT_MARKDOWN = "# 新笔记\n\n这里是初始内容。";
 
-type Props = {
+type CreateNoteDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (noteId: string) => void;
@@ -37,7 +37,7 @@ export function CreateNoteDialog({
   onOpenChange,
   onCreated,
   onUnauthorized,
-}: Props) {
+}: CreateNoteDialogProps) {
   const utils = trpc.useUtils();
   const foldersQuery = trpc.folder.list.useQuery(undefined, { enabled: open });
   const createMutation = trpc.note.create.useMutation({

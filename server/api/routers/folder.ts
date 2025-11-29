@@ -41,7 +41,7 @@ export const folderRouter = router({
     });
 
     return {
-      folders: folders.map((folder) => ({
+      folders: folders.map((folder: (typeof folders)[number]) => ({
         ...folder,
         noteCount: countMap.get(folder.id) ?? 0,
       })),

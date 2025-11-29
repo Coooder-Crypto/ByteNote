@@ -2,16 +2,11 @@
 
 import { create } from "zustand";
 
-type UserInfo = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  avatarUrl?: string | null;
-};
+import type { BnUser } from "@/types/entities";
 
 type UserState = {
-  user: UserInfo | null;
-  setUser: (user: UserInfo | null) => void;
+  user: BnUser | null;
+  setUser: (user: BnUser | null) => void;
   clear: () => void;
 };
 
