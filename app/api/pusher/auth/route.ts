@@ -26,7 +26,13 @@ export async function POST(req: Request) {
   }
 
   const note = await prisma.note.findFirst({
-    where: { id: noteId, userId: token.id as string },
+    where: {
+      id: noteId,
+      OR: [
+        { userId: token.id as string },
+        { collaborators: { some: { userId: token.id as string, role: { in: ["editor", "viewer"] } } } },
+      ],
+    },
     select: { id: true, title: true },
   });
 

@@ -27,7 +27,10 @@ export const noteRouter = router({
     .query(async ({ ctx, input }) => {
       const filter = input?.filter ?? "all";
       const where: Prisma.NoteWhereInput = {
-        userId: ctx.session!.user.id,
+        OR: [
+          { userId: ctx.session!.user.id },
+          { collaborators: { some: { userId: ctx.session!.user.id } } },
+        ],
       };
 
       if (filter === "trash") {
@@ -108,7 +111,10 @@ export const noteRouter = router({
       const note = await ctx.prisma.note.findFirst({
         where: {
           id: input.id,
-          userId: ctx.session!.user.id,
+          OR: [
+            { userId: ctx.session!.user.id },
+            { collaborators: { some: { userId: ctx.session!.user.id } } },
+          ],
         },
         select: {
           id: true,
@@ -156,7 +162,10 @@ export const noteRouter = router({
       const updated = await ctx.prisma.note.updateMany({
         where: {
           id,
-          userId: ctx.session!.user.id,
+          OR: [
+            { userId: ctx.session!.user.id },
+            { collaborators: { some: { userId: ctx.session!.user.id } } },
+          ],
           deletedAt: null,
           ...(typeof rest.version === "number" ? { version: rest.version } : {}),
         },
