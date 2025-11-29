@@ -1,11 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Pusher from "pusher-js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { NoteTags } from "@/components/NoteTags";
-import { CollaborativeEditor } from "@/components/Notes/CollaborativeEditor";
 import { CollaboratorDialog } from "@/components/Notes/CollaboratorDialog";
+import { NoteTags } from "@/components/NoteTags";
 import { TagInput } from "@/components/TagInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { createPusherClient } from "@/lib/pusher/client";
 import { trpc } from "@/lib/trpc/client";
+
+const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
 type EditorState = {
   title: string;
@@ -52,6 +56,22 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
 
   const [state, setState] = useState<EditorState>(emptyState);
   const [isDirty, setIsDirty] = useState(false);
+  const [remotePending, setRemotePending] = useState(false);
+  const remoteBufferRef = useRef<string | null>(null);
+  const channelRef = useRef<Pusher.Channel | null>(null);
+  const suppressBroadcastRef = useRef(false);
+
+  const currentUser = useMemo(
+    () =>
+      meQuery.data
+        ? {
+            id: meQuery.data.id,
+            name: meQuery.data.name ?? meQuery.data.email,
+            avatar: meQuery.data.avatarUrl ?? undefined,
+          }
+        : null,
+    [meQuery.data],
+  );
 
   useEffect(() => {
     if (!noteQuery.data) return;
@@ -181,6 +201,59 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     return () => window.removeEventListener("keydown", listener);
   }, [handleSave, isOwner, isTrashed]);
 
+  // Pusher realtime (only when collaborative & logged in)
+  useEffect(() => {
+    if (!state.isCollaborative || !currentUser) return;
+    const pusher = createPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe(`presence-note-${noteId}`);
+    channelRef.current = channel;
+
+    const handleUpdate = (payload: {
+      markdown: string;
+      version?: number;
+      userId?: string;
+    }) => {
+      if (!payload?.markdown) return;
+      if (payload.userId === currentUser.id) return;
+      if (isDirty) {
+        remoteBufferRef.current = payload.markdown;
+        setRemotePending(true);
+        return;
+      }
+      suppressBroadcastRef.current = true;
+      setState((prev) => ({
+        ...prev,
+        markdown: payload.markdown,
+        version: payload.version ?? prev.version,
+      }));
+    };
+
+    channel.bind("client-note-update", handleUpdate);
+
+    return () => {
+      channel.unbind("client-note-update", handleUpdate);
+      pusher.unsubscribe(`presence-note-${noteId}`);
+      pusher.disconnect();
+    };
+  }, [currentUser, isDirty, noteId, state.isCollaborative]);
+
+  // Broadcast my changes (if collaborative)
+  useEffect(() => {
+    if (!state.isCollaborative || !currentUser) return;
+    const channel = channelRef.current;
+    if (!channel) return;
+    if (suppressBroadcastRef.current) {
+      suppressBroadcastRef.current = false;
+      return;
+    }
+    channel.trigger("client-note-update", {
+      markdown: state.markdown,
+      version: state.version,
+      userId: currentUser.id,
+    });
+  }, [currentUser, state.isCollaborative, state.markdown, state.version]);
+
   if (noteQuery.isLoading) {
     return (
       <section className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center p-6">
@@ -196,14 +269,6 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       </section>
     );
   }
-
-  const currentUser = meQuery.data
-    ? {
-        id: meQuery.data.id,
-        name: meQuery.data.name ?? meQuery.data.email,
-        avatar: meQuery.data.avatarUrl ?? undefined,
-      }
-    : null;
 
   return (
     <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-8">
@@ -281,9 +346,43 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       </div>
 
       {isTrashed && (
-        <p className="border-border/60 bg-amber-50 text-amber-700 rounded-lg border px-4 py-3 text-sm">
+        <p className="border-border/60 rounded-lg border bg-amber-50 px-4 py-3 text-sm text-amber-700">
           该笔记已在回收站，恢复后才能编辑。
         </p>
+      )}
+      {remotePending && (
+        <div className="border-border/60 flex items-center justify-between rounded-lg border bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span>远端有新的编辑内容</span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setRemotePending(false);
+                remoteBufferRef.current = null;
+              }}
+            >
+              忽略
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (remoteBufferRef.current !== null) {
+                  suppressBroadcastRef.current = true;
+                  setState((prev) => ({
+                    ...prev,
+                    markdown: remoteBufferRef.current ?? prev.markdown,
+                  }));
+                  setIsDirty(false);
+                }
+                setRemotePending(false);
+                remoteBufferRef.current = null;
+              }}
+            >
+              同步
+            </Button>
+          </div>
+        </div>
       )}
 
       {isOwner ? (
@@ -357,29 +456,41 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                   }}
                   disabled={isTrashed}
                 />
-                <label htmlFor="collab" className="text-sm text-muted-foreground">
+                <label
+                  htmlFor="collab"
+                  className="text-muted-foreground text-sm"
+                >
                   协作笔记
                 </label>
               </div>
             </div>
           </div>
-          <CollaborativeEditor
-            noteId={noteId}
-            initialContent={state.markdown}
-            user={currentUser}
-            version={state.version}
-            onDirtyChange={(dirty) => setIsDirty(dirty)}
-            onRemoteUpdate={() => {
-              utils.note.detail.invalidate({ id: noteId });
-            }}
-          />
+          <div className="border-border/60 bg-card min-h-[70vh] rounded-xl border shadow-sm">
+            <div className="h-[70vh] gap-4 p-3">
+              <div className="flex flex-col">
+                <div className="border-border/60 flex-1 overflow-hidden rounded-lg border">
+                  <MDEditor
+                    value={state.markdown}
+                    onChange={(value) => {
+                      setIsDirty(true);
+                      setState((prev) => ({ ...prev, markdown: value ?? "" }));
+                    }}
+                    height={520}
+                    hideToolbar={false}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
           <NoteTags tags={state.tags} />
           <div className="border-border/60 bg-card h-[70vh] overflow-auto rounded-xl border p-4 shadow-sm">
             <p className="text-muted-foreground text-sm">仅作者可编辑</p>
-            <div className="mt-3 whitespace-pre-wrap text-sm">{state.markdown}</div>
+            <div className="mt-3 text-sm whitespace-pre-wrap">
+              {state.markdown}
+            </div>
           </div>
         </div>
       )}
