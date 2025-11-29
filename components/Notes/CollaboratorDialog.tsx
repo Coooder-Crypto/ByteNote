@@ -23,10 +23,6 @@ type CollaboratorDialogProps = {
 export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorDialogProps) {
   const utils = trpc.useUtils();
   const listQuery = trpc.collaborator.list.useQuery({ noteId }, { enabled: open });
-  const searchQuery = trpc.user.search.useQuery(
-    { keyword: "" },
-    { enabled: false },
-  );
   const addMutation = trpc.collaborator.add.useMutation({
     onSuccess: () => {
       utils.collaborator.list.invalidate({ noteId });
@@ -53,13 +49,8 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
     if (!email.trim()) return;
     setSearching(true);
     try {
-      const data = await searchQuery.refetch({ throwOnError: false, cancelRefetch: false });
       const results =
-        data.data?.filter(
-          (u) =>
-            u.email?.toLowerCase().includes(email.toLowerCase()) ||
-            (u.name ?? "").toLowerCase().includes(email.toLowerCase()),
-        ) ?? [];
+        (await utils.user.search.fetch({ keyword: email.trim() }).catch(() => [])) ?? [];
       setSearchResults(results.slice(0, 5));
     } finally {
       setSearching(false);
@@ -122,6 +113,7 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
                     <div>
                       <p className="font-medium">{item.user.name ?? item.user.email}</p>
                       <p className="text-muted-foreground text-xs">{item.user.email}</p>
+                      <p className="text-muted-foreground text-[11px]">{item.role === "owner" ? "所有者" : item.role === "editor" ? "可编辑" : "只读"}</p>
                     </div>
                     <Button
                       variant="ghost"
@@ -129,7 +121,7 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
                       onClick={() =>
                         removeMutation.mutate({ noteId, userId: item.user.id })
                       }
-                      disabled={removeMutation.isPending}
+                      disabled={removeMutation.isPending || item.role === "owner"}
                     >
                       <X className="size-4" />
                     </Button>

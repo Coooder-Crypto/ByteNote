@@ -7,28 +7,32 @@ export const collaboratorRouter = router({
     .input(z.object({ noteId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const note = await ctx.prisma.note.findFirst({
-        where: { id: input.noteId, userId: ctx.session!.user.id },
-        select: { id: true },
-      });
-      if (!note) {
-        return [];
-      }
-      return ctx.prisma.noteCollaborator.findMany({
-        where: { noteId: input.noteId },
+        where: { id: input.noteId },
         select: {
           id: true,
-          role: true,
           userId: true,
           user: {
+            select: { id: true, name: true, email: true, avatarUrl: true },
+          },
+          collaborators: {
             select: {
               id: true,
-              name: true,
-              email: true,
-              avatarUrl: true,
+              role: true,
+              userId: true,
+              user: { select: { id: true, name: true, email: true, avatarUrl: true } },
             },
           },
         },
       });
+      if (!note) return [];
+      const ownerEntry = {
+        id: `owner-${note.id}`,
+        role: "owner" as const,
+        userId: note.userId,
+        user: note.user,
+      };
+      const others = note.collaborators.filter((c) => c.userId !== note.userId);
+      return [ownerEntry, ...others];
     }),
   add: protectedProcedure
     .input(
@@ -74,10 +78,13 @@ export const collaboratorRouter = router({
     .mutation(async ({ ctx, input }) => {
       const note = await ctx.prisma.note.findFirst({
         where: { id: input.noteId, userId: ctx.session!.user.id },
-        select: { id: true },
+        select: { id: true, userId: true },
       });
       if (!note) {
         throw new Error("Forbidden");
+      }
+      if (input.userId === note.userId) {
+        throw new Error("Cannot remove owner");
       }
       await ctx.prisma.noteCollaborator.deleteMany({
         where: { noteId: input.noteId, userId: input.userId },

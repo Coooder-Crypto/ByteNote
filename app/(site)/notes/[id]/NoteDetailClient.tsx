@@ -22,6 +22,7 @@ type EditorState = {
   title: string;
   markdown: string;
   isFavorite: boolean;
+  isCollaborative: boolean;
   folderId: string | null;
   tags: string[];
   version: number;
@@ -31,6 +32,7 @@ const emptyState: EditorState = {
   title: "",
   markdown: "",
   isFavorite: false,
+  isCollaborative: false,
   folderId: null,
   tags: [],
   version: 1,
@@ -58,6 +60,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       title: noteQuery.data.title,
       markdown: noteQuery.data.markdown,
       isFavorite: noteQuery.data.isFavorite,
+      isCollaborative: noteQuery.data.isCollaborative,
       folderId: noteQuery.data.folderId,
       version: noteQuery.data.version,
       tags: (() => {
@@ -140,6 +143,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       folderId: state.folderId,
       tags: state.tags,
       version: state.version,
+      isCollaborative: state.isCollaborative,
     });
   }, [
     isDirty,
@@ -341,6 +345,22 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                   ))}
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-2">
+                <input
+                  id="collab"
+                  type="checkbox"
+                  checked={state.isCollaborative}
+                  onChange={(event) => {
+                    const val = event.target.checked;
+                    setIsDirty(true);
+                    setState((prev) => ({ ...prev, isCollaborative: val }));
+                  }}
+                  disabled={isTrashed}
+                />
+                <label htmlFor="collab" className="text-sm text-muted-foreground">
+                  协作笔记
+                </label>
+              </div>
             </div>
           </div>
           <CollaborativeEditor

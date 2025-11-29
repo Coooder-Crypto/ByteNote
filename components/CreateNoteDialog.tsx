@@ -58,6 +58,7 @@ export function CreateNoteDialog({
   const [title, setTitle] = useState("全新笔记");
   const [tags, setTags] = useState<string[]>([]);
   const [folderId, setFolderId] = useState<string | null>(null);
+  const [isCollaborative, setIsCollaborative] = useState(false);
 
   const suggestedTags = useMemo(
     () => NOTE_TAGS.map((tag) => tag.value),
@@ -68,6 +69,7 @@ export function CreateNoteDialog({
     setTitle("全新笔记");
     setTags([]);
     setFolderId(null);
+    setIsCollaborative(false);
   };
 
   useEffect(() => {
@@ -83,6 +85,7 @@ export function CreateNoteDialog({
       markdown: DEFAULT_MARKDOWN,
       tags,
       folderId: folderId ?? undefined,
+      isCollaborative,
     });
   };
 
@@ -133,6 +136,17 @@ export function CreateNoteDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="create-collab"
+              type="checkbox"
+              checked={isCollaborative}
+              onChange={(e) => setIsCollaborative(e.target.checked)}
+            />
+            <label htmlFor="create-collab" className="text-sm text-muted-foreground">
+              创建为协作笔记
+            </label>
           </div>
         </div>
         <DialogFooter className="gap-2">

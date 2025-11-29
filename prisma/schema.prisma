@@ -54,6 +54,7 @@ model Note {
   content     String   @db.Text
   markdown    String   @db.Text
   isFavorite  Boolean  @default(false)
+  isCollaborative Boolean @default(false)
   summary     String?  @db.Text
   tags        String   @default("[]")
   deletedAt   DateTime?

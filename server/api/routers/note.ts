@@ -11,6 +11,7 @@ const noteInput = z.object({
   summary: z.string().optional(),
   folderId: z.string().uuid().optional().nullable(),
   version: z.number().optional(),
+  isCollaborative: z.boolean().optional(),
 });
 
 export const noteRouter = router({
@@ -90,6 +91,7 @@ export const noteRouter = router({
           markdown: true,
           content: true,
           isFavorite: true,
+          isCollaborative: true,
           deletedAt: true,
           folderId: true,
           tags: true,
@@ -129,6 +131,7 @@ export const noteRouter = router({
           version: true,
           isFavorite: true,
           deletedAt: true,
+          isCollaborative: true,
         },
       });
 
@@ -137,19 +140,28 @@ export const noteRouter = router({
   create: protectedProcedure
     .input(noteInput)
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.note.create({
+      const note = await ctx.prisma.note.create({
         data: {
           title: input.title,
           markdown: input.markdown,
           content: input.markdown,
           summary: input.summary ?? "",
           isFavorite: false,
+          isCollaborative: input.isCollaborative ?? false,
           tags: JSON.stringify(input.tags ?? []),
           folderId: input.folderId ?? null,
           deletedAt: null,
           userId: ctx.session!.user.id,
         },
       });
+      if (note.isCollaborative) {
+        await ctx.prisma.noteCollaborator.upsert({
+          where: { noteId_userId: { noteId: note.id, userId: ctx.session!.user.id } },
+          update: { role: "owner" },
+          create: { noteId: note.id, userId: ctx.session!.user.id, role: "owner" },
+        });
+      }
+      return note;
     }),
   update: protectedProcedure
     .input(
@@ -159,45 +171,67 @@ export const noteRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      const updated = await ctx.prisma.note.updateMany({
-        where: {
-          id,
-          OR: [
-            { userId: ctx.session!.user.id },
-            { collaborators: { some: { userId: ctx.session!.user.id } } },
-          ],
-          deletedAt: null,
-          ...(typeof rest.version === "number" ? { version: rest.version } : {}),
-        },
-        data: {
-          title: rest.title,
-          markdown: rest.markdown,
-          content: rest.markdown,
-          summary: rest.summary ?? "",
-          tags: JSON.stringify(rest.tags ?? []),
-          folderId: rest.folderId ?? null,
-          version: { increment: 1 },
-        },
+      const result = await ctx.prisma.$transaction(async (tx) => {
+        const updated = await tx.note.updateMany({
+          where: {
+            id,
+            OR: [
+              { userId: ctx.session!.user.id },
+              { collaborators: { some: { userId: ctx.session!.user.id } } },
+            ],
+            deletedAt: null,
+            ...(typeof rest.version === "number" ? { version: rest.version } : {}),
+          },
+          data: {
+            title: rest.title,
+            markdown: rest.markdown,
+            content: rest.markdown,
+            summary: rest.summary ?? "",
+            tags: JSON.stringify(rest.tags ?? []),
+            folderId: rest.folderId ?? null,
+            isCollaborative: rest.isCollaborative ?? false,
+            version: { increment: 1 },
+          },
+        });
+
+        if (!updated.count) {
+          return null;
+        }
+
+        if (rest.isCollaborative) {
+          await tx.noteCollaborator.upsert({
+            where: { noteId_userId: { noteId: id, userId: ctx.session!.user.id } },
+            update: { role: "owner" },
+            create: { noteId: id, userId: ctx.session!.user.id, role: "owner" },
+          });
+        } else {
+          await tx.noteCollaborator.deleteMany({
+            where: { noteId: id },
+          });
+        }
+
+        return tx.note.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            title: true,
+            markdown: true,
+            content: true,
+            tags: true,
+            folderId: true,
+            version: true,
+            updatedAt: true,
+            createdAt: true,
+            isCollaborative: true,
+          },
+        });
       });
 
-      if (!updated.count) {
+      if (!result) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      return ctx.prisma.note.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          title: true,
-          markdown: true,
-          content: true,
-          tags: true,
-          folderId: true,
-          version: true,
-          updatedAt: true,
-          createdAt: true,
-        },
-      });
+      return result;
     }),
   remove: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
