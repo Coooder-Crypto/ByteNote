@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-
-import { pusherServer } from "@/lib/pusher/server";
-import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
+
+import { prisma } from "@/lib/prisma";
+import { pusherServer } from "@/lib/pusher/server";
 
 export const runtime = "nodejs";
 
@@ -30,7 +30,11 @@ export async function POST(req: Request) {
       id: noteId,
       OR: [
         { userId: token.id as string },
-        { collaborators: { some: { userId: token.id as string, role: { in: ["editor", "viewer"] } } } },
+        {
+          collaborators: {
+            some: { userId: token.id as string, role: { in: ["editor", "viewer", "owner"] } },
+          },
+        },
       ],
     },
     select: { id: true, title: true },

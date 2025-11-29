@@ -1,131 +1,119 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+import dynamic from "next/dynamic";
 import type Pusher from "pusher-js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as Y from "yjs";
 
-import { Button } from "@/components/ui/button";
+import { useTheme } from "@/hooks/useTheme";
 import { createPusherClient } from "@/lib/pusher/client";
 
-type UserInfo = {
-  id: string;
-  name: string;
-  avatar?: string | null;
-  color?: string;
-};
+const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
 type Props = {
   noteId: string;
-  initialContent: string;
-  user: UserInfo;
-  version: number;
-  onChange: (value: string) => void;
+  initialMarkdown: string;
+  onChange: (markdown: string) => void;
   onDirtyChange?: (dirty: boolean) => void;
-  onRemoteUpdate?: () => void;
 };
 
-type UpdatePayload = {
-  markdown: string;
-  version?: number;
-  userId: string;
-};
+const FIELD = "md-text-v2";
+const LOCAL = "local";
 
 export function CollaborativeEditor({
   noteId,
-  initialContent,
-  user,
-  version,
+  initialMarkdown,
   onChange,
   onDirtyChange,
-  onRemoteUpdate,
 }: Props) {
+  const { theme } = useTheme();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const doc = useMemo(() => new Y.Doc(), [noteId]);
+  const yText = useMemo(() => doc.getText(FIELD), [doc]);
   const channelRef = useRef<Pusher.Channel | null>(null);
-  const currentVersion = useRef(version);
-  const isDirtyRef = useRef(false);
-  const initialHtml = useMemo(
-    () => `<p>${(initialContent ?? "").replace(/\n/g, "<br>") || "<br>"}</p>`,
-    [initialContent],
-  );
+  const [value, setValue] = useState(initialMarkdown);
 
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: initialHtml,
-    onUpdate: ({ editor }) => {
-      const text = editor.getText();
-      isDirtyRef.current = true;
-      onDirtyChange?.(true);
-      onChange(text);
-      const channel = channelRef.current;
-      if (channel) {
-        channel.trigger("client-note-update", {
-          markdown: text,
-          version: currentVersion.current,
-          userId: user.id,
-        } satisfies UpdatePayload);
-      }
-    },
-  });
+  // sync incoming prop to local value
+  useEffect(() => {
+    setValue(initialMarkdown);
+  }, [initialMarkdown]);
 
-  // Setup Pusher
+  // init Y.Text
+  useEffect(() => {
+    yText.delete(0, yText.length);
+    if (initialMarkdown) {
+      yText.insert(0, initialMarkdown, LOCAL);
+    }
+  }, [initialMarkdown, yText]);
+
+  // Pusher sync
   useEffect(() => {
     const pusher = createPusherClient();
     if (!pusher) return;
     const channel = pusher.subscribe(`presence-note-${noteId}`);
     channelRef.current = channel;
 
-    const handleUpdate = (payload: UpdatePayload) => {
-      if (!payload?.markdown) return;
-      // Only apply if本地未改动
-      if (isDirtyRef.current) {
-        onRemoteUpdate?.();
-        return;
+    const handleUpdate = (payload: { data: number[] }) => {
+      if (!payload?.data) return;
+      try {
+        Y.applyUpdate(doc, Uint8Array.from(payload.data), "remote");
+      } catch (error) {
+        console.warn("[collab] applyUpdate failed", error);
       }
-      editor?.commands.setContent(
-        `<p>${payload.markdown.replace(/\n/g, "<br>") || "<br>"}</p>`,
-        false,
-      );
-      if (typeof payload.version === "number") {
-        currentVersion.current = payload.version;
-      }
-      onChange(payload.markdown);
     };
 
-    channel.bind("client-note-update", handleUpdate);
+    channel.bind("client-y-update", handleUpdate);
 
     return () => {
-      channel.unbind("client-note-update", handleUpdate);
+      channel.unbind("client-y-update", handleUpdate);
       pusher.unsubscribe(`presence-note-${noteId}`);
       pusher.disconnect();
+      channelRef.current = null;
     };
-  }, [editor, noteId, onChange, onRemoteUpdate]);
+  }, [doc, noteId]);
 
+  // Observe text and doc updates
   useEffect(() => {
-    currentVersion.current = version;
-  }, [version]);
+    const handleText = () => {
+      const text = yText.toString();
+      setValue(text);
+      onChange(text);
+    };
+    yText.observe(handleText);
+
+    const handleDocUpdate = (update: Uint8Array, origin: unknown) => {
+      if (origin === LOCAL) {
+        onDirtyChange?.(true);
+        const channel = channelRef.current;
+        if (channel) {
+          channel.trigger("client-y-update", { data: Array.from(update) });
+        }
+      }
+    };
+    doc.on("update", handleDocUpdate);
+
+    return () => {
+      yText.unobserve(handleText);
+      doc.off("update", handleDocUpdate);
+    };
+  }, [doc, onChange, onDirtyChange, yText]);
 
   return (
-    <div className="border-border/60 bg-card h-[70vh] rounded-xl border p-2 shadow-sm">
-      {editor ? (
-        <EditorContent editor={editor} className="prose max-w-none h-full overflow-auto" />
-      ) : (
-        <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-          正在加载编辑器…
-        </div>
-      )}
-      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-        <span>版本 {currentVersion.current}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            isDirtyRef.current = false;
-            onDirtyChange?.(false);
-          }}
-        >
-          已同步
-        </Button>
-      </div>
-    </div>
+    <MDEditor
+      value={value}
+      onChange={(val) => {
+        const next = val ?? "";
+        doc.transact(() => {
+          yText.delete(0, yText.length);
+          yText.insert(0, next, LOCAL);
+        }, LOCAL);
+      }}
+      height={520}
+      hideToolbar={false}
+      data-color-mode={theme}
+      previewOptions={{
+        className: theme === "dark" ? "bg-neutral-900" : "bg-white",
+      }}
+    />
   );
 }

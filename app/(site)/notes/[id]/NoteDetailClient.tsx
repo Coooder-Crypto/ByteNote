@@ -1,10 +1,9 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import Pusher from "pusher-js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { CollaborativeEditor } from "@/components/Notes/CollaborativeEditor";
 import { CollaboratorDialog } from "@/components/Notes/CollaboratorDialog";
 import { NoteTags } from "@/components/NoteTags";
 import { TagInput } from "@/components/TagInput";
@@ -19,8 +18,6 @@ import {
 } from "@/components/ui/select";
 import { createPusherClient } from "@/lib/pusher/client";
 import { trpc } from "@/lib/trpc/client";
-
-const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
 type EditorState = {
   title: string;
@@ -45,34 +42,15 @@ const emptyState: EditorState = {
 export default function NoteDetailClient({ noteId }: { noteId: string }) {
   const router = useRouter();
   const utils = trpc.useUtils();
-  const noteQuery = trpc.note.detail.useQuery(
-    { id: noteId },
-    { enabled: Boolean(noteId) },
-  );
+  const noteQuery = trpc.note.detail.useQuery({ id: noteId }, { enabled: Boolean(noteId) });
   const meQuery = trpc.auth.me.useQuery();
-  const foldersQuery = trpc.folder.list.useQuery(undefined, {
-    enabled: Boolean(meQuery.data),
-  });
+  const foldersQuery = trpc.folder.list.useQuery(undefined, { enabled: Boolean(meQuery.data) });
 
   const [state, setState] = useState<EditorState>(emptyState);
   const [isDirty, setIsDirty] = useState(false);
-  const [remotePending, setRemotePending] = useState(false);
-  const remoteBufferRef = useRef<string | null>(null);
-  const channelRef = useRef<Pusher.Channel | null>(null);
-  const suppressBroadcastRef = useRef(false);
+  const [collabOpen, setCollabOpen] = useState(false);
 
-  const currentUser = useMemo(
-    () =>
-      meQuery.data
-        ? {
-            id: meQuery.data.id,
-            name: meQuery.data.name ?? meQuery.data.email,
-            avatar: meQuery.data.avatarUrl ?? undefined,
-          }
-        : null,
-    [meQuery.data],
-  );
-
+  // Load note into local state
   useEffect(() => {
     if (!noteQuery.data) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -87,10 +65,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
         try {
           const parsed = JSON.parse(noteQuery.data.tags);
           return Array.isArray(parsed)
-            ? parsed.filter(
-                (tag): tag is string =>
-                  typeof tag === "string" && tag.trim().length > 0,
-              )
+            ? parsed.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0)
             : [];
         } catch {
           return [];
@@ -104,6 +79,16 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     () => Boolean(noteQuery.data && meQuery.data?.id === noteQuery.data.userId),
     [noteQuery.data, meQuery.data?.id],
   );
+  const isCollaborator = useMemo(
+    () =>
+      Boolean(
+        noteQuery.data?.isCollaborative &&
+          noteQuery.data?.collaborators?.some((c) => c.userId === meQuery.data?.id),
+      ),
+    [meQuery.data?.id, noteQuery.data?.collaborators, noteQuery.data?.isCollaborative],
+  );
+  const canEdit = isOwner || isCollaborator;
+  const isTrashed = Boolean(noteQuery.data?.deletedAt);
 
   const updateMutation = trpc.note.update.useMutation({
     onSuccess: () => {
@@ -119,21 +104,18 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       router.push("/");
     },
   });
-
   const restoreMutation = trpc.note.restore.useMutation({
     onSuccess: () => {
       utils.note.list.invalidate();
       utils.note.detail.invalidate({ id: noteId });
     },
   });
-
   const destroyMutation = trpc.note.destroy.useMutation({
     onSuccess: () => {
       utils.note.list.invalidate();
       router.push("/");
     },
   });
-
   const favoriteMutation = trpc.note.setFavorite.useMutation({
     onSuccess: (_, variables) => {
       setState((prev) => ({ ...prev, isFavorite: variables.isFavorite }));
@@ -141,7 +123,6 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       utils.note.list.invalidate();
     },
   });
-
   const setFolderMutation = trpc.note.setFolder.useMutation({
     onSuccess: (_, variables) => {
       setState((prev) => ({ ...prev, folderId: variables.folderId ?? null }));
@@ -151,11 +132,9 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
   });
 
   const isSaving = updateMutation.isPending;
-  const isTrashed = Boolean(noteQuery.data?.deletedAt);
-  const [collabOpen, setCollabOpen] = useState(false);
 
   const handleSave = useCallback(() => {
-    if (!isOwner || !isDirty || isSaving || isTrashed) return;
+    if (!canEdit || !isDirty || isSaving || isTrashed) return;
     updateMutation.mutate({
       id: noteId,
       title: state.title || "未命名笔记",
@@ -167,30 +146,29 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     });
   }, [
     isDirty,
-    isOwner,
+    canEdit,
     isSaving,
     isTrashed,
     noteId,
-    state.version,
-    state.folderId,
-    state.markdown,
-    state.tags,
     state.title,
+    state.markdown,
+    state.folderId,
+    state.tags,
+    state.version,
+    state.isCollaborative,
     updateMutation,
   ]);
 
-  // Auto save every 10s if dirty
+  // Auto save
   useEffect(() => {
-    if (!isOwner || !isDirty || isSaving || isTrashed) return;
-    const timer = window.setTimeout(() => {
-      handleSave();
-    }, 10000);
+    if (!canEdit || !isDirty || isSaving || isTrashed) return;
+    const timer = window.setTimeout(() => handleSave(), 10000);
     return () => window.clearTimeout(timer);
-  }, [handleSave, isDirty, isOwner, isSaving, isTrashed]);
+  }, [canEdit, handleSave, isDirty, isSaving, isTrashed]);
 
-  // Cmd/Ctrl + S shortcut
+  // Cmd/Ctrl+S
   useEffect(() => {
-    if (!isOwner || isTrashed) return;
+    if (!canEdit || isTrashed) return;
     const listener = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
@@ -199,60 +177,36 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [handleSave, isOwner, isTrashed]);
+  }, [canEdit, handleSave, isTrashed]);
 
-  // Pusher realtime (only when collaborative & logged in)
+  // Listen to server-saved updates (fallback when Yjs not in sync)
   useEffect(() => {
-    if (!state.isCollaborative || !currentUser) return;
+    if (!noteQuery.data?.isCollaborative) return;
     const pusher = createPusherClient();
     if (!pusher) return;
     const channel = pusher.subscribe(`presence-note-${noteId}`);
-    channelRef.current = channel;
-
-    const handleUpdate = (payload: {
-      markdown: string;
+    const handler = (payload: {
+      noteId: string;
+      markdown?: string;
+      title?: string;
       version?: number;
-      userId?: string;
     }) => {
-      if (!payload?.markdown) return;
-      if (payload.userId === currentUser.id) return;
-      if (isDirty) {
-        remoteBufferRef.current = payload.markdown;
-        setRemotePending(true);
-        return;
-      }
-      suppressBroadcastRef.current = true;
+      if (payload?.noteId !== noteId) return;
       setState((prev) => ({
         ...prev,
-        markdown: payload.markdown,
-        version: payload.version ?? prev.version,
+        markdown: payload.markdown ?? prev.markdown,
+        title: payload.title ?? prev.title,
+        version: typeof payload.version === "number" ? payload.version : prev.version,
       }));
+      setIsDirty(false);
     };
-
-    channel.bind("client-note-update", handleUpdate);
-
+    channel.bind("server-note-saved", handler);
     return () => {
-      channel.unbind("client-note-update", handleUpdate);
+      channel.unbind("server-note-saved", handler);
       pusher.unsubscribe(`presence-note-${noteId}`);
       pusher.disconnect();
     };
-  }, [currentUser, isDirty, noteId, state.isCollaborative]);
-
-  // Broadcast my changes (if collaborative)
-  useEffect(() => {
-    if (!state.isCollaborative || !currentUser) return;
-    const channel = channelRef.current;
-    if (!channel) return;
-    if (suppressBroadcastRef.current) {
-      suppressBroadcastRef.current = false;
-      return;
-    }
-    channel.trigger("client-note-update", {
-      markdown: state.markdown,
-      version: state.version,
-      userId: currentUser.id,
-    });
-  }, [currentUser, state.isCollaborative, state.markdown, state.version]);
+  }, [noteId, noteQuery.data?.isCollaborative]);
 
   if (noteQuery.isLoading) {
     return (
@@ -261,7 +215,6 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
       </section>
     );
   }
-
   if (!noteQuery.data) {
     return (
       <section className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center p-6">
@@ -274,18 +227,16 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
     <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">
-            {state.title || "笔记详情"}
-          </h2>
+          <h2 className="text-2xl font-semibold">{state.title || "笔记详情"}</h2>
           <p className="text-muted-foreground text-sm">
             {isTrashed
               ? "笔记已在回收站中"
-              : isOwner
+              : canEdit
                 ? "你可以编辑这篇笔记"
                 : "此笔记为只读"}
           </p>
         </div>
-        {isOwner && (
+        {canEdit && (
           <div className="flex gap-2">
             {!isTrashed ? (
               <>
@@ -297,48 +248,48 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                       isFavorite: !state.isFavorite,
                     })
                   }
-                  disabled={favoriteMutation.isPending}
+                  disabled={favoriteMutation.isPending || !isOwner}
                 >
-                  {favoriteMutation.isPending
-                    ? "更新中..."
-                    : state.isFavorite
-                      ? "取消收藏"
-                      : "收藏"}
+                  {favoriteMutation.isPending ? "更新中..." : state.isFavorite ? "取消收藏" : "收藏"}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                >
+                <Button variant="outline" onClick={handleSave} disabled={isSaving}>
                   {isSaving ? "保存中..." : "保存"}
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => deleteMutation.mutate({ id: noteId })}
-                  disabled={deleteMutation.isPending}
-                >
-                  移至回收站
-                </Button>
-                <Button variant="ghost" onClick={() => setCollabOpen(true)}>
-                  协作者
-                </Button>
+                {isOwner && (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => deleteMutation.mutate({ id: noteId })}
+                      disabled={deleteMutation.isPending}
+                    >
+                      移至回收站
+                    </Button>
+                    <Button variant="ghost" onClick={() => setCollabOpen(true)}>
+                      协作者
+                    </Button>
+                  </>
+                )}
               </>
             ) : (
               <>
-                <Button
-                  variant="outline"
-                  onClick={() => restoreMutation.mutate({ id: noteId })}
-                  disabled={restoreMutation.isPending}
-                >
-                  {restoreMutation.isPending ? "恢复中..." : "恢复笔记"}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => destroyMutation.mutate({ id: noteId })}
-                  disabled={destroyMutation.isPending}
-                >
-                  {destroyMutation.isPending ? "删除中..." : "彻底删除"}
-                </Button>
+                {isOwner && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => restoreMutation.mutate({ id: noteId })}
+                      disabled={restoreMutation.isPending}
+                    >
+                      {restoreMutation.isPending ? "恢复中..." : "恢复笔记"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => destroyMutation.mutate({ id: noteId })}
+                      disabled={destroyMutation.isPending}
+                    >
+                      {destroyMutation.isPending ? "删除中..." : "彻底删除"}
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -350,42 +301,7 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
           该笔记已在回收站，恢复后才能编辑。
         </p>
       )}
-      {remotePending && (
-        <div className="border-border/60 flex items-center justify-between rounded-lg border bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <span>远端有新的编辑内容</span>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setRemotePending(false);
-                remoteBufferRef.current = null;
-              }}
-            >
-              忽略
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                if (remoteBufferRef.current !== null) {
-                  suppressBroadcastRef.current = true;
-                  setState((prev) => ({
-                    ...prev,
-                    markdown: remoteBufferRef.current ?? prev.markdown,
-                  }));
-                  setIsDirty(false);
-                }
-                setRemotePending(false);
-                remoteBufferRef.current = null;
-              }}
-            >
-              同步
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {isOwner ? (
+      {canEdit ? (
         <div className="space-y-4">
           <Input
             value={state.title}
@@ -397,17 +313,12 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
           />
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
             <div className="flex-1 space-y-2 lg:max-w-2xl">
-              <p className="text-muted-foreground text-xs">
-                标签（可输入或选择）
-              </p>
+              <p className="text-muted-foreground text-xs">标签（可输入或选择）</p>
               <TagInput
                 value={state.tags}
                 onChange={(tags) => {
                   setIsDirty(true);
-                  setState((prev) => ({
-                    ...prev,
-                    tags,
-                  }));
+                  setState((prev) => ({ ...prev, tags }));
                 }}
                 placeholder="输入标签或从列表选择"
                 className="w-full"
@@ -421,15 +332,12 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                   const nextFolderId = value === "none" ? null : value;
                   setIsDirty(true);
                   setState((prev) => ({ ...prev, folderId: nextFolderId }));
-                  setFolderMutation.mutate({
-                    id: noteId,
-                    folderId: nextFolderId,
-                  });
+                  if (isOwner) {
+                    setFolderMutation.mutate({ id: noteId, folderId: nextFolderId });
+                  }
                 }}
                 disabled={
-                  foldersQuery.isLoading ||
-                  setFolderMutation.isPending ||
-                  isTrashed
+                  foldersQuery.isLoading || setFolderMutation.isPending || isTrashed || !isOwner
                 }
               >
                 <SelectTrigger className="w-[200px]">
@@ -454,33 +362,25 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
                     setIsDirty(true);
                     setState((prev) => ({ ...prev, isCollaborative: val }));
                   }}
-                  disabled={isTrashed}
+                  disabled={isTrashed || !isOwner}
                 />
-                <label
-                  htmlFor="collab"
-                  className="text-muted-foreground text-sm"
-                >
+                <label htmlFor="collab" className="text-muted-foreground text-sm">
                   协作笔记
                 </label>
               </div>
             </div>
           </div>
+
           <div className="border-border/60 bg-card min-h-[70vh] rounded-xl border shadow-sm">
-            <div className="h-[70vh] gap-4 p-3">
-              <div className="flex flex-col">
-                <div className="border-border/60 flex-1 overflow-hidden rounded-lg border">
-                  <MDEditor
-                    value={state.markdown}
-                    onChange={(value) => {
-                      setIsDirty(true);
-                      setState((prev) => ({ ...prev, markdown: value ?? "" }));
-                    }}
-                    height={520}
-                    hideToolbar={false}
-                  />
-                </div>
-              </div>
-            </div>
+            <CollaborativeEditor
+              noteId={noteId}
+              initialMarkdown={state.markdown}
+              onChange={(val) => {
+                setIsDirty(true);
+                setState((prev) => ({ ...prev, markdown: val }));
+              }}
+              onDirtyChange={(dirty) => setIsDirty(dirty)}
+            />
           </div>
         </div>
       ) : (
@@ -488,17 +388,12 @@ export default function NoteDetailClient({ noteId }: { noteId: string }) {
           <NoteTags tags={state.tags} />
           <div className="border-border/60 bg-card h-[70vh] overflow-auto rounded-xl border p-4 shadow-sm">
             <p className="text-muted-foreground text-sm">仅作者可编辑</p>
-            <div className="mt-3 text-sm whitespace-pre-wrap">
-              {state.markdown}
-            </div>
+            <div className="mt-3 whitespace-pre-wrap text-sm">{state.markdown}</div>
           </div>
         </div>
       )}
-      <CollaboratorDialog
-        noteId={noteId}
-        open={collabOpen}
-        onOpenChange={setCollabOpen}
-      />
+
+      <CollaboratorDialog noteId={noteId} open={collabOpen} onOpenChange={setCollabOpen} />
     </section>
   );
 }

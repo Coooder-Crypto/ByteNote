@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { pusherServer } from "@/lib/pusher/server";
 import { protectedProcedure, router } from "@/server/api/trpc";
 
 const noteInput = z.object({
@@ -20,8 +21,9 @@ export const noteRouter = router({
       z
         .object({
           search: z.string().optional(),
-          filter: z.enum(["all", "favorite", "trash"]).optional(),
+          filter: z.enum(["all", "favorite", "trash", "collab"]).optional(),
           folderId: z.string().uuid().optional(),
+          collaborativeOnly: z.boolean().optional(),
         })
         .optional(),
     )
@@ -44,8 +46,15 @@ export const noteRouter = router({
         where.isFavorite = true;
       }
 
+      if (filter === "collab") {
+        where.isCollaborative = true;
+      }
+
       if (input?.folderId) {
         where.folderId = input.folderId;
+      }
+      if (input?.collaborativeOnly) {
+        where.isCollaborative = true;
       }
 
       const searchTerm = input?.search?.trim();
@@ -97,6 +106,9 @@ export const noteRouter = router({
           tags: true,
           userId: true,
           version: true,
+          collaborators: {
+            select: { userId: true, role: true },
+          },
           user: {
             select: {
               name: true,
@@ -132,6 +144,9 @@ export const noteRouter = router({
           isFavorite: true,
           deletedAt: true,
           isCollaborative: true,
+          collaborators: {
+            select: { userId: true, role: true },
+          },
         },
       });
 
@@ -229,6 +244,20 @@ export const noteRouter = router({
 
       if (!result) {
         throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      try {
+        if (pusherServer && result.isCollaborative) {
+          await pusherServer.trigger(`presence-note-${id}`, "server-note-saved", {
+            noteId: id,
+            title: result.title,
+            markdown: result.markdown,
+            updatedAt: result.updatedAt,
+            version: result.version,
+          });
+        }
+      } catch (error) {
+        console.warn("[pusher] broadcast note update failed", error);
       }
 
       return result;
