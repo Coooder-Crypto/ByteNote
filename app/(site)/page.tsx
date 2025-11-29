@@ -1,15 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import {
-  NoteList,
-  PageHeader,
-  SearchBar,
-  TagsFilter,
-} from "@/components/Dashboard";
+import { CreateNoteDialog } from "@/components/CreateNoteDialog";
+import { NoteList, NotesHeader } from "@/components/Notes";
 import { NOTE_TAGS, parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
 
@@ -24,6 +19,16 @@ export default function NotesHomePage() {
   const enabled = Boolean(meQuery.data);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<"updatedAt" | "createdAt">("updatedAt");
+  const filter = useMemo(
+    () => searchParams.get("filter") ?? "all",
+    [searchParams],
+  );
+  const folderId = useMemo(
+    () => searchParams.get("folderId") ?? undefined,
+    [searchParams],
+  );
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
     return `${pathname}${query ? `?${query}` : ""}`;
@@ -34,25 +39,28 @@ export default function NotesHomePage() {
   );
 
   const notesQuery = trpc.note.list.useQuery(
-    { publicOnly: true, search: searchQuery || undefined },
+    {
+      filter: (["all", "favorite", "trash"] as const).includes(
+        filter as "all" | "favorite" | "trash",
+      )
+        ? (filter as "all" | "favorite" | "trash")
+        : "all",
+      folderId,
+      search: searchQuery || undefined,
+    },
     { enabled },
   );
-
-  const createMutation = trpc.note.create.useMutation({
-    onSuccess: (note) => router.push(`/notes/${note.id}`),
-    onError: (error) => {
-      if (error.data?.code === "UNAUTHORIZED") {
-        router.push(authUrl);
-      }
-    },
-  });
 
   const notes = useMemo(() => {
     return (notesQuery.data ?? []).map((note) => ({
       id: note.id,
       title: note.title,
       content: note.content ?? note.markdown,
+      createdAt: note.createdAt,
       updatedAt: note.updatedAt,
+      deletedAt: note.deletedAt,
+      isFavorite: note.isFavorite,
+      folderId: note.folderId,
       tags: parseTags(note.tags),
     }));
   }, [notesQuery.data]);
@@ -65,7 +73,7 @@ export default function NotesHomePage() {
 
   const filteredNotes = useMemo(() => {
     const lower = searchQuery.trim().toLowerCase();
-    return notes.filter((note) => {
+    const filtered = notes.filter((note) => {
       const matchesText =
         lower.length === 0 ||
         note.title.toLowerCase().includes(lower) ||
@@ -76,50 +84,55 @@ export default function NotesHomePage() {
         selectedTags.every((tag) => note.tags.includes(tag));
       return matchesText && matchesTags;
     });
-  }, [notes, searchQuery, selectedTags]);
+    return filtered.sort((a, b) => {
+      const aTime = new Date(a[sortKey] as string).getTime();
+      const bTime = new Date(b[sortKey] as string).getTime();
+      return bTime - aTime;
+    });
+  }, [notes, searchQuery, selectedTags, sortKey]);
 
   const handleCreate = () => {
-    if (createMutation.isPending) return;
-    createMutation.mutate({
-      title: "全新笔记",
-      markdown: "# 新笔记\n\n这里是初始内容。",
-      isPublic: false,
-      tags: [],
-    });
+    if (!meQuery.data) {
+      router.push(authUrl);
+      return;
+    }
+    setCreateOpen(true);
   };
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-12">
-      <PageHeader total={notes.length} onCreate={handleCreate} />
-
-      {!enabled ? (
-        <p className="border-border/70 bg-card/80 text-muted-foreground rounded-2xl border border-dashed p-4 text-sm">
-          请先
-          <Link href={authUrl} className="text-primary underline">
-            登录
-          </Link>
-          ，即可查看公共笔记。
-        </p>
-      ) : (
-        <div className="space-y-4">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          <TagsFilter
+    <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-12">
+      <div className="border-border/60 bg-background/90 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 -mx-6 mb-6 border-b backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5">
+          <NotesHeader
+            total={notes.length}
+            onCreate={handleCreate}
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
             tags={availableTags}
-            selected={selectedTags}
-            onToggle={(tag) =>
+            selectedTags={selectedTags}
+            onToggleTag={(tag) =>
               setSelectedTags((prev) =>
                 prev.includes(tag)
                   ? prev.filter((item) => item !== tag)
                   : [...prev, tag],
               )
             }
+            sortKey={sortKey}
+            onSortChange={setSortKey}
           />
         </div>
-      )}
+      </div>
 
       <NoteList
         notes={filteredNotes}
+        sortKey={sortKey}
         emptyMessage={notesQuery.isLoading ? "加载中..." : "暂无符合条件的笔记"}
+      />
+      <CreateNoteDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onUnauthorized={() => router.push(authUrl)}
+        onCreated={(id) => router.push(`/notes/${id}`)}
       />
     </section>
   );

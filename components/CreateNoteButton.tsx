@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc/client";
 
 export function CreateNoteButton() {
@@ -36,7 +36,6 @@ export function CreateNoteButton() {
         mutation.mutate({
           title: "全新笔记",
           markdown: "# 新笔记\n\n这里是初始内容。",
-          isPublic: false,
           tags: [],
         })
       }

@@ -1,7 +1,8 @@
-import { LogOut, Moon } from "lucide-react";
+import { LogOut, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
+import { useTheme } from "@/hooks/useTheme";
 
 import { ProfileSettingsDialog } from "./ProfileSettingsDialog";
 
@@ -23,7 +24,7 @@ export function SideFooter({
   onLogout,
   onProfileUpdated,
 }: SideFooterProps) {
-  console.log(user);
+  const { theme, toggleTheme, ready } = useTheme();
   return (
     <div className="border-border/60 border-t px-4 py-4">
       {user ? (
@@ -60,9 +61,15 @@ export function SideFooter({
             <Button
               variant="ghost"
               className="text-muted-foreground gap-1 rounded-lg"
+              onClick={toggleTheme}
+              disabled={!ready}
+              aria-label="切换主题"
             >
-              <Moon className="size-3.5" />
-              主题
+              {theme === "dark" ? (
+                <Sun className="size-4" />
+              ) : (
+                <Moon className="size-4" />
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -83,6 +90,19 @@ export function SideFooter({
             onClick={onLogin}
           >
             登录 / 注册
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full text-muted-foreground gap-2 rounded-lg"
+            onClick={toggleTheme}
+            disabled={!ready}
+            aria-label="切换主题"
+          >
+            {theme === "dark" ? (
+              <Sun className="size-4" />
+            ) : (
+              <Moon className="size-4" />
+            )}
           </Button>
         </div>
       )}

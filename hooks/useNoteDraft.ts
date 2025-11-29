@@ -5,14 +5,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type DraftState = {
   title: string;
   markdown: string;
-  isPublic: boolean;
+  isFavorite: boolean;
+  folderId: string | null;
   tags: string[];
 };
 
 const emptyState: DraftState = {
   title: "",
   markdown: "",
-  isPublic: false,
+  isFavorite: false,
+  folderId: null,
   tags: [],
 };
 
@@ -95,8 +97,14 @@ export function useNoteDraft(noteId: string) {
     [markDirty],
   );
 
-  const setIsPublic = useCallback(
-    (value: boolean) => markDirty((prev) => ({ ...prev, isPublic: value })),
+  const setFolder = useCallback(
+    (folderId: string | null) =>
+      markDirty((prev) => ({ ...prev, folderId: folderId ?? null })),
+    [markDirty],
+  );
+
+  const setIsFavorite = useCallback(
+    (value: boolean) => markDirty((prev) => ({ ...prev, isFavorite: value })),
     [markDirty],
   );
 
@@ -114,7 +122,8 @@ export function useNoteDraft(noteId: string) {
     setTitle,
     setMarkdown,
     setTags,
-    setIsPublic,
+    setIsFavorite,
+    setFolder,
     localMetaRef,
     loadFromServer,
     clearDraft,

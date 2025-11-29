@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  httpOptions: { timeout: 10000 },
   providers: [
     GithubProvider({
       clientId: process.env.GITHUB_CLIENT_ID ?? "",
