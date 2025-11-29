@@ -6,6 +6,7 @@ type DashboardNote = {
   id: string;
   title: string;
   content: string | null;
+  createdAt: string | Date;
   updatedAt: string | Date;
   deletedAt: string | Date | null;
   isFavorite: boolean;
@@ -15,11 +16,13 @@ type DashboardNote = {
 
 type NoteListProps = {
   notes: DashboardNote[];
+  sortKey: "updatedAt" | "createdAt";
   emptyMessage?: string;
 };
 
 export default function NoteList({
   notes,
+  sortKey,
   emptyMessage = "暂无笔记",
 }: NoteListProps) {
   if (notes.length === 0) {
@@ -33,7 +36,7 @@ export default function NoteList({
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {notes.map((note) => (
-        <NoteCard key={note.id} note={note} />
+        <NoteCard key={note.id} note={note} sortKey={sortKey} />
       ))}
     </div>
   );

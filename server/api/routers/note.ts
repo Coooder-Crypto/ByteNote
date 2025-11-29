@@ -81,6 +81,7 @@ export const noteRouter = router({
           id: true,
           title: true,
           summary: true,
+          createdAt: true,
           updatedAt: true,
           markdown: true,
           content: true,
