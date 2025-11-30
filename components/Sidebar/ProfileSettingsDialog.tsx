@@ -5,18 +5,18 @@ import { Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AvatarUploader } from "@/components/AvatarUploader";
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { trpc } from "@/lib/trpc/client";
+  Input,
+  Label,
+} from "@/components/ui";
+import { useUserActions } from "@/hooks";
 import { cn } from "@/lib/utils";
 import type { BnUser } from "@/types/entities";
 
@@ -36,6 +36,7 @@ export default function ProfileSettingsDialog({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     user.avatarUrl ?? null,
   );
+  const { updateProfile, updateProfileMutation } = useUserActions();
 
   useEffect(() => {
     if (open) {
@@ -43,15 +44,6 @@ export default function ProfileSettingsDialog({
       setAvatarUrl(user.avatarUrl ?? null);
     }
   }, [open, user.avatarUrl, user.name]);
-
-  const utils = trpc.useUtils();
-  const updateProfile = trpc.auth.updateProfile.useMutation({
-    onSuccess: () => {
-      void utils.auth.me.invalidate();
-      onUpdated?.();
-      setOpen(false);
-    },
-  });
 
   const canSubmit = useMemo(() => {
     return (
@@ -61,11 +53,17 @@ export default function ProfileSettingsDialog({
   }, [avatarUrl, name, user.avatarUrl, user.name]);
 
   const handleSave = () => {
-    if (!canSubmit || updateProfile.isPending) return;
-    updateProfile.mutate({
-      name,
-      avatarUrl: avatarUrl ?? undefined,
-    });
+    if (!canSubmit || updateProfileMutation.isPending) return;
+    updateProfile(
+      {
+        name,
+        avatarUrl: avatarUrl ?? undefined,
+      },
+      () => {
+        onUpdated?.();
+        setOpen(false);
+      },
+    );
   };
 
   return (
@@ -100,9 +98,9 @@ export default function ProfileSettingsDialog({
               onChange={(event) => setName(event.target.value)}
             />
           </div>
-          {updateProfile.error && (
+          {updateProfileMutation.error && (
             <p className="text-destructive text-sm">
-              {updateProfile.error.message}
+              {updateProfileMutation.error.message}
             </p>
           )}
         </div>
@@ -116,10 +114,10 @@ export default function ProfileSettingsDialog({
           </Button>
           <Button
             type="button"
-            disabled={!canSubmit || updateProfile.isPending}
+            disabled={!canSubmit || updateProfileMutation.isPending}
             onClick={handleSave}
           >
-            {updateProfile.isPending ? "保存中..." : "保存"}
+            {updateProfileMutation.isPending ? "保存中..." : "保存"}
           </Button>
         </DialogFooter>
       </DialogContent>

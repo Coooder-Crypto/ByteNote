@@ -6,8 +6,9 @@ import { CollaboratorDialog } from "@/components/Editor";
 import NoteHeader from "@/components/Editor/EditorHeader";
 import EditorSection from "@/components/Editor/EditorSection";
 import NoteMetaForm from "@/components/Editor/InfoEditor";
-import { useNoteMutations } from "@/hooks/useNoteMutations";
-import { useNoteStore } from "@/hooks/useNoteStore";
+import { useNoteStore } from "@/hooks";
+import useFolderActions from "@/hooks/useFolderActions";
+import useNoteActions from "@/hooks/useNoteActions";
 import { createPusherClient } from "@/lib/pusher/client";
 import { trpc } from "@/lib/trpc/client";
 
@@ -18,9 +19,9 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     { enabled: Boolean(noteId) },
   );
   const meQuery = trpc.auth.me.useQuery();
-  const foldersQuery = trpc.folder.list.useQuery(undefined, {
-    enabled: Boolean(meQuery.data),
-  });
+  const { folders, isLoading: foldersLoading } = useFolderActions(
+    Boolean(meQuery.data),
+  );
 
   const {
     state,
@@ -48,42 +49,34 @@ export default function EditorPage({ params }: { params: { id: string } }) {
   }, [meQuery.data?.id, noteQuery.data, setFromNote]);
 
   useEffect(() => {
-    if (foldersQuery.data?.folders) {
-      setFolders(
-        foldersQuery.data.folders.map((folder) => ({
-          id: folder.id,
-          label: folder.name,
-          count: folder.noteCount,
-        })),
-      );
-    }
-  }, [foldersQuery.data?.folders, setFolders]);
+    setFolders(folders);
+  }, [folders, setFolders]);
 
   const {
-    updateMutation,
-    deleteMutation,
-    restoreMutation,
-    destroyMutation,
-    favoriteMutation,
-    setFolderMutation,
-  } = useNoteMutations({
+    updateNote,
+    deleteNote,
+    restoreNote,
+    destroyNote,
+    toggleFavorite,
+    changeFolder,
+    updatePending,
+    deletePending,
+    restorePending,
+    destroyPending,
+    favoritePending,
+    setFolderPending,
+  } = useNoteActions({
     noteId,
-    onStateChange: (updater) => updateState(updater),
+    onStateChange: updateState,
     onDirtyChange: setDirty,
   });
 
-  const isSaving = updateMutation.isPending;
-  const folders =
-    foldersQuery.data?.folders.map((folder) => ({
-      id: folder.id,
-      label: folder.name,
-      count: folder.noteCount,
-    })) ?? [];
-  const folderPending = setFolderMutation.isPending || foldersQuery.isLoading;
+  const isSaving = updatePending;
+  const folderPending = setFolderPending || foldersLoading;
 
   const handleSave = useCallback(() => {
     if (!canEdit || !isDirty || isSaving || isTrashed) return;
-    updateMutation.mutate({
+    updateNote({
       id: noteId,
       title: state.title || "未命名笔记",
       markdown: state.markdown,
@@ -104,7 +97,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     state.tags,
     state.version,
     state.isCollaborative,
-    updateMutation,
+    updateNote,
   ]);
 
   // Auto save
@@ -180,17 +173,15 @@ export default function EditorPage({ params }: { params: { id: string } }) {
         isOwner={isOwner}
         isTrashed={isTrashed}
         isSaving={isSaving}
-        favoritePending={favoriteMutation.isPending}
-        deletePending={deleteMutation.isPending}
-        restorePending={restoreMutation.isPending}
-        destroyPending={destroyMutation.isPending}
-        onFavorite={() =>
-          favoriteMutation.mutate({ id: noteId, isFavorite: !state.isFavorite })
-        }
+        favoritePending={favoritePending}
+        deletePending={deletePending}
+        restorePending={restorePending}
+        destroyPending={destroyPending}
+        onFavorite={() => toggleFavorite(!state.isFavorite)}
         onSave={handleSave}
-        onDelete={() => deleteMutation.mutate({ id: noteId })}
-        onRestore={() => restoreMutation.mutate({ id: noteId })}
-        onDestroy={() => destroyMutation.mutate({ id: noteId })}
+        onDelete={() => deleteNote()}
+        onRestore={() => restoreNote()}
+        onDestroy={() => destroyNote()}
         onOpenCollab={() => setCollabOpen(true)}
       />
 
@@ -211,7 +202,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
         onFolderChange={(folderId) => {
           setFolder(folderId);
           if (isOwner) {
-            setFolderMutation.mutate({ id: noteId, folderId });
+            changeFolder(folderId);
           }
         }}
         onCollaborativeToggle={setCollaborative}
@@ -228,7 +219,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
       <CollaboratorDialog
         noteId={noteId}
         open={collabOpen}
-        onOpenChange={onCollabOpenChange}
+        onOpenChange={setCollabOpen}
       />
     </section>
   );

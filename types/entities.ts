@@ -1,7 +1,7 @@
 export type BnFolder = {
   id: string;
-  label: string;
-  count?: number;
+  name: string;
+  noteCount?: number;
 };
 
 export type BnUser = {

@@ -10,8 +10,10 @@ type UserState = {
   clear: () => void;
 };
 
-export const useUserStore = create<UserState>((set) => ({
+const useUserStore = create<UserState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
   clear: () => set({ user: null }),
 }));
+
+export default useUserStore;

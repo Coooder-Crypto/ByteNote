@@ -15,6 +15,7 @@ export default function SideLibrary({
 }: SideLibraryProps) {
   const normalize = (path: string) =>
     path.startsWith("/") ? path : `/${path}`;
+
   const isActive = (path: string) => {
     const normalized = normalize(path);
     const [targetPath, targetQuery] = normalized.split("?");

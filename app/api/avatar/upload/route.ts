@@ -1,8 +1,8 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
-import { getToken } from "next-auth/jwt";
 
 export const runtime = "nodejs";
 
@@ -24,7 +24,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
   if (!token?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

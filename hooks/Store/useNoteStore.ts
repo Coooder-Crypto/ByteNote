@@ -72,7 +72,7 @@ const parseTags = (raw: string): string[] => {
   }
 };
 
-export const useNoteStore = create<NoteStore>((set) => ({
+const useNoteStore = create<NoteStore>((set) => ({
   state: emptyState,
   isDirty: false,
   collabOpen: false,
@@ -147,3 +147,5 @@ export const useNoteStore = create<NoteStore>((set) => ({
       state: updater(prev.state),
     })),
 }));
+
+export default useNoteStore;

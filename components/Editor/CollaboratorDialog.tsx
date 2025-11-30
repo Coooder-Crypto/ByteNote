@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import useCollaboratorActions from "@/hooks/useCollaboratorActions";
 import { trpc } from "@/lib/trpc/client";
 import type { BnUser } from "@/types/entities";
 
@@ -26,21 +27,20 @@ export default function CollaboratorDialog({
   open,
   onOpenChange,
 }: CollaboratorDialogProps) {
-  const utils = trpc.useUtils();
   const listQuery = trpc.collaborator.list.useQuery(
     { noteId },
     { enabled: open },
   );
-  const addMutation = trpc.collaborator.add.useMutation({
-    onSuccess: () => {
-      utils.collaborator.list.invalidate({ noteId });
-      setEmail("");
-      setSearchResults([]);
-    },
-  });
-  const removeMutation = trpc.collaborator.remove.useMutation({
-    onSuccess: () => utils.collaborator.list.invalidate({ noteId }),
-  });
+  const {
+    addCollaborator,
+    removeCollaborator,
+    invalidateCollaborators,
+    searchUsers,
+    addPending,
+    removePending,
+    addError,
+    removeError,
+  } = useCollaboratorActions(noteId);
 
   const [email, setEmail] = useState("");
   const [searchResults, setSearchResults] = useState<BnUser[]>([]);
@@ -52,10 +52,7 @@ export default function CollaboratorDialog({
     if (!email.trim()) return;
     setSearching(true);
     try {
-      const results =
-        (await utils.user.search
-          .fetch({ keyword: email.trim() })
-          .catch(() => [])) ?? [];
+      const results = await searchUsers(email.trim());
       setSearchResults(results.slice(0, 5));
     } finally {
       setSearching(false);
@@ -63,7 +60,9 @@ export default function CollaboratorDialog({
   };
 
   const handleInvite = (userId: string) => {
-    addMutation.mutate({ noteId, userId, role: "editor" });
+    addCollaborator(userId, "editor");
+    setEmail("");
+    setSearchResults([]);
   };
 
   return (
@@ -108,7 +107,7 @@ export default function CollaboratorDialog({
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={addMutation.isPending}
+                    disabled={addPending}
                     onClick={() => handleInvite(user.id)}
                   >
                     邀请
@@ -149,9 +148,7 @@ export default function CollaboratorDialog({
                       onClick={() =>
                         removeMutation.mutate({ noteId, userId: item.user.id })
                       }
-                      disabled={
-                        removeMutation.isPending || item.role === "owner"
-                      }
+                      disabled={removePending || item.role === "owner"}
                     >
                       <X className="size-4" />
                     </Button>

@@ -1,10 +1,8 @@
 "use client";
 
 import { Layout } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { CreateNoteDialog } from "@/components/CreateNoteDialog";
 import { useSidebarData } from "@/hooks/useSidebarData";
 import { cn } from "@/lib/utils";
 
@@ -15,32 +13,22 @@ import SideHeader from "./SideHeader";
 import SideLibrary from "./SideLibrary";
 
 export default function Sidebar() {
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const {
     navItems,
     currentPath,
-    authUrl,
     foldersQuery,
-    createFolderMutation,
+    createFolderPending,
     folderDialogOpen,
     setFolderDialogOpen,
     newFolderName,
     setNewFolderName,
-    createDialogOpen,
-    setCreateDialogOpen,
-    openCreateDialog,
     handleLogout,
     handleFolderSelect,
     handleLoginRedirect,
     submitCreateFolder,
   } = useSidebarData();
-
-  const handleCreate = () => {
-    openCreateDialog();
-    setMobileOpen(false);
-  };
 
   const handleFolderSelectClose = (folderId: string | null) => {
     handleFolderSelect(folderId);
@@ -72,7 +60,7 @@ export default function Sidebar() {
         )}
       >
         <aside className="border-border/60 bg-card/80 flex h-full w-64 flex-col border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] md:h-svh">
-          <SideHeader onCreate={handleCreate} />
+          <SideHeader />
           <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
             <SideLibrary
               items={navItems}
@@ -80,25 +68,13 @@ export default function Sidebar() {
               onNavigate={() => setMobileOpen(false)}
             />
             <SideFolders
-              folders={
-                foldersQuery.data?.folders.map(
-                  (folder: {
-                    id: string;
-                    name: string;
-                    noteCount: number;
-                  }) => ({
-                    id: folder.id,
-                    label: folder.name,
-                    count: folder.noteCount,
-                  }),
-                ) ?? []
-              }
+              folders={foldersQuery.data?.folders ?? []}
               activeFolderId={new URLSearchParams(
                 currentPath.split("?")[1] ?? "",
               ).get("folderId")}
               onSelectFolder={handleFolderSelectClose}
               onCreateFolder={() => setFolderDialogOpen(true)}
-              loading={foldersQuery.isLoading || createFolderMutation.isPending}
+              loading={foldersQuery.isLoading || createFolderPending}
             />
           </nav>
           <SideFooter
@@ -121,14 +97,7 @@ export default function Sidebar() {
           submitCreateFolder();
           setMobileOpen(false);
         }}
-        submitting={createFolderMutation.isPending}
-      />
-
-      <CreateNoteDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onUnauthorized={() => router.push(authUrl)}
-        onCreated={(id) => router.push(`/notes/${id}`)}
+        submitting={createFolderPending}
       />
     </>
   );

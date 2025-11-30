@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import useFolderActions from "@/hooks/useFolderActions";
 import { NOTE_TAGS } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
 
@@ -39,7 +40,7 @@ export function CreateNoteDialog({
   onUnauthorized,
 }: CreateNoteDialogProps) {
   const utils = trpc.useUtils();
-  const foldersQuery = trpc.folder.list.useQuery(undefined, { enabled: open });
+  const { folders, isLoading: foldersLoading } = useFolderActions(open);
   const createMutation = trpc.note.create.useMutation({
     onSuccess: (note) => {
       utils.note.list.invalidate();
@@ -121,14 +122,14 @@ export function CreateNoteDialog({
               onValueChange={(value) =>
                 setFolderId(value === "none" ? null : value)
               }
-              disabled={foldersQuery.isLoading}
+              disabled={foldersLoading}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="选择分组" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">不分组</SelectItem>
-                {foldersQuery.data?.folders.map((folder) => (
+                {folders.map((folder) => (
                   <SelectItem key={folder.id} value={folder.id}>
                     {folder.name}
                   </SelectItem>

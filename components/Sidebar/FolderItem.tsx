@@ -25,10 +25,10 @@ export default function FolderItem({
           className={active ? "text-primary" : "text-muted-foreground"}
         />
         <span className={active ? "text-foreground font-medium" : undefined}>
-          {folder.label}
+          {folder.name}
         </span>
       </div>
-      <span className="text-[10px]">{folder.count}</span>
+      <span className="text-[10px]">{folder.noteCount}</span>
     </button>
   );
 }

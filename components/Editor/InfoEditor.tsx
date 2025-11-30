@@ -71,7 +71,7 @@ export default function NoteMetaForm({
               <SelectItem value="none">未分组</SelectItem>
               {folders?.map((folder) => (
                 <SelectItem key={folder.id} value={folder.id}>
-                  {folder.label}
+                  {folder.name}
                 </SelectItem>
               ))}
             </SelectContent>
