@@ -3,10 +3,11 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { CreateNoteDialog } from "@/components/CreateNoteDialog";
-import { NoteList, NotesHeader } from "@/components/Notes";
+import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
+import { useNoteList } from "@/hooks";
 import { NOTE_TAGS, parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
+import { BnNote } from "@/types/entities";
 
 const parseTags = (raw: string | null | undefined) =>
   parseStoredTags(raw).filter((tag): tag is string => typeof tag === "string");
@@ -42,15 +43,13 @@ export default function NotesHomePage() {
     [currentPath],
   );
 
-  const notesQuery = trpc.note.list.useQuery(
-    {
-      filter,
-      folderId,
-      search: searchQuery || undefined,
-      collaborativeOnly: collaborativeOnly || undefined,
-    },
-    { enabled },
-  );
+  const notesQuery = useNoteList({
+    filter,
+    folderId,
+    search: searchQuery || undefined,
+    collaborativeOnly: collaborativeOnly || undefined,
+    enabled,
+  });
 
   const notes = useMemo(() => {
     return (notesQuery.data ?? []).map((note) => ({
@@ -68,13 +67,13 @@ export default function NotesHomePage() {
 
   const availableTags = useMemo(() => {
     const base = new Set<string>(NOTE_TAGS.map((tag) => tag.value));
-    notes.forEach((note) => note.tags.forEach((tag) => base.add(tag)));
+    notes.forEach((note: BnNote) => note.tags.forEach((tag) => base.add(tag)));
     return Array.from(base).sort();
   }, [notes]);
 
   const filteredNotes = useMemo(() => {
     const lower = searchQuery.trim().toLowerCase();
-    const filtered = notes.filter((note) => {
+    const filtered = notes.filter((note: BnNote) => {
       const matchesText =
         lower.length === 0 ||
         note.title.toLowerCase().includes(lower) ||

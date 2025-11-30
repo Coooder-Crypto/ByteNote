@@ -1,3 +1,4 @@
+export { default as AvatarUploader } from "./AvatarUploader";
 export { default as CreateFolderDialog } from "./CreateFolderDialog";
 export { default as ProfileSettingsDialog } from "./ProfileSettingsDialog";
 export { default as Sidebar } from "./Sidebar";

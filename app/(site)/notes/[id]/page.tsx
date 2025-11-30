@@ -7,8 +7,8 @@ import NoteHeader from "@/components/Editor/EditorHeader";
 import EditorSection from "@/components/Editor/EditorSection";
 import NoteMetaForm from "@/components/Editor/InfoEditor";
 import { useNoteStore } from "@/hooks";
-import useFolderActions from "@/hooks/useFolderActions";
-import useNoteActions from "@/hooks/useNoteActions";
+import useFolderActions from "@/hooks/Actions/useFolderActions";
+import useNoteActions from "@/hooks/Actions/useNoteActions";
 import { createPusherClient } from "@/lib/pusher/client";
 import { trpc } from "@/lib/trpc/client";
 

@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 
 type Params<T> = {
-  noteId: string;
-  onStateChange: (updater: (prev: T) => T) => void;
+  noteId?: string;
+  onStateChange?: (updater: (prev: T) => T) => void;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
@@ -49,7 +49,10 @@ export default function useNoteActions<T>({
 
   const favoriteMutation = trpc.note.setFavorite.useMutation({
     onSuccess: (_, variables) => {
-      onStateChange((prev) => ({ ...prev, isFavorite: variables.isFavorite }));
+      onStateChange?.((prev) => ({
+        ...prev,
+        isFavorite: variables.isFavorite,
+      }));
       utils.note.detail.invalidate({ id: noteId });
       utils.note.list.invalidate();
     },
@@ -57,7 +60,7 @@ export default function useNoteActions<T>({
 
   const setFolderMutation = trpc.note.setFolder.useMutation({
     onSuccess: (_, variables) => {
-      onStateChange((prev) => ({
+      onStateChange?.((prev) => ({
         ...prev,
         folderId: variables.folderId ?? null,
       }));
@@ -66,24 +69,38 @@ export default function useNoteActions<T>({
     },
   });
 
+  const createMutation = trpc.note.create.useMutation({
+    onSuccess: () => {
+      utils.note.list.invalidate();
+    },
+  });
+
+  const createNote = (
+    payload: Parameters<typeof createMutation.mutate>[0],
+    options?: Parameters<typeof createMutation.mutate>[1],
+  ) => createMutation.mutate(payload, options);
+
   const updateNote = (payload: Parameters<typeof updateMutation.mutate>[0]) =>
     updateMutation.mutate(payload);
 
-  const deleteNote = () => deleteMutation.mutate({ id: noteId });
-  const restoreNote = () => restoreMutation.mutate({ id: noteId });
-  const destroyNote = () => destroyMutation.mutate({ id: noteId });
+  const deleteNote = () => noteId && deleteMutation.mutate({ id: noteId });
+  const restoreNote = () => noteId && restoreMutation.mutate({ id: noteId });
+  const destroyNote = () => noteId && destroyMutation.mutate({ id: noteId });
   const toggleFavorite = (isFavorite: boolean) =>
-    favoriteMutation.mutate({ id: noteId, isFavorite });
+    noteId && favoriteMutation.mutate({ id: noteId, isFavorite });
   const changeFolder = (folderId: string | null) =>
-    setFolderMutation.mutate({ id: noteId, folderId });
+    noteId && setFolderMutation.mutate({ id: noteId, folderId });
 
   return {
+    createNote,
     updateNote,
     deleteNote,
     restoreNote,
     destroyNote,
     toggleFavorite,
     changeFolder,
+    createPending: createMutation.isPending,
+    createError: createMutation.error,
     updatePending: updateMutation.isPending,
     updateError: updateMutation.error,
     deletePending: deleteMutation.isPending,

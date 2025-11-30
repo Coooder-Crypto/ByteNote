@@ -1,101 +1,124 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 
-import { trpc } from "@/lib/trpc/client";
+import { createPusherClient } from "@/lib/pusher/client";
 
-import type { DraftState } from "./useNoteDraft";
+import useNoteActions from "../Actions/useNoteActions";
+import useNoteStore from "../Store/useNoteStore";
 
 type UseNoteSyncOptions = {
   noteId: string;
-  state: DraftState;
-  isDirty: boolean;
-  isOwner: boolean;
-  isOnline: boolean;
-  onSynced: () => void;
-  onDeleted?: () => void;
+  canEdit: boolean;
+  isTrashed: boolean;
 };
 
-export function useNoteSync({
+export default function useNoteSync({
   noteId,
-  state,
-  isDirty,
-  isOwner,
-  isOnline,
-  onSynced,
-  onDeleted,
+  canEdit,
+  isTrashed,
 }: UseNoteSyncOptions) {
-  const utils = trpc.useUtils();
-  const router = useRouter();
+  const { state, isDirty, setDirty, updateState } = useNoteStore();
 
-  const updateMutation = trpc.note.update.useMutation({
-    onSuccess: () => {
-      onSynced();
-      utils.note.detail.invalidate({ id: noteId });
-      utils.note.list.invalidate();
-    },
-  });
-
-  const deleteMutation = trpc.note.remove.useMutation({
-    onSuccess: () => {
-      onDeleted?.();
-      utils.note.list.invalidate();
-      router.push("/");
-    },
-  });
-
-  const save = useCallback(() => {
-    if (!isOwner || !isDirty || updateMutation.isPending || !isOnline) return;
-    updateMutation.mutate({
-      id: noteId,
-      title: state.title || "未命名笔记",
-      markdown: state.markdown,
-      isFavorite: state.isFavorite,
-      folderId: state.folderId ?? null,
-      tags: state.tags,
-    });
-  }, [
-    isDirty,
-    isOnline,
-    isOwner,
+  const { updateNote, updatePending } = useNoteActions({
     noteId,
-    state.isFavorite,
-    state.folderId,
-    state.markdown,
-    state.tags,
+    onStateChange: updateState,
+    onDirtyChange: setDirty,
+  });
+
+  // Auto save
+  useEffect(() => {
+    if (!canEdit || !isDirty || updatePending || isTrashed) return;
+    const timer = window.setTimeout(() => {
+      updateNote({
+        id: noteId,
+        title: state.title || "未命名笔记",
+        markdown: state.markdown,
+        folderId: state.folderId,
+        tags: state.tags,
+        version: state.version,
+        isCollaborative: state.isCollaborative,
+      });
+    }, 10000);
+    return () => window.clearTimeout(timer);
+  }, [
+    canEdit,
+    isDirty,
+    updatePending,
+    isTrashed,
+    noteId,
     state.title,
-    updateMutation,
+    state.markdown,
+    state.folderId,
+    state.tags,
+    state.version,
+    state.isCollaborative,
+    updateNote,
   ]);
 
+  // Cmd/Ctrl+S
   useEffect(() => {
-    if (!isOwner) return;
+    if (!canEdit || isTrashed) return;
     const listener = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        save();
+        updateNote({
+          id: noteId,
+          title: state.title || "未命名笔记",
+          markdown: state.markdown,
+          folderId: state.folderId,
+          tags: state.tags,
+          version: state.version,
+          isCollaborative: state.isCollaborative,
+        });
       }
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [isOwner, save]);
+  }, [
+    canEdit,
+    isTrashed,
+    noteId,
+    state.title,
+    state.markdown,
+    state.folderId,
+    state.tags,
+    state.version,
+    state.isCollaborative,
+    updateNote,
+  ]);
 
+  // Listen to server-saved updates (fallback when Yjs not in sync)
   useEffect(() => {
-    if (!isOwner || !isDirty || updateMutation.isPending || !isOnline) return;
-    const timer = window.setTimeout(() => {
-      save();
-    }, 10000);
-    return () => window.clearTimeout(timer);
-  }, [isDirty, isOnline, isOwner, save, updateMutation.isPending]);
-
-  useEffect(() => {
-    if (!isOwner || !isDirty || !isOnline) return;
-    save();
-  }, [isDirty, isOnline, isOwner, save]);
+    if (!state.isCollaborative) return;
+    const pusher = createPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe(`presence-note-${noteId}`);
+    const handler = (payload: {
+      noteId: string;
+      markdown?: string;
+      title?: string;
+      version?: number;
+    }) => {
+      if (payload?.noteId !== noteId) return;
+      updateState((prev) => ({
+        ...prev,
+        markdown: payload.markdown ?? prev.markdown,
+        title: payload.title ?? prev.title,
+        version:
+          typeof payload.version === "number" ? payload.version : prev.version,
+      }));
+      setDirty(false);
+    };
+    channel.bind("server-note-saved", handler);
+    return () => {
+      channel.unbind("server-note-saved", handler);
+      pusher.unsubscribe(`presence-note-${noteId}`);
+      pusher.disconnect();
+    };
+  }, [noteId, setDirty, state.isCollaborative, updateState]);
 
   return {
-    save,
-    deleteMutation,
-    isSaving: updateMutation.isPending,
+    isSaving: updatePending,
   };
 }

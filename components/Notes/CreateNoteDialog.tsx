@@ -1,28 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { TagInput } from "@/components/TagInput";
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import {
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import useFolderActions from "@/hooks/useFolderActions";
+} from "@/components/ui";
+import { useFolderActions, useNoteActions } from "@/hooks";
 import { NOTE_TAGS } from "@/lib/tags";
-import { trpc } from "@/lib/trpc/client";
+
+import { TagInput } from "../TagInput";
 
 const DEFAULT_MARKDOWN = "# 新笔记\n\n这里是初始内容。";
 
@@ -33,28 +31,14 @@ type CreateNoteDialogProps = {
   onUnauthorized?: () => void;
 };
 
-export function CreateNoteDialog({
+export default function CreateNoteDialog({
   open,
   onOpenChange,
   onCreated,
   onUnauthorized,
 }: CreateNoteDialogProps) {
-  const utils = trpc.useUtils();
   const { folders, isLoading: foldersLoading } = useFolderActions(open);
-  const createMutation = trpc.note.create.useMutation({
-    onSuccess: (note) => {
-      utils.note.list.invalidate();
-      onCreated(note.id);
-      resetForm();
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      if (error.data?.code === "UNAUTHORIZED") {
-        onUnauthorized?.();
-        onOpenChange(false);
-      }
-    },
-  });
+  const { createNote, createPending } = useNoteActions({});
 
   const [title, setTitle] = useState("全新笔记");
   const [tags, setTags] = useState<string[]>([]);
@@ -63,28 +47,37 @@ export function CreateNoteDialog({
 
   const suggestedTags = useMemo(() => NOTE_TAGS.map((tag) => tag.value), []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setTitle("全新笔记");
     setTags([]);
     setFolderId(null);
     setIsCollaborative(false);
-  };
-
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-    }
-  }, [open]);
+  }, []);
 
   const handleCreate = () => {
-    if (!title.trim() || createMutation.isPending) return;
-    createMutation.mutate({
-      title: title.trim(),
-      markdown: DEFAULT_MARKDOWN,
-      tags,
-      folderId: folderId ?? undefined,
-      isCollaborative,
-    });
+    if (!title.trim() || createPending) return;
+    createNote(
+      {
+        title: title.trim(),
+        markdown: DEFAULT_MARKDOWN,
+        tags,
+        folderId: folderId ?? undefined,
+        isCollaborative,
+      },
+      {
+        onSuccess: (note) => {
+          onCreated(note.id);
+          resetForm();
+          onOpenChange(false);
+        },
+        onError: (error) => {
+          if (error.data?.code === "UNAUTHORIZED") {
+            onUnauthorized?.();
+            onOpenChange(false);
+          }
+        },
+      },
+    );
   };
 
   return (
@@ -156,12 +149,12 @@ export function CreateNoteDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={createMutation.isPending}
+            disabled={createPending}
           >
             取消
           </Button>
-          <Button onClick={handleCreate} disabled={createMutation.isPending}>
-            {createMutation.isPending ? "创建中..." : "创建并前往编辑"}
+          <Button onClick={handleCreate} disabled={createPending}>
+            {createPending ? "创建中..." : "创建并前往编辑"}
           </Button>
         </DialogFooter>
       </DialogContent>

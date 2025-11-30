@@ -3,16 +3,16 @@
 import { Loader2, UserPlus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import useCollaboratorActions from "@/hooks/useCollaboratorActions";
+  Input,
+} from "@/components/ui";
+import { useCollaboratorActions } from "@/hooks";
 import { trpc } from "@/lib/trpc/client";
 import type { BnUser } from "@/types/entities";
 

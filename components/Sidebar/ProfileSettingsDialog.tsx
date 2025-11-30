@@ -4,7 +4,6 @@
 import { Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { AvatarUploader } from "@/components/AvatarUploader";
 import {
   Button,
   Dialog,
@@ -19,6 +18,8 @@ import {
 import { useUserActions } from "@/hooks";
 import { cn } from "@/lib/utils";
 import type { BnUser } from "@/types/entities";
+
+import AvatarUploader from "./AvatarUploader";
 
 type ProfileSettingsDialogProps = {
   user: BnUser;
@@ -36,7 +37,8 @@ export default function ProfileSettingsDialog({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     user.avatarUrl ?? null,
   );
-  const { updateProfile, updateProfileMutation } = useUserActions();
+  const { updateProfile, updateProfilePending, updateProfileError } =
+    useUserActions();
 
   useEffect(() => {
     if (open) {
@@ -53,7 +55,7 @@ export default function ProfileSettingsDialog({
   }, [avatarUrl, name, user.avatarUrl, user.name]);
 
   const handleSave = () => {
-    if (!canSubmit || updateProfileMutation.isPending) return;
+    if (!canSubmit || updateProfilePending) return;
     updateProfile(
       {
         name,
@@ -98,9 +100,9 @@ export default function ProfileSettingsDialog({
               onChange={(event) => setName(event.target.value)}
             />
           </div>
-          {updateProfileMutation.error && (
+          {updateProfileError && (
             <p className="text-destructive text-sm">
-              {updateProfileMutation.error.message}
+              {updateProfileError.message}
             </p>
           )}
         </div>
@@ -114,10 +116,10 @@ export default function ProfileSettingsDialog({
           </Button>
           <Button
             type="button"
-            disabled={!canSubmit || updateProfileMutation.isPending}
+            disabled={!canSubmit || updateProfilePending}
             onClick={handleSave}
           >
-            {updateProfileMutation.isPending ? "保存中..." : "保存"}
+            {updateProfilePending ? "保存中..." : "保存"}
           </Button>
         </DialogFooter>
       </DialogContent>

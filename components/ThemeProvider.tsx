@@ -4,7 +4,6 @@ import {
   createContext,
   type ReactNode,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -19,7 +18,7 @@ type ThemeContextValue = {
   ready: boolean;
 };
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+export const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const STORAGE_KEY = "byte-note-theme";
 
@@ -42,7 +41,7 @@ const getInitialTheme = (): Theme => {
   return stored ?? (prefersDark ? "dark" : "light");
 };
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export default function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
   const [ready] = useState(() => typeof window !== "undefined");
 
@@ -74,12 +73,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
-}
-
-export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    throw new Error("useTheme must be used within ThemeProvider");
-  }
-  return ctx;
 }

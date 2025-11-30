@@ -5,10 +5,10 @@ import { signOut } from "next-auth/react";
 import { useCallback, useMemo, useState } from "react";
 
 import { NAV_ITEMS } from "@/constants/nav";
-import useFolderActions from "@/hooks/useFolderActions";
-import useUserActions from "@/hooks/useUserActions";
 
-export function useSidebarData() {
+import { useFolderActions, useUserActions } from "../Actions";
+
+export default function useSidebarData() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();

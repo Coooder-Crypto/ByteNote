@@ -1,9 +1,9 @@
 "use client";
 
-import { type PutBlobResult } from "@vercel/blob";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
+import { useAvatarUpload } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 type AvatarUploaderProps = {
@@ -12,18 +12,15 @@ type AvatarUploaderProps = {
   className?: string;
 };
 
-export function AvatarUploader({
+export default function AvatarUploader({
   value,
   onUploaded,
   className,
 }: AvatarUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(value ?? null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { upload, isUploading, error, preview, setPreview } = useAvatarUpload();
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreview(value ?? null);
   }, [value]);
 
@@ -32,30 +29,7 @@ export function AvatarUploader({
   };
 
   const handleUpload = async (file: File) => {
-    setIsUploading(true);
-    setError(null);
-
-    const response = await fetch(
-      `/api/avatar/upload?filename=${encodeURIComponent(file.name)}`,
-      {
-        method: "POST",
-        body: file,
-      },
-    );
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-      setError(payload.error ?? "上传失败，请稍后重试。");
-      setIsUploading(false);
-      return;
-    }
-
-    const result = (await response.json()) as PutBlobResult;
-    setPreview(result.url);
-    onUploaded?.(result.url);
-    setIsUploading(false);
+    await upload(file, (url) => onUploaded?.(url));
   };
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {

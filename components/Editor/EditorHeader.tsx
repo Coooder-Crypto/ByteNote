@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { EditorState } from "@/hooks/useNoteStore";
+import { EditorState } from "@/hooks";
 
 import { Button } from "../ui/button";
 

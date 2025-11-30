@@ -1,14 +1,14 @@
 import { Plus, SortAsc } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
+  Button,
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from "@/components/ui/select";
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type NotesHeaderProps = {

@@ -5,7 +5,7 @@ import type { Channel } from "pusher-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 
-import { useTheme } from "@/hooks/useTheme";
+import { useTheme } from "@/hooks";
 import { createPusherClient } from "@/lib/pusher/client";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });

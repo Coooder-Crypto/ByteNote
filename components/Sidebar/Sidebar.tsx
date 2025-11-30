@@ -3,7 +3,7 @@
 import { Layout } from "lucide-react";
 import { useState } from "react";
 
-import { useSidebarData } from "@/hooks/useSidebarData";
+import { useSidebarData } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 import CreateFolderDialog from "./CreateFolderDialog";
