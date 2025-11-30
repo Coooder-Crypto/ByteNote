@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { Channel } from "pusher-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 
@@ -19,30 +20,27 @@ type Props = {
 const FIELD = "md-text-v2";
 const LOCAL = "local";
 
-export function CollaborativeEditor({
+export default function CollaborativeEditor({
   noteId,
   initialMarkdown,
   onChange,
   onDirtyChange,
 }: Props) {
   const { theme } = useTheme();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const doc = useMemo(() => new Y.Doc(), [noteId]);
   const yText = useMemo(() => doc.getText(FIELD), [doc]);
-  const channelRef = useRef<Pusher.Channel | null>(null);
+  const channelRef = useRef<Channel | null>(null);
+  const initializedRef = useRef(false);
   const [value, setValue] = useState(initialMarkdown);
 
-  // sync incoming prop to local value
+  // Init Y.Text once per note
   useEffect(() => {
-    setValue(initialMarkdown);
-  }, [initialMarkdown]);
-
-  // init Y.Text
-  useEffect(() => {
+    if (initializedRef.current) return;
     yText.delete(0, yText.length);
     if (initialMarkdown) {
       yText.insert(0, initialMarkdown, LOCAL);
     }
+    initializedRef.current = true;
   }, [initialMarkdown, yText]);
 
   // Pusher sync
@@ -66,7 +64,6 @@ export function CollaborativeEditor({
     return () => {
       channel.unbind("client-y-update", handleUpdate);
       pusher.unsubscribe(`presence-note-${noteId}`);
-      pusher.disconnect();
       channelRef.current = null;
     };
   }, [doc, noteId]);
@@ -75,7 +72,9 @@ export function CollaborativeEditor({
   useEffect(() => {
     const handleText = () => {
       const text = yText.toString();
-      setValue(text);
+      if (text !== value) {
+        setValue(text);
+      }
       onChange(text);
     };
     yText.observe(handleText);

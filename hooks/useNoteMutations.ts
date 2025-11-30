@@ -1,13 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React from "react";
-
 import { trpc } from "@/lib/trpc/client";
 
 type Params<T> = {
   noteId: string;
-  onStateChange: React.Dispatch<React.SetStateAction<T>>;
+  onStateChange: (updater: (prev: T) => T) => void;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
