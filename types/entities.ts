@@ -26,11 +26,13 @@ export type BnTag = {
 export type BnNote = {
   id: string;
   title: string;
+  content?: string | null;
   markdown: string;
+  createdAt: Date | string;
   updatedAt: Date | string;
   deletedAt?: Date | string | null;
   isFavorite: boolean;
   folderId: string | null;
-  tags: string[] | BnTag[];
+  tags: string[];
   isCollaborative?: boolean;
 };

@@ -3,21 +3,10 @@
 import { useRouter } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-
-type DashboardNote = {
-  id: string;
-  title: string;
-  content: string | null;
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  deletedAt: string | Date | null;
-  isFavorite: boolean;
-  folderId: string | null;
-  tags: string[];
-};
+import { BnNote } from "@/types/entities";
 
 type NoteCardProps = {
-  note: DashboardNote;
+  note: BnNote;
   sortKey: "updatedAt" | "createdAt";
 };
 

@@ -5,12 +5,7 @@ import { useMemo, useState } from "react";
 
 import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
 import { useNoteList } from "@/hooks";
-import { NOTE_TAGS, parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
-import { BnNote } from "@/types/entities";
-
-const parseTags = (raw: string | null | undefined) =>
-  parseStoredTags(raw).filter((tag): tag is string => typeof tag === "string");
 
 export default function NotesHomePage() {
   const router = useRouter();
@@ -24,20 +19,24 @@ export default function NotesHomePage() {
   const [sortKey, setSortKey] = useState<"updatedAt" | "createdAt">(
     "updatedAt",
   );
+
   const filter = useMemo<"all" | "favorite" | "trash" | "collab">(() => {
     const raw = searchParams.get("filter");
     if (raw === "favorite" || raw === "trash" || raw === "collab") return raw;
     return "all";
   }, [searchParams]);
+
   const collaborativeOnly = filter === "collab";
   const folderId = useMemo(
     () => searchParams.get("folderId") ?? undefined,
     [searchParams],
   );
+
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
     return `${pathname}${query ? `?${query}` : ""}`;
   }, [pathname, searchParams]);
+
   const authUrl = useMemo(
     () => `/auth?callbackUrl=${encodeURIComponent(currentPath || "/")}`,
     [currentPath],
@@ -49,47 +48,11 @@ export default function NotesHomePage() {
     search: searchQuery || undefined,
     collaborativeOnly: collaborativeOnly || undefined,
     enabled,
+    selectedTags,
+    sortKey,
+    searchQuery,
   });
-
-  const notes = useMemo(() => {
-    return (notesQuery.data ?? []).map((note) => ({
-      id: note.id,
-      title: note.title,
-      content: note.content ?? note.markdown,
-      createdAt: note.createdAt,
-      updatedAt: note.updatedAt,
-      deletedAt: note.deletedAt,
-      isFavorite: note.isFavorite,
-      folderId: note.folderId,
-      tags: parseTags(note.tags),
-    }));
-  }, [notesQuery.data]);
-
-  const availableTags = useMemo(() => {
-    const base = new Set<string>(NOTE_TAGS.map((tag) => tag.value));
-    notes.forEach((note: BnNote) => note.tags.forEach((tag) => base.add(tag)));
-    return Array.from(base).sort();
-  }, [notes]);
-
-  const filteredNotes = useMemo(() => {
-    const lower = searchQuery.trim().toLowerCase();
-    const filtered = notes.filter((note: BnNote) => {
-      const matchesText =
-        lower.length === 0 ||
-        note.title.toLowerCase().includes(lower) ||
-        (note.content ?? "").toLowerCase().includes(lower) ||
-        note.tags.some((tag) => tag.toLowerCase().includes(lower));
-      const matchesTags =
-        selectedTags.length === 0 ||
-        selectedTags.every((tag) => note.tags.includes(tag));
-      return matchesText && matchesTags;
-    });
-    return filtered.sort((a, b) => {
-      const aTime = new Date(a[sortKey] as string).getTime();
-      const bTime = new Date(b[sortKey] as string).getTime();
-      return bTime - aTime;
-    });
-  }, [notes, searchQuery, selectedTags, sortKey]);
+  const { notes, filteredNotes, availableTags } = notesQuery;
 
   const handleCreate = () => {
     if (!meQuery.data) {
