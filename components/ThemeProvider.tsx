@@ -43,7 +43,8 @@ const getInitialTheme = (): Theme => {
 
 export default function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
-  const [ready] = useState(() => typeof window !== "undefined");
+  // SSR/CSR 初始保持一致，避免 hydration mismatch
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     applyThemeClass(theme);
@@ -51,6 +52,10 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, theme);
     }
   }, [theme]);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);

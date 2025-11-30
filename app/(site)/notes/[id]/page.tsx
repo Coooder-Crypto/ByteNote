@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { use, useCallback, useEffect } from "react";
 
 import { CollaboratorDialog } from "@/components/Editor";
 import NoteHeader from "@/components/Editor/EditorHeader";
@@ -12,16 +12,15 @@ import useNoteActions from "@/hooks/Actions/useNoteActions";
 import { createPusherClient } from "@/lib/pusher/client";
 import { trpc } from "@/lib/trpc/client";
 
-export default function EditorPage({ params }: { params: { id: string } }) {
-  const noteId = params.id;
+export default function EditorPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: noteId } = use(params);
   const noteQuery = trpc.note.detail.useQuery(
     { id: noteId },
     { enabled: Boolean(noteId) },
   );
   const meQuery = trpc.auth.me.useQuery();
-  const { folders, isLoading: foldersLoading } = useFolderActions(
-    Boolean(meQuery.data),
-  );
+  const { folders, isLoading: foldersLoading } =
+    useFolderActions(Boolean(meQuery.data));
 
   const {
     state,
@@ -49,6 +48,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
   }, [meQuery.data?.id, noteQuery.data, setFromNote]);
 
   useEffect(() => {
+    if (folders.length === 0) return;
     setFolders(folders);
   }, [folders, setFolders]);
 
