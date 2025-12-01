@@ -1,47 +1,74 @@
+"use client";
+
 import Link from "next/link";
 
-import { CreateNoteButton } from "@/components/create-note-button";
+import { Button } from "@/components/ui/button";
+
+const features = [
+  "Markdown + 协作编辑，实时同步",
+  "标签/分组/收藏/回收站一站式管理",
+  "GitHub 登录，云端存储，自动保存",
+];
 
 export default function HomePage() {
   return (
-    <section className="mx-auto grid w-full max-w-6xl flex-1 gap-10 px-6 py-12 lg:grid-cols-[1.2fr,0.8fr]">
-      <div className="space-y-6">
-        <p className="text-primary text-sm tracking-wide uppercase">
-          ByteDance Frontend Camp · 训练营课题
+    <section className="mx-auto flex min-h-full w-full max-w-6xl flex-col items-start gap-10 px-6 py-14">
+      <div className="space-y-4">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary/80">
+          Byte Note
         </p>
-        <div className="space-y-3">
-          <h1 className="text-4xl font-semibold">Byte Note</h1>
-          <p className="text-muted-foreground text-base leading-relaxed">
-            这是字节训练营前端课程的实践项目，用 Next.js + tRPC + Prisma
-            搭建一个 Markdown 笔记平台。当前版本正在持续更新，
-            很多笔记功能（离线编辑、AI 助手等）还在打磨中，敬请期待。
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <CreateNoteButton />
-          <Link
-            href="/notes"
-            className="border-border/60 hover:border-border rounded-full border px-5 py-2 text-sm transition"
-          >
-            查看公开笔记
+        <h1 className="text-3xl font-bold leading-tight md:text-4xl">
+          你的知识空间，轻量但强大。
+        </h1>
+        <p className="text-muted-foreground max-w-2xl text-base leading-relaxed">
+          支持协作、标签、分组和云端同步的笔记应用。随时随地记下想法，邀请伙伴一起编辑，或安全地把灵感归档在分组与收藏里。
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/notes">
+            <Button size="lg">进入笔记</Button>
+          </Link>
+          <Link href="/auth">
+            <Button variant="outline" size="lg">
+              登录 / 注册
+            </Button>
           </Link>
         </div>
       </div>
-      <div className="border-border/60 bg-card/80 rounded-2xl border p-6 shadow-sm">
-        <p className="text-muted-foreground text-sm tracking-wide uppercase">
-          项目进度 <span className="text-primary text-xs">(更新中)</span>
-        </p>
-        <ul className="text-muted-foreground mt-4 space-y-3 text-sm">
-          <li>✅ 完成账号系统（注册/登录/会话）</li>
-          <li>✅ 支持 Markdown 编辑 + tRPC CRUD</li>
-          <li>✅ Tag 和搜索系统</li>
-          <li>🚧 完整 ui 和移动端适配</li>
-          <li>🚧 离线编辑与本地缓存支持</li>
-          <li>🚧 多端协同编辑</li>
-          <li>🚧 AI 检索</li>
-          <li>🚧 AI 摘要</li>
-        </ul>
+
+      <div className="grid w-full gap-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-sm md:grid-cols-3">
+        {features.map((item) => (
+          <div
+            key={item}
+            className="bg-muted/50 text-foreground/90 rounded-xl px-4 py-3 text-sm leading-relaxed"
+          >
+            {item}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid w-full gap-4 md:grid-cols-3">
+        <StatCard title="实时协作" value="Pusher + Yjs" desc="多人编辑，自动保存" />
+        <StatCard title="数据存储" value="Postgres" desc="云端持久化，安全可靠" />
+        <StatCard title="快速上手" value="GitHub 登录" desc="一键登录，立即记录" />
       </div>
     </section>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  desc,
+}: {
+  title: string;
+  value: string;
+  desc: string;
+}) {
+  return (
+    <div className="border-border/70 bg-card/80 rounded-2xl border p-5 shadow-sm">
+      <p className="text-muted-foreground text-sm">{title}</p>
+      <p className="mt-2 text-xl font-semibold">{value}</p>
+      <p className="text-muted-foreground mt-1 text-sm">{desc}</p>
+    </div>
   );
 }

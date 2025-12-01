@@ -1,69 +1,45 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import type { NextRequest } from "next/server";
 import superjson from "superjson";
 
+import { getAuthToken } from "@/lib/auth/token";
 import { prisma } from "@/lib/prisma";
-import {
-  clearSessionCookie as buildClearSessionCookie,
-  createSessionCookie,
-  parseSessionToken,
-} from "@/lib/session";
+import type { BnUser } from "@/types/entities";
 
 type CreateContextOptions = {
-  headers: Headers;
-  resHeaders: Headers;
+  req: NextRequest;
 };
 
-export const createTRPCContext = async ({ headers, resHeaders }: CreateContextOptions) => {
-  const cookieHeader = headers.get("cookie");
-  const sessionToken = parseSessionToken(cookieHeader);
-  let session:
-    | {
-        token: string;
-        expiresAt: Date;
-        user: {
-          id: string;
-          email: string;
-          name: string | null;
-          avatarUrl: string | null;
-        };
-      }
-    | null = null;
+export const createTRPCContext = async ({ req }: CreateContextOptions) => {
+  const token = await getAuthToken(req);
+  let session: { user: BnUser } | null = null;
 
-  if (sessionToken) {
-    const dbSession = await prisma.session.findUnique({
-      where: { sessionToken },
-      include: { user: true },
+  if (token?.id) {
+    const user = await prisma.user.findUnique({
+      where: { id: token.id as string },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatarUrl: true,
+      },
     });
 
-    if (dbSession && dbSession.expiresAt > new Date()) {
+    if (user) {
       session = {
-        token: dbSession.sessionToken,
-        expiresAt: dbSession.expiresAt,
         user: {
-          id: dbSession.user.id,
-          email: dbSession.user.email,
-          name: dbSession.user.name ?? null,
-          avatarUrl: dbSession.user.avatarUrl ?? null,
+          id: user.id,
+          email: user.email ?? null,
+          name: user.name ?? null,
+          avatarUrl: user.avatarUrl ?? null,
         },
       };
-    } else if (dbSession) {
-      await prisma.session.delete({
-        where: { sessionToken },
-      });
-      resHeaders.append("Set-Cookie", buildClearSessionCookie());
     }
   }
 
   return {
     prisma,
     session,
-    responseHeaders: resHeaders,
-    setSessionCookie(token: string, expiresAt: Date) {
-      resHeaders.append("Set-Cookie", createSessionCookie(token, expiresAt));
-    },
-    clearSessionCookie() {
-      resHeaders.append("Set-Cookie", buildClearSessionCookie());
-    },
   };
 };
 
@@ -78,9 +54,7 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  return next({
-    ctx,
-  });
+  return next({ ctx });
 });
 
 export const router = t.router;

@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: byte-note-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: byte_note
+      POSTGRES_PASSWORD: byte_note
+      POSTGRES_DB: byte_note
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

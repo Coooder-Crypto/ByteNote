@@ -14,17 +14,38 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  name         String?
-  avatarUrl    String?
-  passwordHash String
-  passwordSalt String
-  lastLoginAt  DateTime?
-  notes        Note[]
-  sessions     Session[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id            String     @id @default(uuid())
+  name          String?
+  email         String?    @unique
+  avatarUrl     String?
+  emailVerified DateTime?
+  image         String?
+  notes         Note[]
+  folders       Folder[]
+  accounts      Account[]
+  collaborations NoteCollaborator[]
+  sessions      Session[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model Account {
+  id                       String  @id @default(uuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
 
 model Note {
@@ -32,23 +53,66 @@ model Note {
   title       String
   content     String   @db.Text
   markdown    String   @db.Text
-  isPublic    Boolean  @default(false)
+  isFavorite  Boolean  @default(false)
+  isCollaborative Boolean @default(false)
   summary     String?  @db.Text
   tags        String   @default("[]")
+  deletedAt   DateTime?
+  version     Int      @default(1)
+  collaborators NoteCollaborator[]
+  folder      Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folderId    String?
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId, createdAt])
-  @@index([isPublic])
+  @@index([isFavorite])
+  @@index([deletedAt])
+  @@index([folderId])
+}
+
+model NoteCollaborator {
+  id        String   @id @default(uuid())
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  noteId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String   @default("editor") // editor | viewer
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([noteId, userId])
+  @@index([userId])
+}
+
+model Folder {
+  id        String   @id @default(uuid())
+  name      String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  notes     Note[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@unique([userId, name])
 }
 
 model Session {
   id           String   @id @default(uuid())
   sessionToken String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId       String
-  expiresAt    DateTime
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }

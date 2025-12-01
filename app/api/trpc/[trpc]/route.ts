@@ -1,29 +1,20 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import type { NextRequest } from "next/server";
 
 import { appRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 
 export const runtime = "nodejs";
 
-export const handler = (req: Request) => {
-  const responseHeaders = new Headers();
-
+export const handler = (req: NextRequest) => {
   return fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
     router: appRouter,
     createContext: () =>
       createTRPCContext({
-        headers: req.headers,
-        resHeaders: responseHeaders,
+        req,
       }),
-    responseMeta() {
-      const headers: Record<string, string> = {};
-      responseHeaders.forEach((value, key) => {
-        headers[key] = value;
-      });
-      return { headers };
-    },
     onError({ error, path }) {
       console.error("tRPC error on path", path, error);
     },

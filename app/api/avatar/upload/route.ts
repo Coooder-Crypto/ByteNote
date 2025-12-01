@@ -1,8 +1,8 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
+import { getAuthToken } from "@/lib/auth/token";
 import { prisma } from "@/lib/prisma";
-import { parseSessionToken } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -24,17 +24,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const sessionToken = parseSessionToken(request.headers.get("cookie"));
-  if (!sessionToken) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const session = await prisma.session.findUnique({
-    where: { sessionToken },
-    include: { user: true },
-  });
-
-  if (!session || session.expiresAt < new Date()) {
+  const token = await getAuthToken(request);
+  if (!token?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -45,7 +36,7 @@ export async function POST(request: Request) {
   });
 
   await prisma.user.update({
-    where: { id: session.userId },
+    where: { id: token.id as string },
     data: { avatarUrl: blob.url },
   });
 
