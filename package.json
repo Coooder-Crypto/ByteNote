@@ -6,9 +6,9 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-  "lint": "eslint",
-  "format": "prettier --write .",
-  "prepare": "husky install"
+    "lint": "eslint",
+    "format": "prettier --write .",
+    "prepare": "husky install"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -52,7 +52,8 @@
     "tailwind-merge": "^3.4.0",
     "y-protocols": "^1.0.6",
     "yjs": "^13.6.27",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -53,12 +53,12 @@ export default function SideFooter({
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <Button
-            variant="ghost"
-            className="text-muted-foreground gap-1 rounded-lg"
-            onClick={toggleTheme}
-            aria-label="切换主题"
-          >
-            {theme === "dark" ? (
+              variant="ghost"
+              className="text-muted-foreground gap-1 rounded-lg"
+              onClick={toggleTheme}
+              aria-label="切换主题"
+            >
+              {theme === "dark" ? (
                 <Sun className="size-4" />
               ) : (
                 <Moon className="size-4" />
