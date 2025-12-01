@@ -1,3 +1,5 @@
+"use client";
+
 import { Plus, SortAsc } from "lucide-react";
 import { useMemo, useState } from "react";
 

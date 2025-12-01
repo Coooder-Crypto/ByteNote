@@ -1,102 +1,11 @@
-"use client";
+import { Suspense } from "react";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { NotesHome } from "@/components/Notes";
 
-import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
-import { useNoteList } from "@/hooks";
-import { trpc } from "@/lib/trpc/client";
-
-export default function NotesHomePage() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const meQuery = trpc.auth.me.useQuery();
-  const enabled = Boolean(meQuery.data);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<"updatedAt" | "createdAt">(
-    "updatedAt",
-  );
-
-  const filter = useMemo<"all" | "favorite" | "trash" | "collab">(() => {
-    const raw = searchParams.get("filter");
-    if (raw === "favorite" || raw === "trash" || raw === "collab") return raw;
-    return "all";
-  }, [searchParams]);
-
-  const collaborativeOnly = filter === "collab";
-  const folderId = useMemo(
-    () => searchParams.get("folderId") ?? undefined,
-    [searchParams],
-  );
-
-  const currentPath = useMemo(() => {
-    const query = searchParams.toString();
-    return `${pathname}${query ? `?${query}` : ""}`;
-  }, [pathname, searchParams]);
-
-  const authUrl = useMemo(
-    () => `/auth?callbackUrl=${encodeURIComponent(currentPath || "/")}`,
-    [currentPath],
-  );
-
-  const notesQuery = useNoteList({
-    filter,
-    folderId,
-    search: searchQuery || undefined,
-    collaborativeOnly: collaborativeOnly || undefined,
-    enabled,
-    selectedTags,
-    sortKey,
-    searchQuery,
-  });
-  const { notes, filteredNotes, availableTags } = notesQuery;
-
-  const handleCreate = () => {
-    if (!meQuery.data) {
-      router.push(authUrl);
-      return;
-    }
-    setCreateOpen(true);
-  };
-
+export default function NotesPage() {
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-12">
-      <div className="border-border/60 bg-background/90 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 -mx-6 mb-6 border-b backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5">
-          <NotesHeader
-            total={notes.length}
-            onCreate={handleCreate}
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            tags={availableTags}
-            selectedTags={selectedTags}
-            onToggleTag={(tag) =>
-              setSelectedTags((prev) =>
-                prev.includes(tag)
-                  ? prev.filter((item) => item !== tag)
-                  : [...prev, tag],
-              )
-            }
-            sortKey={sortKey}
-            onSortChange={setSortKey}
-          />
-        </div>
-      </div>
-
-      <NoteList
-        notes={filteredNotes}
-        sortKey={sortKey}
-        emptyMessage={notesQuery.isLoading ? "加载中..." : "暂无符合条件的笔记"}
-      />
-      <CreateNoteDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onUnauthorized={() => router.push(authUrl)}
-        onCreated={(id) => router.push(`/notes/${id}`)}
-      />
-    </section>
+    <Suspense fallback={null}>
+      <NotesHome />
+    </Suspense>
   );
 }

@@ -1,12 +1,15 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import type { NextAuthOptions } from "next-auth";
-import type { Adapter } from "next-auth/adapters";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import type { Session } from "next-auth";
+import type { AdapterUser } from "next-auth/adapters";
+import NextAuth from "next-auth/next";
 import GithubProvider from "next-auth/providers/github";
 
 import { prisma } from "@/lib/prisma";
 
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
+type NextAuthOptions = Parameters<typeof NextAuth>[0];
+
+export const authOptions: any = {
+  adapter: PrismaAdapter(prisma) as any,
   providers: [
     GithubProvider({
       clientId: process.env.GITHUB_CLIENT_ID ?? "",
@@ -17,7 +20,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: any; user?: any | null }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
@@ -29,10 +32,13 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: any }) {
       if (session.user) {
-        session.user.id = (token.id as string) ?? "";
-        session.user.avatarUrl =
+        (session.user as Session["user"] & { id?: string }).id =
+          (token.id as string) ?? "";
+        (
+          session.user as Session["user"] & { avatarUrl?: string | null }
+        ).avatarUrl =
           (token.avatarUrl as string | null) ??
           (token.picture as string | null) ??
           null;
@@ -41,7 +47,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
-    async createUser({ user }) {
+    async createUser({ user }: { user: AdapterUser }) {
       if (user.image) {
         await prisma.user.update({
           where: { id: user.id },
@@ -49,7 +55,7 @@ export const authOptions: NextAuthOptions = {
         });
       }
     },
-    async signIn({ user }) {
+    async signIn({ user }: { user: any }) {
       const existingAvatar =
         (user.avatarUrl as string | null | undefined) ?? null;
       if (existingAvatar || !user.image) {
