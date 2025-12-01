@@ -1,12 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { Channel } from "pusher-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 
 import { useTheme } from "@/hooks";
-import { createPusherClient } from "@/lib/pusher/client";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -29,8 +27,8 @@ export default function CollaborativeEditor({
   const { theme } = useTheme();
   const doc = useMemo(() => new Y.Doc(), [noteId]);
   const yText = useMemo(() => doc.getText(FIELD), [doc]);
-  const channelRef = useRef<Channel | null>(null);
   const initializedRef = useRef(false);
+  const valueRef = useRef(initialMarkdown);
   const [value, setValue] = useState(initialMarkdown);
 
   // Init Y.Text once per note
@@ -53,41 +51,15 @@ export default function CollaborativeEditor({
       yText.delete(0, yText.length);
       yText.insert(0, next, "remote");
     }, "remote");
-    setValue(next);
   }, [doc, initialMarkdown, yText]);
-
-  // Pusher channel for Yjs sync
-  useEffect(() => {
-    const pusher = createPusherClient();
-    if (!pusher) return;
-    const channel = pusher.subscribe(`presence-note-${noteId}`);
-    channelRef.current = channel;
-
-    const handleUpdate = (payload: { data: number[] }) => {
-      if (!payload?.data) return;
-      try {
-        Y.applyUpdate(doc, Uint8Array.from(payload.data), "remote");
-      } catch (error) {
-        console.warn("[collab] applyUpdate failed", error);
-      }
-    };
-
-    channel.bind("client-y-update", handleUpdate);
-
-    return () => {
-      channel.unbind("client-y-update", handleUpdate);
-      pusher.unsubscribe(`presence-note-${noteId}`);
-      channelRef.current = null;
-    };
-  }, [doc, noteId]);
 
   // Observe text and doc updates
   useEffect(() => {
     const handleText = () => {
       const text = yText.toString();
-      if (text !== value) {
-        setValue(text);
-      }
+      if (text === valueRef.current) return;
+      valueRef.current = text;
+      setValue(text);
       onChange(text);
     };
     yText.observe(handleText);
@@ -95,10 +67,6 @@ export default function CollaborativeEditor({
     const handleDocUpdate = (update: Uint8Array, origin: unknown) => {
       if (origin === LOCAL) {
         onDirtyChange?.(true);
-        const channel = channelRef.current;
-        if (channel) {
-          channel.trigger("client-y-update", { data: Array.from(update) });
-        }
       }
     };
     doc.on("update", handleDocUpdate);
