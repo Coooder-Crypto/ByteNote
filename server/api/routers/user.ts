@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { publicProcedure, protectedProcedure, router } from "@/server/api/trpc";
+import { protectedProcedure, router } from "@/server/api/trpc";
 
 export const userRouter = router({
   me: protectedProcedure.query(({ ctx }) => {

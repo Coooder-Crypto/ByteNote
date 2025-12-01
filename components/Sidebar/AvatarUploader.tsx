@@ -22,7 +22,7 @@ export default function AvatarUploader({
 
   useEffect(() => {
     setPreview(value ?? null);
-  }, [value]);
+  }, [setPreview, value]);
 
   const handleClick = () => {
     inputRef.current?.click();

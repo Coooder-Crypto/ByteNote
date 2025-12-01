@@ -18,7 +18,7 @@ export default function SideFooter({
   onProfileUpdated,
 }: SideFooterProps) {
   const { user } = useUserStore();
-  const { theme, toggleTheme, ready } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   return (
     <div className="border-border/60 border-t px-4 py-4">
       {user ? (

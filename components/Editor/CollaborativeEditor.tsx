@@ -25,7 +25,11 @@ export default function CollaborativeEditor({
   onDirtyChange,
 }: Props) {
   const { theme } = useTheme();
-  const doc = useMemo(() => new Y.Doc(), [noteId]);
+  const doc = useMemo(
+    () => new Y.Doc(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [noteId],
+  );
   const yText = useMemo(() => doc.getText(FIELD), [doc]);
   const initializedRef = useRef(false);
   const valueRef = useRef(initialMarkdown);

@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 
-import { trpc } from "@/lib/trpc/client";
 import { parseStoredTags } from "@/lib/tags";
+import { trpc } from "@/lib/trpc/client";
 import type { BnNote } from "@/types/entities";
 
 type NoteListParams = {
