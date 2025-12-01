@@ -6,7 +6,7 @@ import { SessionProvider } from "next-auth/react";
 import { ReactNode, useState } from "react";
 import superjson from "superjson";
 
-import { ThemeProvider } from "@/hooks/useTheme";
+import ThemeProvider from "@/components/ThemeProvider";
 import { trpc } from "@/lib/trpc/client";
 
 export function Providers({ children }: { children: ReactNode }) {

@@ -10,7 +10,7 @@ export function NoteTags({ tags }: NoteTagsProps) {
   const parsed = parseStoredTags(tags);
 
   if (parsed.length === 0) {
-    return <span className="text-xs text-muted-foreground">标签：无</span>;
+    return <span className="text-muted-foreground text-xs">标签：无</span>;
   }
 
   return (
@@ -19,7 +19,7 @@ export function NoteTags({ tags }: NoteTagsProps) {
       {parsed.map((tag) => (
         <span
           key={tag}
-          className="rounded-full border border-border px-2 py-0.5 text-foreground"
+          className="border-border text-foreground rounded-full border px-2 py-0.5"
         >
           {getTagLabel(tag)}
         </span>

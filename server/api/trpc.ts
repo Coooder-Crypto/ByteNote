@@ -1,23 +1,18 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import type { NextRequest } from "next/server";
 import superjson from "superjson";
 
+import { getAuthToken } from "@/lib/auth/token";
 import { prisma } from "@/lib/prisma";
-import { getToken } from "next-auth/jwt";
+import type { BnUser } from "@/types/entities";
 
 type CreateContextOptions = {
-  req: Request;
+  req: NextRequest;
 };
 
 export const createTRPCContext = async ({ req }: CreateContextOptions) => {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  let session: {
-    user: {
-      id: string;
-      email: string;
-      name: string | null;
-      avatarUrl: string | null;
-    };
-  } | null = null;
+  const token = await getAuthToken(req);
+  let session: { user: BnUser } | null = null;
 
   if (token?.id) {
     const user = await prisma.user.findUnique({
@@ -34,7 +29,7 @@ export const createTRPCContext = async ({ req }: CreateContextOptions) => {
       session = {
         user: {
           id: user.id,
-          email: user.email ?? "",
+          email: user.email ?? null,
           name: user.name ?? null,
           avatarUrl: user.avatarUrl ?? null,
         },
@@ -59,9 +54,7 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  return next({
-    ctx,
-  });
+  return next({ ctx });
 });
 
 export const router = t.router;

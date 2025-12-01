@@ -1,9 +1,9 @@
 "use client";
 
-import { type PutBlobResult } from "@vercel/blob";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
+import { useAvatarUpload } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 type AvatarUploaderProps = {
@@ -12,50 +12,24 @@ type AvatarUploaderProps = {
   className?: string;
 };
 
-export function AvatarUploader({
+export default function AvatarUploader({
   value,
   onUploaded,
   className,
 }: AvatarUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(value ?? null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { upload, isUploading, error, preview, setPreview } = useAvatarUpload();
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreview(value ?? null);
-  }, [value]);
+  }, [setPreview, value]);
 
   const handleClick = () => {
     inputRef.current?.click();
   };
 
   const handleUpload = async (file: File) => {
-    setIsUploading(true);
-    setError(null);
-
-    const response = await fetch(
-      `/api/avatar/upload?filename=${encodeURIComponent(file.name)}`,
-      {
-        method: "POST",
-        body: file,
-      },
-    );
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-      setError(payload.error ?? "上传失败，请稍后重试。");
-      setIsUploading(false);
-      return;
-    }
-
-    const result = (await response.json()) as PutBlobResult;
-    setPreview(result.url);
-    onUploaded?.(result.url);
-    setIsUploading(false);
+    await upload(file, (url) => onUploaded?.(url));
   };
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +40,9 @@ export function AvatarUploader({
   };
 
   return (
-    <div className={cn("flex flex-col items-center gap-3 text-center", className)}>
+    <div
+      className={cn("flex flex-col items-center gap-3 text-center", className)}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -78,7 +54,7 @@ export function AvatarUploader({
         type="button"
         onClick={handleClick}
         disabled={isUploading}
-        className="relative h-28 w-28 overflow-hidden rounded-full border border-border/60 bg-muted/50"
+        className="border-border/60 bg-muted/50 relative h-28 w-28 overflow-hidden rounded-full border"
       >
         {preview ? (
           <Image
@@ -87,11 +63,11 @@ export function AvatarUploader({
             fill
             sizes="112px"
             className="object-cover"
-            //TODO: nextjs/image 
+            //TODO: nextjs/image
             unoptimized
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex h-full w-full items-center justify-center text-sm">
             无头像
           </div>
         )}
@@ -99,10 +75,10 @@ export function AvatarUploader({
           {isUploading ? "上传中..." : "点击更换"}
         </div>
       </button>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         支持 JPG / PNG / WEBP，点击头像上传
       </p>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-xs">{error}</p>}
     </div>
   );
 }

@@ -1,92 +1,83 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { TagInput } from "@/components/TagInput";
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import {
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { trpc } from "@/lib/trpc/client";
+} from "@/components/ui";
+import { useFolderActions, useNoteActions } from "@/hooks";
 import { NOTE_TAGS } from "@/lib/tags";
+
+import { TagInput } from "../TagInput";
 
 const DEFAULT_MARKDOWN = "# 新笔记\n\n这里是初始内容。";
 
-type Props = {
+type CreateNoteDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (noteId: string) => void;
   onUnauthorized?: () => void;
 };
 
-export function CreateNoteDialog({
+export default function CreateNoteDialog({
   open,
   onOpenChange,
   onCreated,
   onUnauthorized,
-}: Props) {
-  const utils = trpc.useUtils();
-  const foldersQuery = trpc.folder.list.useQuery(undefined, { enabled: open });
-  const createMutation = trpc.note.create.useMutation({
-    onSuccess: (note) => {
-      utils.note.list.invalidate();
-      onCreated(note.id);
-      resetForm();
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      if (error.data?.code === "UNAUTHORIZED") {
-        onUnauthorized?.();
-        onOpenChange(false);
-      }
-    },
-  });
+}: CreateNoteDialogProps) {
+  const { folders, isLoading: foldersLoading } = useFolderActions(open);
+  const { createNote, createPending } = useNoteActions({});
 
   const [title, setTitle] = useState("全新笔记");
   const [tags, setTags] = useState<string[]>([]);
   const [folderId, setFolderId] = useState<string | null>(null);
   const [isCollaborative, setIsCollaborative] = useState(false);
 
-  const suggestedTags = useMemo(
-    () => NOTE_TAGS.map((tag) => tag.value),
-    [],
-  );
+  const suggestedTags = useMemo(() => NOTE_TAGS.map((tag) => tag.value), []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setTitle("全新笔记");
     setTags([]);
     setFolderId(null);
     setIsCollaborative(false);
-  };
-
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-    }
-  }, [open]);
+  }, []);
 
   const handleCreate = () => {
-    if (!title.trim() || createMutation.isPending) return;
-    createMutation.mutate({
-      title: title.trim(),
-      markdown: DEFAULT_MARKDOWN,
-      tags,
-      folderId: folderId ?? undefined,
-      isCollaborative,
-    });
+    if (!title.trim() || createPending) return;
+    createNote(
+      {
+        title: title.trim(),
+        markdown: DEFAULT_MARKDOWN,
+        tags,
+        folderId: folderId ?? undefined,
+        isCollaborative,
+      },
+      {
+        onSuccess: (note) => {
+          onCreated(note.id);
+          resetForm();
+          onOpenChange(false);
+        },
+        onError: (error) => {
+          if (error.data?.code === "UNAUTHORIZED") {
+            onUnauthorized?.();
+            onOpenChange(false);
+          }
+        },
+      },
+    );
   };
 
   return (
@@ -94,7 +85,9 @@ export function CreateNoteDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>新建笔记</DialogTitle>
-          <DialogDescription>填写基础信息后创建笔记并进入编辑页。</DialogDescription>
+          <DialogDescription>
+            填写基础信息后创建笔记并进入编辑页。
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
@@ -122,14 +115,14 @@ export function CreateNoteDialog({
               onValueChange={(value) =>
                 setFolderId(value === "none" ? null : value)
               }
-              disabled={foldersQuery.isLoading}
+              disabled={foldersLoading}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="选择分组" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">不分组</SelectItem>
-                {foldersQuery.data?.folders.map((folder) => (
+                {folders.map((folder) => (
                   <SelectItem key={folder.id} value={folder.id}>
                     {folder.name}
                   </SelectItem>
@@ -144,7 +137,10 @@ export function CreateNoteDialog({
               checked={isCollaborative}
               onChange={(e) => setIsCollaborative(e.target.checked)}
             />
-            <label htmlFor="create-collab" className="text-sm text-muted-foreground">
+            <label
+              htmlFor="create-collab"
+              className="text-muted-foreground text-sm"
+            >
               创建为协作笔记
             </label>
           </div>
@@ -153,12 +149,12 @@ export function CreateNoteDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={createMutation.isPending}
+            disabled={createPending}
           >
             取消
           </Button>
-          <Button onClick={handleCreate} disabled={createMutation.isPending}>
-            {createMutation.isPending ? "创建中..." : "创建并前往编辑"}
+          <Button onClick={handleCreate} disabled={createPending}>
+            {createPending ? "创建中..." : "创建并前往编辑"}
           </Button>
         </DialogFooter>
       </DialogContent>

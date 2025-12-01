@@ -1,25 +1,21 @@
-import { type LucideIcon } from "lucide-react";
+import type { BnNav } from "@/types/entities";
 
 import { LibraryItem } from "./LibraryItem";
 
-type NavItem = {
-  icon: LucideIcon;
-  label: string;
-  path: string;
-};
-
 type SideLibraryProps = {
-  items: NavItem[];
+  items: BnNav[];
   currentPath: string;
   onNavigate?: () => void;
 };
 
-export function SideLibrary({
+export default function SideLibrary({
   items,
   currentPath,
   onNavigate,
 }: SideLibraryProps) {
-  const normalize = (path: string) => (path.startsWith("/") ? path : `/${path}`);
+  const normalize = (path: string) =>
+    path.startsWith("/") ? path : `/${path}`;
+
   const isActive = (path: string) => {
     const normalized = normalize(path);
     const [targetPath, targetQuery] = normalized.split("?");

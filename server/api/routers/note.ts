@@ -171,9 +171,15 @@ export const noteRouter = router({
       });
       if (note.isCollaborative) {
         await ctx.prisma.noteCollaborator.upsert({
-          where: { noteId_userId: { noteId: note.id, userId: ctx.session!.user.id } },
+          where: {
+            noteId_userId: { noteId: note.id, userId: ctx.session!.user.id },
+          },
           update: { role: "owner" },
-          create: { noteId: note.id, userId: ctx.session!.user.id, role: "owner" },
+          create: {
+            noteId: note.id,
+            userId: ctx.session!.user.id,
+            role: "owner",
+          },
         });
       }
       return note;
@@ -195,7 +201,9 @@ export const noteRouter = router({
               { collaborators: { some: { userId: ctx.session!.user.id } } },
             ],
             deletedAt: null,
-            ...(typeof rest.version === "number" ? { version: rest.version } : {}),
+            ...(typeof rest.version === "number"
+              ? { version: rest.version }
+              : {}),
           },
           data: {
             title: rest.title,
@@ -215,7 +223,9 @@ export const noteRouter = router({
 
         if (rest.isCollaborative) {
           await tx.noteCollaborator.upsert({
-            where: { noteId_userId: { noteId: id, userId: ctx.session!.user.id } },
+            where: {
+              noteId_userId: { noteId: id, userId: ctx.session!.user.id },
+            },
             update: { role: "owner" },
             create: { noteId: id, userId: ctx.session!.user.id, role: "owner" },
           });
@@ -248,13 +258,17 @@ export const noteRouter = router({
 
       try {
         if (pusherServer && result.isCollaborative) {
-          await pusherServer.trigger(`presence-note-${id}`, "server-note-saved", {
-            noteId: id,
-            title: result.title,
-            markdown: result.markdown,
-            updatedAt: result.updatedAt,
-            version: result.version,
-          });
+          await pusherServer.trigger(
+            `presence-note-${id}`,
+            "server-note-saved",
+            {
+              noteId: id,
+              title: result.title,
+              markdown: result.markdown,
+              updatedAt: result.updatedAt,
+              version: result.version,
+            },
+          );
         }
       } catch (error) {
         console.warn("[pusher] broadcast note update failed", error);

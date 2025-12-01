@@ -1,18 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { Loader2, UserPlus, X } from "lucide-react";
+import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+  Input,
+} from "@/components/ui";
+import { useCollaboratorActions } from "@/hooks";
 import { trpc } from "@/lib/trpc/client";
+import type { BnUser } from "@/types/entities";
 
 type CollaboratorDialogProps = {
   noteId: string;
@@ -20,37 +22,34 @@ type CollaboratorDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorDialogProps) {
-  const utils = trpc.useUtils();
-  const listQuery = trpc.collaborator.list.useQuery({ noteId }, { enabled: open });
-  const addMutation = trpc.collaborator.add.useMutation({
-    onSuccess: () => {
-      utils.collaborator.list.invalidate({ noteId });
-      setEmail("");
-      setSearchResults([]);
-    },
-  });
-  const removeMutation = trpc.collaborator.remove.useMutation({
-    onSuccess: () => utils.collaborator.list.invalidate({ noteId }),
-  });
+export default function CollaboratorDialog({
+  noteId,
+  open,
+  onOpenChange,
+}: CollaboratorDialogProps) {
+  const listQuery = trpc.collaborator.list.useQuery(
+    { noteId },
+    { enabled: open },
+  );
+  const {
+    addCollaborator,
+    searchUsers,
+    removeCollaborator,
+    addPending,
+    removePending,
+  } = useCollaboratorActions(noteId);
 
   const [email, setEmail] = useState("");
-  const [searchResults, setSearchResults] = useState<
-    { id: string; name: string | null; email: string | null; avatarUrl: string | null }[]
-  >([]);
+  const [searchResults, setSearchResults] = useState<BnUser[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const collaborators = useMemo(
-    () => listQuery.data ?? [],
-    [listQuery.data],
-  );
+  const collaborators = useMemo(() => listQuery.data ?? [], [listQuery.data]);
 
   const handleSearch = async () => {
     if (!email.trim()) return;
     setSearching(true);
     try {
-      const results =
-        (await utils.user.search.fetch({ keyword: email.trim() }).catch(() => [])) ?? [];
+      const results = await searchUsers(email.trim());
       setSearchResults(results.slice(0, 5));
     } finally {
       setSearching(false);
@@ -58,7 +57,9 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
   };
 
   const handleInvite = (userId: string) => {
-    addMutation.mutate({ noteId, userId, role: "editor" });
+    addCollaborator(userId, "editor");
+    setEmail("");
+    setSearchResults([]);
   };
 
   return (
@@ -74,23 +75,36 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
               onChange={(e) => setEmail(e.target.value)}
               placeholder="输入协作者邮箱或姓名"
             />
-            <Button onClick={handleSearch} disabled={searching} className="gap-2">
-              {searching ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+            <Button
+              onClick={handleSearch}
+              disabled={searching}
+              className="gap-2"
+            >
+              {searching ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <UserPlus className="size-4" />
+              )}
               查找
             </Button>
           </div>
           {searchResults.length > 0 && (
-            <div className="space-y-2 rounded-lg border border-border/60 bg-card/60 p-3">
+            <div className="border-border/60 bg-card/60 space-y-2 rounded-lg border p-3">
               {searchResults.map((user) => (
-                <div key={user.id} className="flex items-center justify-between text-sm">
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between text-sm"
+                >
                   <div>
                     <p className="font-medium">{user.name ?? user.email}</p>
-                    <p className="text-muted-foreground text-xs">{user.email}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {user.email}
+                    </p>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={addMutation.isPending}
+                    disabled={addPending}
                     onClick={() => handleInvite(user.id)}
                   >
                     邀请
@@ -111,17 +125,25 @@ export function CollaboratorDialog({ noteId, open, onOpenChange }: CollaboratorD
                     className="border-border/60 bg-card flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
                   >
                     <div>
-                      <p className="font-medium">{item.user.name ?? item.user.email}</p>
-                      <p className="text-muted-foreground text-xs">{item.user.email}</p>
-                      <p className="text-muted-foreground text-[11px]">{item.role === "owner" ? "所有者" : item.role === "editor" ? "可编辑" : "只读"}</p>
+                      <p className="font-medium">
+                        {item.user.name ?? item.user.email}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {item.user.email}
+                      </p>
+                      <p className="text-muted-foreground text-[11px]">
+                        {item.role === "owner"
+                          ? "所有者"
+                          : item.role === "editor"
+                            ? "可编辑"
+                            : "只读"}
+                      </p>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() =>
-                        removeMutation.mutate({ noteId, userId: item.user.id })
-                      }
-                      disabled={removeMutation.isPending || item.role === "owner"}
+                      onClick={() => removeCollaborator(item.user.id)}
+                      disabled={removePending || item.role === "owner"}
                     >
                       <X className="size-4" />
                     </Button>

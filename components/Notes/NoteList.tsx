@@ -1,21 +1,11 @@
 "use client";
 
+import { BnNote } from "@/types/entities";
+
 import NoteCard from "./NoteCard";
 
-type DashboardNote = {
-  id: string;
-  title: string;
-  content: string | null;
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  deletedAt: string | Date | null;
-  isFavorite: boolean;
-  folderId: string | null;
-  tags: string[];
-};
-
 type NoteListProps = {
-  notes: DashboardNote[];
+  notes: BnNote[];
   sortKey: "updatedAt" | "createdAt";
   emptyMessage?: string;
 };

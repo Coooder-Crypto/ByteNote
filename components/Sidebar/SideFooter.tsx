@@ -2,29 +2,23 @@ import { LogOut, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/hooks/useTheme";
+import { useTheme, useUserStore } from "@/hooks";
 
-import { ProfileSettingsDialog } from "./ProfileSettingsDialog";
+import ProfileSettingsDialog from "./ProfileSettingsDialog";
 
 type SideFooterProps = {
-  user?: {
-    name: string | null;
-    email: string;
-    id: string;
-    avatarUrl: string | null;
-  } | null;
   onLogin: () => void;
   onLogout: () => void;
   onProfileUpdated?: () => void;
 };
 
-export function SideFooter({
-  user,
+export default function SideFooter({
   onLogin,
   onLogout,
   onProfileUpdated,
 }: SideFooterProps) {
-  const { theme, toggleTheme, ready } = useTheme();
+  const { user } = useUserStore();
+  const { theme, toggleTheme } = useTheme();
   return (
     <div className="border-border/60 border-t px-4 py-4">
       {user ? (
@@ -44,7 +38,7 @@ export function SideFooter({
               </div>
             ) : (
               <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold">
-                {user.name?.[0] ?? user.email[0]}
+                {user.name?.[0] ?? user.email?.[0] ?? "?"}
               </div>
             )}
             <div className="flex-1">
@@ -59,13 +53,12 @@ export function SideFooter({
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <Button
-              variant="ghost"
-              className="text-muted-foreground gap-1 rounded-lg"
-              onClick={toggleTheme}
-              disabled={!ready}
-              aria-label="切换主题"
-            >
-              {theme === "dark" ? (
+            variant="ghost"
+            className="text-muted-foreground gap-1 rounded-lg"
+            onClick={toggleTheme}
+            aria-label="切换主题"
+          >
+            {theme === "dark" ? (
                 <Sun className="size-4" />
               ) : (
                 <Moon className="size-4" />
@@ -93,9 +86,8 @@ export function SideFooter({
           </Button>
           <Button
             variant="ghost"
-            className="w-full text-muted-foreground gap-2 rounded-lg"
+            className="text-muted-foreground w-full gap-2 rounded-lg"
             onClick={toggleTheme}
-            disabled={!ready}
             aria-label="切换主题"
           >
             {theme === "dark" ? (

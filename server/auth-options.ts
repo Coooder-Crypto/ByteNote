@@ -1,12 +1,12 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
+import type { Adapter } from "next-auth/adapters";
 import GithubProvider from "next-auth/providers/github";
 
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
-  httpOptions: { timeout: 10000 },
+  adapter: PrismaAdapter(prisma) as Adapter,
   providers: [
     GithubProvider({
       clientId: process.env.GITHUB_CLIENT_ID ?? "",
@@ -23,7 +23,6 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name;
         token.email = user.email;
         const avatarUrl =
-          // @ts-expect-error avatarUrl is custom field
           (user.avatarUrl as string | null | undefined) ?? user.image ?? null;
         token.picture = avatarUrl;
         token.avatarUrl = avatarUrl;
@@ -52,7 +51,6 @@ export const authOptions: NextAuthOptions = {
     },
     async signIn({ user }) {
       const existingAvatar =
-        // @ts-expect-error custom field
         (user.avatarUrl as string | null | undefined) ?? null;
       if (existingAvatar || !user.image) {
         return;

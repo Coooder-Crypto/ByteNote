@@ -2,22 +2,11 @@
 
 import { useRouter } from "next/navigation";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-type DashboardNote = {
-  id: string;
-  title: string;
-  content: string | null;
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  deletedAt: string | Date | null;
-  isFavorite: boolean;
-  folderId: string | null;
-  tags: string[];
-};
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { BnNote } from "@/types/entities";
 
 type NoteCardProps = {
-  note: DashboardNote;
+  note: BnNote;
   sortKey: "updatedAt" | "createdAt";
 };
 
@@ -26,8 +15,7 @@ export default function NoteCard({ note, sortKey }: NoteCardProps) {
   const isTrashed = Boolean(note.deletedAt);
   const summary =
     note.content?.slice(0, 120).replace(/\n+/g, " ").trim() ?? "暂无内容";
-  const displayDate =
-    sortKey === "createdAt" ? note.createdAt : note.updatedAt;
+  const displayDate = sortKey === "createdAt" ? note.createdAt : note.updatedAt;
 
   return (
     <Card
@@ -47,18 +35,18 @@ export default function NoteCard({ note, sortKey }: NoteCardProps) {
           <span>{new Date(displayDate).toLocaleDateString()}</span>
           <div className="flex items-center gap-2">
             {note.isFavorite && (
-              <span className="text-amber-600 bg-amber-50 border-amber-200 rounded-full border px-2 py-0.5">
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-600">
                 收藏
               </span>
             )}
             {isTrashed && (
-              <span className="text-rose-600 bg-rose-50 border-rose-200 rounded-full border px-2 py-0.5">
+              <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-600">
                 回收站
               </span>
             )}
           </div>
         </div>
-        <CardTitle className="text-lg font-semibold leading-snug line-clamp-2">
+        <CardTitle className="line-clamp-2 text-lg leading-snug font-semibold">
           {note.title || "未命名笔记"}
         </CardTitle>
       </CardHeader>

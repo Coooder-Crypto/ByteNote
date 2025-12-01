@@ -1,12 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type Pusher from "pusher-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 
-import { useTheme } from "@/hooks/useTheme";
-import { createPusherClient } from "@/lib/pusher/client";
+import { useTheme } from "@/hooks";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -20,62 +18,51 @@ type Props = {
 const FIELD = "md-text-v2";
 const LOCAL = "local";
 
-export function CollaborativeEditor({
+export default function CollaborativeEditor({
   noteId,
   initialMarkdown,
   onChange,
   onDirtyChange,
 }: Props) {
   const { theme } = useTheme();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const doc = useMemo(() => new Y.Doc(), [noteId]);
+  const doc = useMemo(
+    () => new Y.Doc(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [noteId],
+  );
   const yText = useMemo(() => doc.getText(FIELD), [doc]);
-  const channelRef = useRef<Pusher.Channel | null>(null);
+  const initializedRef = useRef(false);
+  const valueRef = useRef(initialMarkdown);
   const [value, setValue] = useState(initialMarkdown);
 
-  // sync incoming prop to local value
+  // Init Y.Text once per note
   useEffect(() => {
-    setValue(initialMarkdown);
-  }, [initialMarkdown]);
-
-  // init Y.Text
-  useEffect(() => {
+    if (initializedRef.current) return;
     yText.delete(0, yText.length);
     if (initialMarkdown) {
       yText.insert(0, initialMarkdown, LOCAL);
     }
+    initializedRef.current = true;
   }, [initialMarkdown, yText]);
 
-  // Pusher sync
+  // Sync external markdown changes (e.g., server-saved updates)
   useEffect(() => {
-    const pusher = createPusherClient();
-    if (!pusher) return;
-    const channel = pusher.subscribe(`presence-note-${noteId}`);
-    channelRef.current = channel;
-
-    const handleUpdate = (payload: { data: number[] }) => {
-      if (!payload?.data) return;
-      try {
-        Y.applyUpdate(doc, Uint8Array.from(payload.data), "remote");
-      } catch (error) {
-        console.warn("[collab] applyUpdate failed", error);
-      }
-    };
-
-    channel.bind("client-y-update", handleUpdate);
-
-    return () => {
-      channel.unbind("client-y-update", handleUpdate);
-      pusher.unsubscribe(`presence-note-${noteId}`);
-      pusher.disconnect();
-      channelRef.current = null;
-    };
-  }, [doc, noteId]);
+    if (!initializedRef.current) return;
+    const current = yText.toString();
+    const next = initialMarkdown ?? "";
+    if (current === next) return;
+    doc.transact(() => {
+      yText.delete(0, yText.length);
+      yText.insert(0, next, "remote");
+    }, "remote");
+  }, [doc, initialMarkdown, yText]);
 
   // Observe text and doc updates
   useEffect(() => {
     const handleText = () => {
       const text = yText.toString();
+      if (text === valueRef.current) return;
+      valueRef.current = text;
       setValue(text);
       onChange(text);
     };
@@ -84,10 +71,6 @@ export function CollaborativeEditor({
     const handleDocUpdate = (update: Uint8Array, origin: unknown) => {
       if (origin === LOCAL) {
         onDirtyChange?.(true);
-        const channel = channelRef.current;
-        if (channel) {
-          channel.trigger("client-y-update", { data: Array.from(update) });
-        }
       }
     };
     doc.on("update", handleDocUpdate);
