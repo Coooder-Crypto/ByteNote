@@ -43,7 +43,20 @@ export default function CollaborativeEditor({
     initializedRef.current = true;
   }, [initialMarkdown, yText]);
 
-  // Pusher sync
+  // Sync external markdown changes (e.g., server-saved updates)
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    const current = yText.toString();
+    const next = initialMarkdown ?? "";
+    if (current === next) return;
+    doc.transact(() => {
+      yText.delete(0, yText.length);
+      yText.insert(0, next, "remote");
+    }, "remote");
+    setValue(next);
+  }, [doc, initialMarkdown, yText]);
+
+  // Pusher channel for Yjs sync
   useEffect(() => {
     const pusher = createPusherClient();
     if (!pusher) return;

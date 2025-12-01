@@ -2,10 +2,9 @@
 
 import { useEffect } from "react";
 
-import { createPusherClient } from "@/lib/pusher/client";
-
 import useNoteActions from "../Actions/useNoteActions";
 import useNoteStore from "../Store/useNoteStore";
+import { createPusherClient } from "@/lib/pusher/client";
 
 type UseNoteSyncOptions = {
   noteId: string;

@@ -36,3 +36,13 @@ export type BnNote = {
   tags: string[];
   isCollaborative?: boolean;
 };
+
+export type EditorState = {
+  title: string;
+  markdown: string;
+  isFavorite: boolean;
+  isCollaborative: boolean;
+  folderId: string | null;
+  tags: string[];
+  version: number;
+};

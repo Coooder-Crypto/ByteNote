@@ -2,17 +2,7 @@
 
 import { create } from "zustand";
 
-import type { BnFolder } from "@/types/entities";
-
-export type EditorState = {
-  title: string;
-  markdown: string;
-  isFavorite: boolean;
-  isCollaborative: boolean;
-  folderId: string | null;
-  tags: string[];
-  version: number;
-};
+import type { BnFolder, EditorState } from "@/types/entities";
 
 const emptyState: EditorState = {
   title: "",

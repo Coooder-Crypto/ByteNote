@@ -1,10 +1,9 @@
 import { CollaborativeEditor } from "@/components/Editor";
 import { NoteTags } from "@/components/NoteTags";
-import type { EditorState } from "@/hooks/useNoteStore";
+import { useNoteStore } from "@/hooks";
 
 type EditorProps = {
   noteId: string;
-  state: EditorState;
   canEdit: boolean;
   onContentChange: (val: string) => void;
   onDirtyChange: (dirty: boolean) => void;
@@ -12,11 +11,11 @@ type EditorProps = {
 
 export default function EditorSection({
   noteId,
-  state,
   canEdit,
   onContentChange,
   onDirtyChange,
 }: EditorProps) {
+  const { state } = useNoteStore();
   if (canEdit) {
     return (
       <div className="border-border/60 bg-card min-h-[70vh] rounded-xl border shadow-sm">

@@ -33,13 +33,10 @@ export default function CollaboratorDialog({
   );
   const {
     addCollaborator,
-    removeCollaborator,
-    invalidateCollaborators,
     searchUsers,
+    removeCollaborator,
     addPending,
     removePending,
-    addError,
-    removeError,
   } = useCollaboratorActions(noteId);
 
   const [email, setEmail] = useState("");
@@ -145,9 +142,7 @@ export default function CollaboratorDialog({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() =>
-                        removeMutation.mutate({ noteId, userId: item.user.id })
-                      }
+                      onClick={() => removeCollaborator(item.user.id)}
                       disabled={removePending || item.role === "owner"}
                     >
                       <X className="size-4" />
