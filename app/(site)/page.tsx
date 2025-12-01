@@ -1,102 +1,74 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import Link from "next/link";
 
-import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
-import { useNoteList } from "@/hooks";
-import { trpc } from "@/lib/trpc/client";
+import { Button } from "@/components/ui/button";
 
-export default function NotesHomePage() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const meQuery = trpc.auth.me.useQuery();
-  const enabled = Boolean(meQuery.data);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<"updatedAt" | "createdAt">(
-    "updatedAt",
-  );
+const features = [
+  "Markdown + 协作编辑，实时同步",
+  "标签/分组/收藏/回收站一站式管理",
+  "GitHub 登录，云端存储，自动保存",
+];
 
-  const filter = useMemo<"all" | "favorite" | "trash" | "collab">(() => {
-    const raw = searchParams.get("filter");
-    if (raw === "favorite" || raw === "trash" || raw === "collab") return raw;
-    return "all";
-  }, [searchParams]);
-
-  const collaborativeOnly = filter === "collab";
-  const folderId = useMemo(
-    () => searchParams.get("folderId") ?? undefined,
-    [searchParams],
-  );
-
-  const currentPath = useMemo(() => {
-    const query = searchParams.toString();
-    return `${pathname}${query ? `?${query}` : ""}`;
-  }, [pathname, searchParams]);
-
-  const authUrl = useMemo(
-    () => `/auth?callbackUrl=${encodeURIComponent(currentPath || "/")}`,
-    [currentPath],
-  );
-
-  const notesQuery = useNoteList({
-    filter,
-    folderId,
-    search: searchQuery || undefined,
-    collaborativeOnly: collaborativeOnly || undefined,
-    enabled,
-    selectedTags,
-    sortKey,
-    searchQuery,
-  });
-  const { notes, filteredNotes, availableTags } = notesQuery;
-
-  const handleCreate = () => {
-    if (!meQuery.data) {
-      router.push(authUrl);
-      return;
-    }
-    setCreateOpen(true);
-  };
-
+export default function HomePage() {
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-12">
-      <div className="border-border/60 bg-background/90 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 -mx-6 mb-6 border-b backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5">
-          <NotesHeader
-            total={notes.length}
-            onCreate={handleCreate}
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            tags={availableTags}
-            selectedTags={selectedTags}
-            onToggleTag={(tag) =>
-              setSelectedTags((prev) =>
-                prev.includes(tag)
-                  ? prev.filter((item) => item !== tag)
-                  : [...prev, tag],
-              )
-            }
-            sortKey={sortKey}
-            onSortChange={setSortKey}
-          />
+    <section className="mx-auto flex min-h-full w-full max-w-6xl flex-col items-start gap-10 px-6 py-14">
+      <div className="space-y-4">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary/80">
+          Byte Note
+        </p>
+        <h1 className="text-3xl font-bold leading-tight md:text-4xl">
+          你的知识空间，轻量但强大。
+        </h1>
+        <p className="text-muted-foreground max-w-2xl text-base leading-relaxed">
+          支持协作、标签、分组和云端同步的笔记应用。随时随地记下想法，邀请伙伴一起编辑，或安全地把灵感归档在分组与收藏里。
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/notes">
+            <Button size="lg">进入笔记</Button>
+          </Link>
+          <Link href="/auth">
+            <Button variant="outline" size="lg">
+              登录 / 注册
+            </Button>
+          </Link>
         </div>
       </div>
 
-      <NoteList
-        notes={filteredNotes}
-        sortKey={sortKey}
-        emptyMessage={notesQuery.isLoading ? "加载中..." : "暂无符合条件的笔记"}
-      />
-      <CreateNoteDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onUnauthorized={() => router.push(authUrl)}
-        onCreated={(id) => router.push(`/notes/${id}`)}
-      />
+      <div className="grid w-full gap-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-sm md:grid-cols-3">
+        {features.map((item) => (
+          <div
+            key={item}
+            className="bg-muted/50 text-foreground/90 rounded-xl px-4 py-3 text-sm leading-relaxed"
+          >
+            {item}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid w-full gap-4 md:grid-cols-3">
+        <StatCard title="实时协作" value="Pusher + Yjs" desc="多人编辑，自动保存" />
+        <StatCard title="数据存储" value="Postgres" desc="云端持久化，安全可靠" />
+        <StatCard title="快速上手" value="GitHub 登录" desc="一键登录，立即记录" />
+      </div>
     </section>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  desc,
+}: {
+  title: string;
+  value: string;
+  desc: string;
+}) {
+  return (
+    <div className="border-border/70 bg-card/80 rounded-2xl border p-5 shadow-sm">
+      <p className="text-muted-foreground text-sm">{title}</p>
+      <p className="mt-2 text-xl font-semibold">{value}</p>
+      <p className="text-muted-foreground mt-1 text-sm">{desc}</p>
+    </div>
   );
 }

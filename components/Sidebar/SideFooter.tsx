@@ -42,11 +42,8 @@ export default function SideFooter({
               </div>
             )}
             <div className="flex-1">
-              <p className="text-foreground text-sm font-medium">
+              <p className="text-foreground overflow-hidden text-sm font-medium">
                 {user.name ?? "未命名"}
-              </p>
-              <p className="text-muted-foreground truncate text-xs">
-                {user.email}
               </p>
             </div>
             <ProfileSettingsDialog user={user} onUpdated={onProfileUpdated} />
