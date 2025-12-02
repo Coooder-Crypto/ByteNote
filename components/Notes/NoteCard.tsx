@@ -24,6 +24,7 @@ export default function NoteCard({
     note.content?.slice(0, 120).replace(/\n+/g, " ").trim() ?? "暂无内容";
   const displayDate = sortKey === "createdAt" ? note.createdAt : note.updatedAt;
   const localOnly = isLocalId(note.id);
+  const isOfflineCard = offline || localOnly;
 
   return (
     <Card
@@ -85,6 +86,11 @@ export default function NoteCard({
                 #{tag}
               </span>
             ))}
+          </div>
+        )}
+        {isOfflineCard && (
+          <div className="text-[11px] text-sky-700">
+            离线可见，联网后将自动同步
           </div>
         )}
       </CardContent>

@@ -2,19 +2,20 @@
 
 import { useEffect, useState } from "react";
 
-import { networkWatcher } from "@/lib/offline/netStatus";
-
 export default function useNetworkStatus() {
   const [online, setOnline] = useState(
     typeof navigator !== "undefined" ? navigator.onLine : true,
   );
 
   useEffect(() => {
-    const unsubscribe = networkWatcher.subscribe(setOnline);
-    const stop = networkWatcher.start();
+    if (typeof window === "undefined") return;
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    update();
     return () => {
-      unsubscribe();
-      stop?.();
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
     };
   }, []);
 

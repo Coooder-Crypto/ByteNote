@@ -3,29 +3,25 @@
 import type { inferRouterOutputs } from "@trpc/server";
 import { useRouter } from "next/navigation";
 
+import { isLocalId } from "@/lib/offline/ids";
 import { trpc } from "@/lib/trpc/client";
 import type { AppRouter } from "@/server/api/root";
-import { isLocalId } from "@/lib/offline/ids";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type NoteUpdateResult = RouterOutputs["note"]["update"];
 type NoteCreateResult = RouterOutputs["note"]["create"];
 
-type Params<T extends { title?: string; markdown?: string; version?: number }> = {
-  noteId?: string;
-  onStateChange?: (updater: (prev: T) => T) => void;
-  onDirtyChange?: (dirty: boolean) => void;
-  withQueries?: boolean;
-};
+type Params<T extends { title?: string; markdown?: string; version?: number }> =
+  {
+    noteId?: string;
+    onStateChange?: (updater: (prev: T) => T) => void;
+    onDirtyChange?: (dirty: boolean) => void;
+    withQueries?: boolean;
+  };
 
 export default function useNoteActions<
   T extends { title?: string; markdown?: string; version?: number },
->({
-  noteId,
-  onStateChange,
-  onDirtyChange,
-  withQueries = false,
-}: Params<T>) {
+>({ noteId, onStateChange, onDirtyChange, withQueries = false }: Params<T>) {
   const router = useRouter();
   const utils = trpc.useUtils();
 
@@ -116,9 +112,11 @@ export default function useNoteActions<
 
   const updateNote = (payload: Parameters<typeof updateMutation.mutate>[0]) =>
     updateMutation.mutate(payload);
+
   const updateNoteAsync = (
     payload: Parameters<typeof updateMutation.mutate>[0],
   ) => updateMutation.mutateAsync(payload);
+
   const createNoteAsync = (
     payload: Parameters<typeof createMutation.mutate>[0],
   ) => createMutation.mutateAsync(payload) as Promise<NoteCreateResult>;

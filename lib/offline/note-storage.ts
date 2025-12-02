@@ -50,6 +50,7 @@ export const noteStorage = {
       req.onerror = () => reject(req.error);
     });
   },
+
   async list(): Promise<LocalNoteRecord[]> {
     const req = await run<IDBRequest<LocalNoteRecord[]>>(
       STORE_NOTES,
@@ -66,8 +67,14 @@ export const noteStorage = {
 
 export const queueStorage = {
   async enqueue(item: QueueItem) {
+    const timestamp = item.timestamp ?? Date.now();
+
     return run(STORE_QUEUE, "readwrite", (os) =>
-      os.add({ ...item, timestamp: item.timestamp ?? Date.now(), status: "pending" }),
+      os.add({
+        ...item,
+        timestamp,
+        status: "pending",
+      }),
     );
   },
   async listPending(): Promise<QueueItem[]> {

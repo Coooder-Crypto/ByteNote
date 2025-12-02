@@ -36,7 +36,6 @@ export type ServerNotePayload = {
 export class EditorManager {
   private noteId: string;
   private state: EditorNote;
-  private lastPersistKey = "";
 
   constructor(
     noteId: string,
@@ -134,9 +133,9 @@ export class EditorManager {
     this.state = { ...this.state, markdown };
   }
 
-  updateMarkdownAndPersist(markdown: string): EditorNote {
+  updateMarkdownAndNote(markdown: string): EditorNote {
     this.updateMarkdown(markdown);
-    return this.persistLocal();
+    return this.getNote();
   }
 
   updateFavorite(isFavorite: boolean) {
@@ -160,74 +159,6 @@ export class EditorManager {
 
   getNote(): EditorNote {
     return this.state;
-  }
-
-  bindSaveShortcut(onPersist: (note: EditorNote) => void) {
-    if (typeof window === "undefined") return () => {};
-    const handler = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        onPersist(this.persistLocal());
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }
-
-  startAutoPersist(
-    intervalMs: number,
-    canPersist: () => boolean,
-    onPersist: (note: EditorNote) => void,
-  ) {
-    if (typeof window === "undefined") return () => {};
-    const timer = window.setInterval(() => {
-      if (!canPersist()) return;
-      onPersist(this.persistLocal());
-    }, intervalMs);
-    return () => window.clearInterval(timer);
-  }
-
-  persistLocal(): EditorNote {
-    const snapshot = this.getNote();
-    const persistKey = JSON.stringify({
-      title: snapshot.title,
-      markdown: snapshot.markdown,
-      tags: snapshot.tags,
-      folderId: snapshot.folderId,
-      isCollaborative: snapshot.isCollaborative,
-    });
-    if (persistKey === this.lastPersistKey) {
-      return snapshot;
-    }
-    this.lastPersistKey = persistKey;
-    const updatedAt = Date.now();
-    const title = snapshot.title || "未命名笔记";
-    void noteStorage.save({
-      id: this.noteId,
-      title,
-      markdown: snapshot.markdown,
-      tags: snapshot.tags,
-      folderId: snapshot.folderId,
-      updatedAt,
-      syncStatus: "dirty",
-      tempId: isLocalId(this.noteId) ? this.noteId : undefined,
-    });
-    void queueStorage.enqueue({
-      noteId: this.noteId,
-      action: "update",
-      payload: {
-        id: this.noteId,
-        title,
-        tags: snapshot.tags,
-        folderId: snapshot.folderId,
-        markdown: snapshot.markdown,
-        updatedAt,
-        isCollaborative: snapshot.isCollaborative,
-      },
-      timestamp: updatedAt,
-      tempId: isLocalId(this.noteId) ? this.noteId : undefined,
-    });
-    return snapshot;
   }
 
   private parseTags(raw: string | string[]): string[] {

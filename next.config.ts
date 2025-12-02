@@ -27,13 +27,10 @@ const withPWAConfig =
         register: false, // manual register
         skipWaiting: true,
         runtimeCaching,
-        fallbacks: {
-          document: "/offline",
-        },
+        fallbacks: {},
         additionalManifestEntries: [
           { url: "/", revision: `${Date.now()}` },
           { url: "/notes", revision: `${Date.now()}` },
-          { url: "/offline", revision: `${Date.now()}` },
         ],
         buildExcludes: [/middleware-manifest\.json$/],
       })

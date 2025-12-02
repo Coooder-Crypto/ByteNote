@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { isLocalId } from "@/lib/offline/ids";
+import { noteStorage } from "@/lib/offline/note-storage";
 import { listDrafts } from "@/lib/storage/drafts";
 import { parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
@@ -41,9 +42,14 @@ export default function useNoteList({
   const [localNotes, setLocalNotes] = useState<BnNote[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadLocal = async () => {
-      const drafts = await listDrafts();
-      const locals = drafts
+      const [drafts, cached] = await Promise.all([
+        listDrafts(),
+        noteStorage.list(),
+      ]);
+      if (cancelled) return;
+      const draftNotes = drafts
         .filter((d) => isLocalId(d.noteId))
         .map<BnNote>((d) => ({
           id: d.noteId,
@@ -58,9 +64,34 @@ export default function useNoteList({
           tags: d.tags,
           isCollaborative: d.isCollaborative,
         }));
-      setLocalNotes(locals);
+      const cachedNotes = cached
+        .filter((c) => isLocalId(c.id))
+        .map<BnNote>((c) => ({
+          id: c.id,
+          title: c.title ?? "未命名笔记",
+          content: c.markdown ?? "",
+          markdown: c.markdown ?? "",
+          createdAt: new Date(c.updatedAt).toISOString(),
+          updatedAt: new Date(c.updatedAt).toISOString(),
+          deletedAt: null,
+          isFavorite: false,
+          folderId: c.folderId ?? null,
+          tags: c.tags ?? [],
+          isCollaborative: c.isCollaborative,
+        }));
+      const merged = [...draftNotes];
+      const existingIds = new Set(draftNotes.map((n) => n.id));
+      cachedNotes.forEach((n) => {
+        if (!existingIds.has(n.id)) merged.push(n);
+      });
+      setLocalNotes(merged);
     };
     void loadLocal();
+    const tick = window.setInterval(() => void loadLocal(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(tick);
+    };
   }, []);
 
   const notes: BnNote[] = useMemo(() => {
