@@ -1,7 +1,7 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
-import { getAuthToken } from "@/lib/auth/token";
+import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -24,8 +24,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const token = await getAuthToken(request);
-  if (!token?.id) {
+  const user = await getSessionUser(request);
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   });
 
   await prisma.user.update({
-    where: { id: token.id as string },
+    where: { id: user.id },
     data: { avatarUrl: blob.url },
   });
 

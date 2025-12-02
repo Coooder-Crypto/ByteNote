@@ -2,7 +2,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import type { NextRequest } from "next/server";
 import superjson from "superjson";
 
-import { getAuthToken } from "@/lib/auth/token";
+import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import type { BnUser } from "@/types/entities";
 
@@ -11,12 +11,12 @@ type CreateContextOptions = {
 };
 
 export const createTRPCContext = async ({ req }: CreateContextOptions) => {
-  const token = await getAuthToken(req);
   let session: { user: BnUser } | null = null;
 
-  if (token?.id) {
+  const authUser = await getSessionUser(req);
+  if (authUser?.id) {
     const user = await prisma.user.findUnique({
-      where: { id: token.id as string },
+      where: { id: authUser.id },
       select: {
         id: true,
         email: true,

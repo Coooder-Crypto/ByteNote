@@ -6,12 +6,37 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUserStore } from "@/hooks";
 
 export default function AuthPageClient() {
   const { data: session, status } = useSession();
+  const { user, setUser, clear } = useUserStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.id) {
+      const nextUser = {
+        id: session.user.id,
+        name: session.user.name ?? session.user.email ?? null,
+        email: session.user.email ?? null,
+        avatarUrl: session.user.avatarUrl ?? null,
+      };
+      if (
+        !user ||
+        user.id !== nextUser.id ||
+        user.name !== nextUser.name ||
+        user.email !== nextUser.email ||
+        user.avatarUrl !== nextUser.avatarUrl
+      ) {
+        setUser(nextUser);
+      }
+    }
+    if (status === "unauthenticated") {
+      clear();
+    }
+  }, [clear, session, setUser, status, user]);
 
   useEffect(() => {
     if (status === "authenticated" && session) {
@@ -33,7 +58,10 @@ export default function AuthPageClient() {
               </p>
               <Button
                 className="w-full"
-                onClick={() => signOut({ callbackUrl })}
+                onClick={() => {
+                  clear();
+                  void signOut({ callbackUrl });
+                }}
               >
                 退出登录
               </Button>

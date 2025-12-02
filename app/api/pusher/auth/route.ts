@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getAuthToken } from "@/lib/auth/token";
+import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher/server";
 import { hashStringToColor } from "@/lib/utils/color";
@@ -24,8 +24,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
 
-  const token = await getAuthToken(req);
-  if (!token?.id) {
+  const user = await getSessionUser(req);
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -33,11 +33,11 @@ export async function POST(req: Request) {
     where: {
       id: noteId,
       OR: [
-        { userId: token.id as string },
+        { userId: user.id },
         {
           collaborators: {
             some: {
-              userId: token.id as string,
+              userId: user.id,
               role: { in: ["editor", "viewer", "owner"] },
             },
           },
@@ -52,10 +52,10 @@ export async function POST(req: Request) {
   }
 
   const userInfo = {
-    id: token.id as string,
-    name: token.name ?? token.email ?? "匿名用户",
-    avatar: token.picture ?? null,
-    color: hashStringToColor(token.id as string, COLORS),
+    id: user.id,
+    name: user.name ?? user.email ?? "匿名用户",
+    avatar: user.avatarUrl ?? null,
+    color: hashStringToColor(user.id, COLORS),
   };
 
   const auth = pusherServer.authorizeChannel(socketId, channelName, {
