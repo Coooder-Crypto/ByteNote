@@ -75,13 +75,11 @@ export default function EditorPage({
   }, [folders, setFolders, storeFolders]);
 
   const {
-    updateNote,
     deleteNote,
     restoreNote,
     destroyNote,
     toggleFavorite,
     changeFolder,
-    updatePending,
     deletePending,
     restorePending,
     destroyPending,
@@ -93,39 +91,16 @@ export default function EditorPage({
     onDirtyChange: setDirty,
   });
 
-  const isSaving = updatePending;
+  const { isSaving, saveNow } = useNoteSync({ noteId, canEdit, isTrashed });
   const folderPending = setFolderPending || foldersLoading;
 
   const handleSave = useMemo(
     () => () => {
       if (!canEdit || !isDirty || isSaving || isTrashed) return;
-      updateNote({
-        id: noteId,
-        title: state.title || "未命名笔记",
-        markdown: state.markdown,
-        folderId: state.folderId,
-        tags: state.tags,
-        version: state.version,
-        isCollaborative: state.isCollaborative,
-      });
+      void saveNow();
     },
-    [
-      canEdit,
-      isDirty,
-      isSaving,
-      isTrashed,
-      noteId,
-      state.folderId,
-      state.isCollaborative,
-      state.markdown,
-      state.tags,
-      state.title,
-      state.version,
-      updateNote,
-    ],
+    [canEdit, isDirty, isSaving, isTrashed, saveNow],
   );
-
-  useNoteSync({ noteId, canEdit, isTrashed });
 
   if (noteQuery.isLoading) {
     return (
@@ -141,7 +116,6 @@ export default function EditorPage({
       </section>
     );
   }
-
   return (
     <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-8">
       <div className="flex items-center justify-between">

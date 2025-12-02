@@ -1,16 +1,23 @@
 "use client";
 
+import type { inferRouterOutputs } from "@trpc/server";
 import { useRouter } from "next/navigation";
 
 import { trpc } from "@/lib/trpc/client";
+import type { AppRouter } from "@/server/api/root";
 
-type Params<T> = {
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type NoteUpdateResult = RouterOutputs["note"]["update"];
+
+type Params<T extends { title?: string; markdown?: string; version?: number }> = {
   noteId?: string;
   onStateChange?: (updater: (prev: T) => T) => void;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
-export default function useNoteActions<T>({
+export default function useNoteActions<
+  T extends { title?: string; markdown?: string; version?: number },
+>({
   noteId,
   onStateChange,
   onDirtyChange,
@@ -19,8 +26,17 @@ export default function useNoteActions<T>({
   const utils = trpc.useUtils();
 
   const updateMutation = trpc.note.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (data: NoteUpdateResult | null) => {
       onDirtyChange?.(false);
+      if (data && onStateChange) {
+        onStateChange((prev) => ({
+          ...prev,
+          title: data.title ?? prev.title,
+          markdown: data.markdown ?? prev.markdown,
+          version:
+            typeof data.version === "number" ? data.version : prev.version,
+        }));
+      }
       utils.note.detail.invalidate({ id: noteId });
       utils.note.list.invalidate();
     },
@@ -82,6 +98,9 @@ export default function useNoteActions<T>({
 
   const updateNote = (payload: Parameters<typeof updateMutation.mutate>[0]) =>
     updateMutation.mutate(payload);
+  const updateNoteAsync = (
+    payload: Parameters<typeof updateMutation.mutate>[0],
+  ) => updateMutation.mutateAsync(payload);
 
   const deleteNote = () => noteId && deleteMutation.mutate({ id: noteId });
   const restoreNote = () => noteId && restoreMutation.mutate({ id: noteId });
@@ -102,6 +121,7 @@ export default function useNoteActions<T>({
     createPending: createMutation.isPending,
     createError: createMutation.error,
     updatePending: updateMutation.isPending,
+    updateNoteAsync,
     updateError: updateMutation.error,
     deletePending: deleteMutation.isPending,
     deleteError: deleteMutation.error,
