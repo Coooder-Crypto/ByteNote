@@ -5,8 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNoteActions } from "@/hooks";
 import EditorManager, { type EditorNote } from "@/lib/EditorManager";
 import { isLocalId } from "@/lib/offline/ids";
-import { noteStorage, queueStorage } from "@/lib/offline/note-storage";
-import { remapNoteId } from "@/lib/storage/remap";
+import { localManager } from "@/lib/offline/local-manager";
 
 export default function useEditor(noteId: string) {
   const {
@@ -28,24 +27,75 @@ export default function useEditor(noteId: string) {
 
   const [note, setNote] = useState<EditorNote>(() => manager.getNote());
   const [savingLocal, setSavingLocal] = useState(false);
+  const isLocal = isLocalId(noteId);
 
   useEffect(() => {
     setNote(manager.hydrate(noteQuery?.data ?? undefined));
   }, [manager, noteQuery?.data]);
 
   const handleTitleChange = useCallback(
-    (value: string) => setNote(manager.updateTitleAndNote(value)),
-    [manager],
+    (value: string) => {
+      const next = manager.updateTitleAndNote(value);
+      setNote(next);
+      const offlineNow = localManager.isOffline();
+      if (offlineNow || isLocal) {
+        void localManager.saveSnapshot({
+          id: noteId,
+          title: next.title,
+          markdown: next.markdown,
+          tags: next.tags,
+          folderId: next.folderId ?? null,
+          isCollaborative: next.isCollaborative,
+          version: next.version,
+          syncStatus: "dirty",
+        });
+      }
+    },
+    [isLocal, manager, noteId],
   );
 
   const handleTagsChange = useCallback(
-    (tags: string[]) => setNote(manager.updateTagsAndNote(tags)),
-    [manager],
+    (tags: string[]) => {
+      const next = manager.updateTagsAndNote(tags);
+      setNote(next);
+      const offlineNow = localManager.isOffline();
+      if (offlineNow || isLocal) {
+        void localManager.saveSnapshot({
+          id: noteId,
+          title: next.title,
+          markdown: next.markdown,
+          tags: next.tags,
+          folderId: next.folderId ?? null,
+          isCollaborative: next.isCollaborative,
+          version: next.version,
+          syncStatus: "dirty",
+        });
+      }
+    },
+    [isLocal, manager, noteId],
   );
 
   const handleContentChange = useCallback(
-    (markdown: string) => setNote(manager.updateMarkdownAndNote(markdown)),
-    [manager],
+    (markdown: string) => {
+      const next = manager.updateMarkdownAndNote(markdown);
+      setNote(next);
+      const offlineNow = localManager.isOffline();
+      if (offlineNow || isLocal) {
+        const now = Date.now();
+        void localManager.saveSnapshot({
+          id: noteId,
+          title: next.title,
+          markdown: next.markdown,
+          tags: next.tags,
+          folderId: next.folderId ?? null,
+          isCollaborative: next.isCollaborative,
+          version: next.version,
+          updatedAt: now,
+          syncStatus: "dirty",
+        });
+      }
+    },
+    [isLocal, manager, noteId],
   );
 
   const save = useCallback(async () => {
@@ -63,20 +113,30 @@ export default function useEditor(noteId: string) {
       ...baseRecord,
       version: current.version,
     };
-    const localId = isLocalId(noteId);
     const offlineNow =
       typeof navigator !== "undefined" ? !navigator.onLine : false;
 
-    await noteStorage.save({
+    await localManager.saveSnapshot({
       id: noteId,
       ...baseRecord,
       updatedAt: now,
-      syncStatus: offlineNow || localId ? "dirty" : "synced",
-      tempId: localId ? noteId : undefined,
+      version: payload.version,
+      syncStatus: "dirty",
     });
 
     try {
-      if (localId) {
+      if (offlineNow) {
+        await localManager.saveSnapshot({
+          id: noteId,
+          ...baseRecord,
+          updatedAt: now,
+          version: payload.version,
+          syncStatus: "dirty",
+        });
+        return;
+      }
+
+      if (isLocal) {
         const created = await createNoteAsync({
           title: baseRecord.title,
           markdown: baseRecord.markdown,
@@ -85,27 +145,9 @@ export default function useEditor(noteId: string) {
           isCollaborative: baseRecord.isCollaborative,
         });
         if (created?.id) {
-          await remapNoteId(noteId, created.id);
-          await noteStorage.save({
-            id: created.id,
-            ...baseRecord,
-            updatedAt: now,
-            syncStatus: "synced",
-          });
+          await localManager.remap(noteId, created.id);
+          await localManager.markSynced(created.id, { updatedAt: now });
         }
-        return;
-      }
-
-      if (offlineNow) {
-        await queueStorage.enqueue({
-          noteId,
-          action: "update",
-          payload: {
-            id: noteId,
-            ...payload,
-          },
-          timestamp: now,
-        });
         return;
       }
 
@@ -113,25 +155,18 @@ export default function useEditor(noteId: string) {
         id: noteId,
         ...payload,
       });
-      await noteStorage.save({
+      await localManager.markSynced(noteId, {
+        updatedAt: now,
+        version: payload.version,
+      });
+    } catch {
+      await localManager.saveSnapshot({
         id: noteId,
         ...baseRecord,
         updatedAt: now,
-        syncStatus: "synced",
+        version: payload.version,
+        syncStatus: "dirty",
       });
-    } catch {
-      if (offlineNow || localId) {
-        await queueStorage.enqueue({
-          noteId,
-          action: localId ? "create" : "update",
-          payload: {
-            id: localId ? undefined : noteId,
-            ...payload,
-          },
-          timestamp: now,
-          tempId: localId ? noteId : undefined,
-        });
-      }
       throw new Error("保存失败");
     } finally {
       setSavingLocal(false);

@@ -9,10 +9,10 @@ import { NoteEditor } from "../Editor";
 export default function NotesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const selectedNoteId = searchParams.get("noteId");
+  const selectedNoteId = searchParams?.get("noteId");
 
   const setSelectedNote = (id: string | null) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams ?? undefined);
     if (id) {
       params.set("noteId", id);
     } else {

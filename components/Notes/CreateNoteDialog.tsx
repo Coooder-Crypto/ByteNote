@@ -18,10 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui";
 import { useFolderActions, useNoteActions } from "@/hooks";
-import { createLocalId } from "@/lib/offline/ids";
-import { noteStorage } from "@/lib/offline/note-storage";
-import { saveDraft } from "@/lib/storage/drafts";
-import { addOutboxItem } from "@/lib/storage/outbox";
+import { localManager } from "@/lib/offline/local-manager";
 import { NOTE_TAGS } from "@/lib/tags";
 
 import { TagInput } from "../TagInput";
@@ -61,44 +58,23 @@ export default function CreateNoteDialog({
   }, []);
 
   const createLocal = useCallback(
-    (payload: typeof DEFAULT_MARKDOWN extends string
-      ? {
-          title: string;
-          markdown: string;
-          tags: string[];
-          folderId?: string;
-          isCollaborative: boolean;
-        }
-      : never) => {
-      const localId = createLocalId();
-      const now = Date.now();
-      void saveDraft({
-        noteId: localId,
+    async (
+      payload: typeof DEFAULT_MARKDOWN extends string
+        ? {
+            title: string;
+            markdown: string;
+            tags: string[];
+            folderId?: string;
+            isCollaborative: boolean;
+          }
+        : never,
+    ) => {
+      const localId = await localManager.createLocal({
         title: payload.title,
         markdown: payload.markdown,
         tags: payload.tags,
         folderId: payload.folderId ?? null,
         isCollaborative: payload.isCollaborative,
-        updatedAt: now,
-        status: "local-only",
-      });
-      void noteStorage.save({
-        id: localId,
-        title: payload.title,
-        markdown: payload.markdown,
-        tags: payload.tags,
-        folderId: payload.folderId ?? null,
-        updatedAt: now,
-        syncStatus: "dirty",
-        tempId: localId,
-        isCollaborative: payload.isCollaborative,
-      });
-      void addOutboxItem({
-        noteId: localId,
-        payload: { id: localId, ...payload },
-        timestamp: now,
-        action: "create",
-        localOnly: true,
       });
       if (onCreatedLocal) {
         onCreatedLocal(localId);
@@ -122,7 +98,7 @@ export default function CreateNoteDialog({
     };
     const isOnline = typeof navigator === "undefined" || navigator.onLine;
     if (!isOnline) {
-      createLocal(payload);
+      void createLocal(payload);
       return;
     }
     createNote(payload, {

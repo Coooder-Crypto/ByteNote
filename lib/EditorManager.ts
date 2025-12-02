@@ -1,7 +1,6 @@
 import { computeAccess } from "@/lib/noteAccess";
 
 import { isLocalId } from "./offline/ids";
-import { noteStorage, queueStorage } from "./offline/note-storage";
 import { parseStoredTags } from "./tags";
 
 export type EditorNote = {

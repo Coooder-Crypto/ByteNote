@@ -25,7 +25,7 @@ export default function useSidebarData() {
   const [newFolderName, setNewFolderName] = useState("");
 
   const currentPath = useMemo(() => {
-    const query = searchParams.toString();
+    const query = searchParams?.toString() ?? "";
     return `${pathname}${query ? `?${query}` : ""}`;
   }, [pathname, searchParams]);
 
@@ -36,7 +36,7 @@ export default function useSidebarData() {
 
   const handleFolderSelect = useCallback(
     (folderId: string | null) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams?.toString() ?? undefined);
       if (folderId) {
         params.set("folderId", folderId);
         params.delete("filter");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function useNetworkStatus() {
   const [online, setOnline] = useState(
@@ -19,5 +19,10 @@ export default function useNetworkStatus() {
     };
   }, []);
 
-  return online;
+  const canUseNetwork = useCallback(() => {
+    // Keep a single place to define when network calls should be allowed.
+    return online;
+  }, [online]);
+
+  return { online, canUseNetwork };
 }

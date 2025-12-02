@@ -13,7 +13,7 @@ export default function AuthPageClient() {
   const { user, setUser, clear } = useUserStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = searchParams?.get("callbackUrl") ?? "/";
 
   useEffect(() => {
     if (status === "authenticated" && session?.user?.id) {

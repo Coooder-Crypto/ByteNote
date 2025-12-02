@@ -27,19 +27,19 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
   );
 
   const filter = useMemo<"all" | "favorite" | "trash" | "collab">(() => {
-    const raw = searchParams.get("filter");
+    const raw = searchParams?.get("filter");
     if (raw === "favorite" || raw === "trash" || raw === "collab") return raw;
     return "all";
   }, [searchParams]);
 
   const collaborativeOnly = filter === "collab";
   const folderId = useMemo(
-    () => searchParams.get("folderId") ?? undefined,
+    () => searchParams?.get("folderId") ?? undefined,
     [searchParams],
   );
 
   const currentPath = useMemo(() => {
-    const query = searchParams.toString();
+    const query = searchParams?.toString() ?? "";
     return `${pathname}${query ? `?${query}` : ""}`;
   }, [pathname, searchParams]);
 
@@ -60,7 +60,7 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
   });
 
   const { notes, filteredNotes, availableTags } = notesQuery;
-  const online = useNetworkStatus();
+  const { online } = useNetworkStatus();
 
   const handleCreate = () => {
     if (!meQuery.data) {
@@ -71,7 +71,7 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
   };
 
   const setSelectedNote = (id: string | null) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams ?? undefined);
     if (id) {
       params.set("noteId", id);
     } else {

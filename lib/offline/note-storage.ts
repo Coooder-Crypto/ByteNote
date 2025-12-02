@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  getDB,
-  type LocalNoteRecord,
-  type QueueItem,
-  STORE_META,
-  STORE_NOTES,
-  STORE_QUEUE,
-} from "./db";
+import { getDB, type LocalNoteRecord, STORE_NOTES } from "./db";
 
 async function run<T>(
   store: string,
@@ -65,50 +58,4 @@ export const noteStorage = {
   },
 };
 
-export const queueStorage = {
-  async enqueue(item: QueueItem) {
-    const timestamp = item.timestamp ?? Date.now();
-
-    return run(STORE_QUEUE, "readwrite", (os) =>
-      os.add({
-        ...item,
-        timestamp,
-        status: "pending",
-      }),
-    );
-  },
-  async listPending(): Promise<QueueItem[]> {
-    const db = await getDB();
-    if (!db) return [];
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_QUEUE, "readonly");
-      const idx = tx.objectStore(STORE_QUEUE).index("status");
-      const req = idx.getAll("pending");
-      req.onsuccess = () => resolve((req.result ?? []) as QueueItem[]);
-      req.onerror = () => reject(req.error);
-    });
-  },
-  async remove(id?: number) {
-    if (typeof id !== "number") return;
-    return run(STORE_QUEUE, "readwrite", (os) => os.delete(id));
-  },
-};
-
-export const metaStorage = {
-  async set(key: string, value: unknown) {
-    return run(STORE_META, "readwrite", (os) => os.put({ key, value }));
-  },
-  async get<T>(key: string): Promise<T | null> {
-    const req = await run<IDBRequest<{ key: string; value: T } | undefined>>(
-      STORE_META,
-      "readonly",
-      (os) => os.get(key),
-    );
-    if (!req) return null;
-    return new Promise((resolve, reject) => {
-      req.onsuccess = () =>
-        resolve((req.result?.value as T | undefined) ?? null);
-      req.onerror = () => reject(req.error);
-    });
-  },
-};
+// queueStorage/metaStorage removed in favor of LocalManager-managed snapshots.

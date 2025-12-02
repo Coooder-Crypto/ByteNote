@@ -32,7 +32,10 @@ const withPWAConfig =
           { url: "/", revision: `${Date.now()}` },
           { url: "/notes", revision: `${Date.now()}` },
         ],
-        buildExcludes: [/middleware-manifest\.json$/],
+        buildExcludes: [
+          /middleware-manifest\.json$/,
+          /dynamic-css-manifest\.json$/,
+        ],
       })
     : (config: NextConfig) => config;
 

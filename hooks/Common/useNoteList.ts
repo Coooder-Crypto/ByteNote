@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { isLocalId } from "@/lib/offline/ids";
-import { noteStorage } from "@/lib/offline/note-storage";
-import { listDrafts } from "@/lib/storage/drafts";
+import { localManager } from "@/lib/offline/local-manager";
 import { parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
 import type { BnNote } from "@/types/entities";
+import type { LocalNoteRecord } from "@/lib/offline/db";
 
 type NoteListParams = {
   filter: "all" | "favorite" | "trash" | "collab";
@@ -39,52 +38,14 @@ export default function useNoteList({
     },
     { enabled },
   );
-  const [localNotes, setLocalNotes] = useState<BnNote[]>([]);
+  const [localNotes, setLocalNotes] = useState<LocalNoteRecord[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     const loadLocal = async () => {
-      const [drafts, cached] = await Promise.all([
-        listDrafts(),
-        noteStorage.list(),
-      ]);
+      const cached = await localManager.listAll();
       if (cancelled) return;
-      const draftNotes = drafts
-        .filter((d) => isLocalId(d.noteId))
-        .map<BnNote>((d) => ({
-          id: d.noteId,
-          title: d.title,
-          content: d.markdown,
-          markdown: d.markdown,
-          createdAt: new Date(d.updatedAt).toISOString(),
-          updatedAt: new Date(d.updatedAt).toISOString(),
-          deletedAt: null,
-          isFavorite: false,
-          folderId: d.folderId,
-          tags: d.tags,
-          isCollaborative: d.isCollaborative,
-        }));
-      const cachedNotes = cached
-        .filter((c) => isLocalId(c.id))
-        .map<BnNote>((c) => ({
-          id: c.id,
-          title: c.title ?? "未命名笔记",
-          content: c.markdown ?? "",
-          markdown: c.markdown ?? "",
-          createdAt: new Date(c.updatedAt).toISOString(),
-          updatedAt: new Date(c.updatedAt).toISOString(),
-          deletedAt: null,
-          isFavorite: false,
-          folderId: c.folderId ?? null,
-          tags: c.tags ?? [],
-          isCollaborative: c.isCollaborative,
-        }));
-      const merged = [...draftNotes];
-      const existingIds = new Set(draftNotes.map((n) => n.id));
-      cachedNotes.forEach((n) => {
-        if (!existingIds.has(n.id)) merged.push(n);
-      });
-      setLocalNotes(merged);
+      setLocalNotes(cached);
     };
     void loadLocal();
     const tick = window.setInterval(() => void loadLocal(), 5000);
@@ -95,6 +56,20 @@ export default function useNoteList({
   }, []);
 
   const notes: BnNote[] = useMemo(() => {
+    const toBnNote = (note: LocalNoteRecord): BnNote => ({
+      id: note.id,
+      title: note.title ?? "未命名笔记",
+      content: note.markdown ?? "",
+      markdown: note.markdown ?? "",
+      createdAt: new Date(note.updatedAt).toISOString(),
+      updatedAt: new Date(note.updatedAt).toISOString(),
+      deletedAt: null,
+      isFavorite: false,
+      folderId: note.folderId ?? null,
+      tags: note.tags ?? [],
+      isCollaborative: note.isCollaborative ?? false,
+    });
+
     const serverNotes: BnNote[] =
       query.data?.map((note) => ({
         id: note.id,
@@ -109,21 +84,21 @@ export default function useNoteList({
         tags: parseStoredTags(note.tags),
         isCollaborative: note.isCollaborative,
       })) ?? [];
-    const ids = new Set(serverNotes.map((n) => n.id));
     const merged: BnNote[] = [...serverNotes];
-    localNotes.forEach((ln: BnNote) => {
-      if (!ids.has(ln.id)) {
-        merged.push({
-          ...ln,
-          content: ln.content ?? ln.markdown ?? "",
-          markdown: ln.markdown ?? "",
-          deletedAt: (ln.deletedAt ?? null) as Date | string | null,
-          folderId: ln.folderId ?? null,
-          createdAt: ln.createdAt,
-          updatedAt: ln.updatedAt,
-        });
+
+    localNotes.forEach((ln) => {
+      const localNote = toBnNote(ln);
+      const index = merged.findIndex((n) => n.id === localNote.id);
+      if (index >= 0) {
+        merged[index] = {
+          ...merged[index],
+          ...localNote,
+        };
+      } else {
+        merged.push(localNote);
       }
     });
+
     return merged;
   }, [localNotes, query.data]);
 

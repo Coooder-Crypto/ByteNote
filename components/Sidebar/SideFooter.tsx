@@ -23,7 +23,7 @@ export default function SideFooter({
 }: SideFooterProps) {
   const { user } = useUserStore();
   const { theme, toggleTheme } = useTheme();
-  const online = useNetworkStatus();
+  const { online } = useNetworkStatus();
   return (
     <div className="border-border/60 border-t px-4 py-4">
       <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs">

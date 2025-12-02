@@ -4,8 +4,6 @@ const DB_NAME = "byte-note-offline-v1";
 const DB_VERSION = 1;
 
 const STORE_NOTES = "notes";
-const STORE_QUEUE = "queue";
-const STORE_META = "meta";
 
 export type LocalNoteRecord = {
   id: string;
@@ -18,21 +16,7 @@ export type LocalNoteRecord = {
   tempId?: string;
   syncStatus?: "dirty" | "synced" | "pending";
   isCollaborative?: boolean;
-};
-
-export type QueueItem = {
-  id?: number;
-  noteId: string;
-  action: "create" | "update" | "delete";
-  payload: Partial<LocalNoteRecord>;
-  timestamp: number;
-  status?: "pending" | "syncing" | "failed";
-  tempId?: string;
-};
-
-export type MetaRecord = {
-  key: string;
-  value: unknown;
+  version?: number;
 };
 
 const isSupported = () =>
@@ -51,17 +35,6 @@ export async function getDB() {
         if (!db.objectStoreNames.contains(STORE_NOTES)) {
           db.createObjectStore(STORE_NOTES, { keyPath: "id" });
         }
-        if (!db.objectStoreNames.contains(STORE_QUEUE)) {
-          const store = db.createObjectStore(STORE_QUEUE, {
-            keyPath: "id",
-            autoIncrement: true,
-          });
-          store.createIndex("status", "status", { unique: false });
-          store.createIndex("timestamp", "timestamp", { unique: false });
-        }
-        if (!db.objectStoreNames.contains(STORE_META)) {
-          db.createObjectStore(STORE_META, { keyPath: "key" });
-        }
       };
       req.onsuccess = () => resolve(req.result);
     });
@@ -69,4 +42,4 @@ export async function getDB() {
   return dbPromise;
 }
 
-export { STORE_META, STORE_NOTES, STORE_QUEUE };
+export { STORE_NOTES };
