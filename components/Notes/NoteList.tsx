@@ -8,12 +8,14 @@ type NoteListProps = {
   notes: BnNote[];
   sortKey: "updatedAt" | "createdAt";
   emptyMessage?: string;
+  onSelect?: (id: string) => void;
 };
 
 export default function NoteList({
   notes,
   sortKey,
   emptyMessage = "暂无笔记",
+  onSelect,
 }: NoteListProps) {
   if (notes.length === 0) {
     return (
@@ -26,7 +28,13 @@ export default function NoteList({
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {notes.map((note) => (
-        <NoteCard key={note.id} note={note} sortKey={sortKey} />
+        <NoteCard
+          key={note.id}
+          note={note}
+          sortKey={sortKey}
+          onLocalSelect={onSelect}
+          onSelect={onSelect}
+        />
       ))}
     </div>
   );

@@ -54,7 +54,8 @@ export default function AuthPageClient() {
           {session ? (
             <>
               <p className="text-muted-foreground text-sm">
-                当前账号：{session.user?.email ?? session.user?.name ?? "未命名"}
+                当前账号：
+                {session.user?.email ?? session.user?.name ?? "未命名"}
               </p>
               <Button
                 className="w-full"

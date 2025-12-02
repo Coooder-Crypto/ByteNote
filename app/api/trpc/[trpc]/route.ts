@@ -6,7 +6,7 @@ import { createTRPCContext } from "@/server/api/trpc";
 
 export const runtime = "nodejs";
 
-export const handler = (req: NextRequest) => {
+const handler = (req: NextRequest) => {
   return fetchRequestHandler({
     endpoint: "/api/trpc",
     req,

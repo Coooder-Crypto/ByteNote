@@ -5,14 +5,20 @@ import { useMemo, useState } from "react";
 
 import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
 import { useNoteList } from "@/hooks";
+import useNetworkStatus from "@/hooks/Common/useNetworkStatus";
 import { trpc } from "@/lib/trpc/client";
 
-export default function NotesHome() {
+type NoteBoardProps = {
+  onSelectNote: (id: string | null) => void;
+};
+
+export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const meQuery = trpc.auth.me.useQuery();
   const enabled = Boolean(meQuery.data);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -52,7 +58,9 @@ export default function NotesHome() {
     sortKey,
     searchQuery,
   });
+
   const { notes, filteredNotes, availableTags } = notesQuery;
+  const online = useNetworkStatus();
 
   const handleCreate = () => {
     if (!meQuery.data) {
@@ -62,8 +70,19 @@ export default function NotesHome() {
     setCreateOpen(true);
   };
 
+  const setSelectedNote = (id: string | null) => {
+    const params = new URLSearchParams(searchParams);
+    if (id) {
+      params.set("noteId", id);
+    } else {
+      params.delete("noteId");
+    }
+    router.replace(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
+    onSelectNote(id);
+  };
+
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-12">
+    <>
       <div className="border-border/60 bg-background/90 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 -mx-6 mb-6 border-b backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5">
           <NotesHeader
@@ -90,13 +109,22 @@ export default function NotesHome() {
         notes={filteredNotes}
         sortKey={sortKey}
         emptyMessage={notesQuery.isLoading ? "加载中..." : "暂无符合条件的笔记"}
+        onSelect={(id) => {
+          if (!online) {
+            setSelectedNote(id);
+          } else {
+            setSelectedNote(id);
+          }
+        }}
       />
+
       <CreateNoteDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
         onUnauthorized={() => router.push(authUrl)}
-        onCreated={(id) => router.push(`/notes/${id}`)}
+        onCreated={(id) => setSelectedNote(id)}
+        onCreatedLocal={(id) => setSelectedNote(id)}
       />
-    </section>
+    </>
   );
 }
