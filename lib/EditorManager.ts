@@ -4,7 +4,7 @@ import { isLocalId } from "./offline/ids";
 import { noteStorage, queueStorage } from "./offline/note-storage";
 import { parseStoredTags } from "./tags";
 
-export type EditorSnapshot = {
+export type EditorNote = {
   title: string;
   markdown: string;
   tags: string[];
@@ -35,7 +35,8 @@ export type ServerNotePayload = {
 
 export class EditorManager {
   private noteId: string;
-  private state: EditorSnapshot;
+  private state: EditorNote;
+  private lastPersistKey = "";
 
   constructor(
     noteId: string,
@@ -59,13 +60,13 @@ export class EditorManager {
     };
   }
 
-  hydrate(note?: ServerNotePayload): EditorSnapshot {
+  hydrate(note?: ServerNotePayload): EditorNote {
     if (note) {
       this.setFromServer(note);
     } else if (isLocalId(this.noteId)) {
       this.setLocalEditable();
     }
-    return this.getSnapshot();
+    return this.getNote();
   }
 
   setFromServer(note: ServerNotePayload) {
@@ -115,55 +116,27 @@ export class EditorManager {
     this.state = { ...this.state, title };
   }
 
-  updateTitleAndSnapshot(title: string): EditorSnapshot {
+  updateTitleAndNote(title: string): EditorNote {
     this.updateTitle(title);
-    return this.getSnapshot();
+    return this.getNote();
   }
 
   updateTags(tags: string[]) {
     this.state = { ...this.state, tags };
   }
 
-  updateTagsAndSnapshot(tags: string[]): EditorSnapshot {
+  updateTagsAndNote(tags: string[]): EditorNote {
     this.updateTags(tags);
-    return this.getSnapshot();
+    return this.getNote();
   }
 
   updateMarkdown(markdown: string) {
     this.state = { ...this.state, markdown };
   }
 
-  updateMarkdownAndPersist(markdown: string): EditorSnapshot {
+  updateMarkdownAndPersist(markdown: string): EditorNote {
     this.updateMarkdown(markdown);
-    const snapshot = this.getSnapshot();
-    const updatedAt = Date.now();
-    const title = snapshot.title || "未命名笔记";
-    void noteStorage.save({
-      id: this.noteId,
-      title,
-      markdown,
-      tags: snapshot.tags,
-      folderId: snapshot.folderId,
-      updatedAt,
-      syncStatus: "dirty",
-      tempId: isLocalId(this.noteId) ? this.noteId : undefined,
-    });
-    void queueStorage.enqueue({
-      noteId: this.noteId,
-      action: "update",
-      payload: {
-        id: this.noteId,
-        title,
-        tags: snapshot.tags,
-        folderId: snapshot.folderId,
-        markdown,
-        updatedAt,
-        isCollaborative: snapshot.isCollaborative,
-      },
-      timestamp: updatedAt,
-      tempId: isLocalId(this.noteId) ? this.noteId : undefined,
-    });
-    return snapshot;
+    return this.persistLocal();
   }
 
   updateFavorite(isFavorite: boolean) {
@@ -178,15 +151,83 @@ export class EditorManager {
     this.state = { ...this.state, isCollaborative };
   }
 
-  updateAccess(partial: Partial<EditorSnapshot["access"]>) {
+  updateAccess(partial: Partial<EditorNote["access"]>) {
     this.state = {
       ...this.state,
       access: { ...this.state.access, ...partial },
     };
   }
 
-  getSnapshot(): EditorSnapshot {
+  getNote(): EditorNote {
     return this.state;
+  }
+
+  bindSaveShortcut(onPersist: (note: EditorNote) => void) {
+    if (typeof window === "undefined") return () => {};
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        onPersist(this.persistLocal());
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }
+
+  startAutoPersist(
+    intervalMs: number,
+    canPersist: () => boolean,
+    onPersist: (note: EditorNote) => void,
+  ) {
+    if (typeof window === "undefined") return () => {};
+    const timer = window.setInterval(() => {
+      if (!canPersist()) return;
+      onPersist(this.persistLocal());
+    }, intervalMs);
+    return () => window.clearInterval(timer);
+  }
+
+  persistLocal(): EditorNote {
+    const snapshot = this.getNote();
+    const persistKey = JSON.stringify({
+      title: snapshot.title,
+      markdown: snapshot.markdown,
+      tags: snapshot.tags,
+      folderId: snapshot.folderId,
+      isCollaborative: snapshot.isCollaborative,
+    });
+    if (persistKey === this.lastPersistKey) {
+      return snapshot;
+    }
+    this.lastPersistKey = persistKey;
+    const updatedAt = Date.now();
+    const title = snapshot.title || "未命名笔记";
+    void noteStorage.save({
+      id: this.noteId,
+      title,
+      markdown: snapshot.markdown,
+      tags: snapshot.tags,
+      folderId: snapshot.folderId,
+      updatedAt,
+      syncStatus: "dirty",
+      tempId: isLocalId(this.noteId) ? this.noteId : undefined,
+    });
+    void queueStorage.enqueue({
+      noteId: this.noteId,
+      action: "update",
+      payload: {
+        id: this.noteId,
+        title,
+        tags: snapshot.tags,
+        folderId: snapshot.folderId,
+        markdown: snapshot.markdown,
+        updatedAt,
+        isCollaborative: snapshot.isCollaborative,
+      },
+      timestamp: updatedAt,
+      tempId: isLocalId(this.noteId) ? this.noteId : undefined,
+    });
+    return snapshot;
   }
 
   private parseTags(raw: string | string[]): string[] {

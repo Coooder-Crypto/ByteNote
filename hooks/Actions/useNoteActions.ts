@@ -109,11 +109,10 @@ export default function useNoteActions<
     options?: Parameters<typeof createMutation.mutate>[1],
   ) => createMutation.mutate(payload, options);
 
-  const setNoteDetailCache: <T>(
+  const setNoteDetailCache = (
     id: string,
     updater: Parameters<(typeof utils)["note"]["detail"]["setData"]>[1],
-  ) => T | undefined = (id, updater) =>
-    utils.note.detail.setData({ id }, updater);
+  ) => utils.note.detail.setData({ id }, updater);
 
   const updateNote = (payload: Parameters<typeof updateMutation.mutate>[0]) =>
     updateMutation.mutate(payload);

@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 
-import type { EditorSnapshot } from "@/lib/EditorManager";
+import type { EditorNote } from "@/lib/EditorManager";
 import { isLocalId } from "@/lib/offline/ids";
 import { noteStorage, queueStorage } from "@/lib/offline/note-storage";
 import { remapNoteId } from "@/lib/storage/remap";
@@ -11,15 +11,16 @@ import { useNoteActions } from "../Actions";
 
 export default function useEditorPersistence(
   noteId: string,
-  manager: { getSnapshot: () => EditorSnapshot },
+  manager: { getNote: () => EditorNote },
   setNoteDetailCache?: ReturnType<typeof useNoteActions>["setNoteDetailCache"],
 ) {
-  const { createNoteAsync, updateNoteAsync, updatePending } = useNoteActions({
-    noteId,
-  });
+  const { createNoteAsync, updateNoteAsync, createPending, updatePending } =
+    useNoteActions({
+      noteId,
+    });
 
   const save = useCallback(async () => {
-    const snapshot = manager.getSnapshot();
+    const snapshot = manager.getNote();
     const now = Date.now();
     const baseRecord = {
       title: snapshot.title || "未命名笔记",
@@ -70,7 +71,7 @@ export default function useEditorPersistence(
                   tags: JSON.stringify(baseRecord.tags),
                   folderId: baseRecord.folderId ?? null,
                   isCollaborative: baseRecord.isCollaborative,
-                  updatedAt: new Date(now).toISOString(),
+                  updatedAt: new Date(now),
                   deletedAt: null,
                   isFavorite: prev.isFavorite,
                   version: prev.version ?? 1,
@@ -101,7 +102,7 @@ export default function useEditorPersistence(
               tags: JSON.stringify(baseRecord.tags),
               folderId: baseRecord.folderId ?? null,
               isCollaborative: baseRecord.isCollaborative,
-              updatedAt: new Date(now).toISOString(),
+              updatedAt: new Date(now),
               deletedAt: prev.deletedAt ?? null,
               isFavorite: prev.isFavorite,
               version:
@@ -126,5 +127,5 @@ export default function useEditorPersistence(
     }
   }, [createNoteAsync, manager, noteId, setNoteDetailCache, updateNoteAsync]);
 
-  return { save, saving: updatePending };
+  return { save, saving: updatePending || createPending };
 }

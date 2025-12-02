@@ -59,7 +59,7 @@ export default function MarkdownEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        history: true,
+        history: {},
       }),
     ],
     content: "",

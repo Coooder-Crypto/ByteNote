@@ -60,17 +60,16 @@ export default function CreateNoteDialog({
     setIsCollaborative(false);
   }, []);
 
-  const handleCreate = () => {
-    if (!title.trim() || createPending) return;
-    const payload = {
-      title: title.trim(),
-      markdown: DEFAULT_MARKDOWN,
-      tags,
-      folderId: folderId ?? undefined,
-      isCollaborative,
-    };
-    const isOnline = typeof navigator === "undefined" || navigator.onLine;
-    if (!isOnline) {
+  const createLocal = useCallback(
+    (payload: typeof DEFAULT_MARKDOWN extends string
+      ? {
+          title: string;
+          markdown: string;
+          tags: string[];
+          folderId?: string;
+          isCollaborative: boolean;
+        }
+      : never) => {
       const localId = createLocalId();
       const now = Date.now();
       void saveDraft({
@@ -108,6 +107,22 @@ export default function CreateNoteDialog({
       }
       resetForm();
       onOpenChange(false);
+    },
+    [onCreated, onCreatedLocal, onOpenChange, resetForm],
+  );
+
+  const handleCreate = () => {
+    if (!title.trim() || createPending) return;
+    const payload = {
+      title: title.trim(),
+      markdown: DEFAULT_MARKDOWN,
+      tags,
+      folderId: folderId ?? undefined,
+      isCollaborative,
+    };
+    const isOnline = typeof navigator === "undefined" || navigator.onLine;
+    if (!isOnline) {
+      createLocal(payload);
       return;
     }
     createNote(payload, {
@@ -120,7 +135,10 @@ export default function CreateNoteDialog({
         if (error?.data?.code === "UNAUTHORIZED") {
           onUnauthorized?.();
           onOpenChange(false);
+          return;
         }
+        // 网络异常等错误时，回退为本地创建
+        createLocal(payload);
       },
     });
   };
