@@ -3,7 +3,7 @@ import { collaboratorRouter } from "@/server/api/routers/collaborator";
 import { folderRouter } from "@/server/api/routers/folder";
 import { noteRouter } from "@/server/api/routers/note";
 import { userRouter } from "@/server/api/routers/user";
-import { router } from "@/server/api/trpc";
+import { publicProcedure, router } from "@/server/api/trpc";
 
 export const appRouter = router({
   auth: authRouter,
@@ -11,6 +11,7 @@ export const appRouter = router({
   folder: folderRouter,
   note: noteRouter,
   user: userRouter,
+  health: publicProcedure.query(() => ({ ok: true })),
 });
 
 export type AppRouter = typeof appRouter;

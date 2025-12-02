@@ -27,7 +27,9 @@ const withPWAConfig =
         register: false, // manual register
         skipWaiting: true,
         runtimeCaching,
-        fallbacks: {},
+        fallbacks: {
+          document: "/notes",
+        },
         additionalManifestEntries: [
           { url: "/", revision: `${Date.now()}` },
           { url: "/notes", revision: `${Date.now()}` },

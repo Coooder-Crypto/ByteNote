@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 
 import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
 import { useNoteList } from "@/hooks";
-import useNetworkStatus from "@/hooks/Common/useNetworkStatus";
+import { useNetworkStatus } from "@/hooks/Store/useNetworkStore";
 import { trpc } from "@/lib/trpc/client";
 
 type NoteBoardProps = {

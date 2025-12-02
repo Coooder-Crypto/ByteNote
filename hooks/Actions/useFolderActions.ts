@@ -2,7 +2,7 @@
 
 import { trpc } from "@/lib/trpc/client";
 import type { BnFolder } from "@/types/entities";
-import useNetworkStatus from "../Common/useNetworkStatus";
+import { useNetworkStatus } from "../Store/useNetworkStore";
 
 type FolderActionsResult = {
   folders: BnFolder[];

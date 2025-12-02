@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import type { LocalNoteRecord } from "@/lib/offline/db";
 import { localManager } from "@/lib/offline/local-manager";
 import { parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
 import type { BnNote } from "@/types/entities";
-import type { LocalNoteRecord } from "@/lib/offline/db";
+
+import { useNetworkStatus } from "../Store/useNetworkStore";
 
 type NoteListParams = {
   filter: "all" | "favorite" | "trash" | "collab";
@@ -29,6 +31,8 @@ export default function useNoteList({
   sortKey = "updatedAt",
   searchQuery = "",
 }: NoteListParams) {
+  const { canUseNetwork } = useNetworkStatus();
+  const queryEnabled = enabled && canUseNetwork();
   const query = trpc.note.list.useQuery(
     {
       filter,
@@ -36,14 +40,20 @@ export default function useNoteList({
       search: search || undefined,
       collaborativeOnly: collaborativeOnly || undefined,
     },
-    { enabled },
+    { enabled: queryEnabled },
   );
   const [localNotes, setLocalNotes] = useState<LocalNoteRecord[]>([]);
 
   useEffect(() => {
+    console.log("[useNoteList] start loading local notes");
     let cancelled = false;
     const loadLocal = async () => {
       const cached = await localManager.listAll();
+      console.log("[useNoteList] loadLocal", {
+        count: cached.length,
+        sample: cached.slice(0, 2),
+        ids: cached.map((c) => c.id),
+      });
       if (cancelled) return;
       setLocalNotes(cached);
     };

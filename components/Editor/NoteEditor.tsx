@@ -12,6 +12,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const {
     note,
     saving,
+    pendingSync,
     handleTitleChange,
     handleTagsChange,
     handleContentChange,
@@ -49,14 +50,21 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
           </div>
         </div>
         {canEdit && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleSave}
-            disabled={!canEdit || isTrashed || saving}
-          >
-            {saving ? "保存中..." : "保存"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {pendingSync && (
+              <span className="text-amber-600 border-amber-200 bg-amber-50 rounded-full border px-2 py-0.5 text-xs">
+                待同步
+              </span>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSave}
+              disabled={!canEdit || isTrashed || saving}
+            >
+              {saving ? "保存中..." : "保存"}
+            </Button>
+          </div>
         )}
       </div>
 

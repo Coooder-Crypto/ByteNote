@@ -4,9 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { localManager } from "@/lib/offline/local-manager";
+import { trpc } from "@/lib/trpc/client";
 
 import useNoteActions from "../Actions/useNoteActions";
-import useNetworkStatus from "./useNetworkStatus";
+import { useNetworkStatus } from "../Store/useNetworkStore";
 
 type SyncStats = {
   pending: number;
@@ -19,6 +20,10 @@ export default function useLocalSync() {
   const [stats, setStats] = useState<SyncStats>({ pending: 0, syncing: false });
   const syncingRef = useRef(false);
   const { online, canUseNetwork } = useNetworkStatus();
+  const noteListQuery = trpc.note.list.useQuery(undefined, {
+    enabled: canUseNetwork(),
+    staleTime: 30000,
+  });
 
   const flush = useCallback(async () => {
     if (syncingRef.current) return;
@@ -40,6 +45,18 @@ export default function useLocalSync() {
         createNote: createNoteAsync,
         updateNote: updateNoteAsync,
       });
+
+      if (noteListQuery.data) {
+        console.log("[localSync] merge after push", noteListQuery.data.length);
+        const pulled = await localManager.mergeFromServer(noteListQuery.data);
+        const after = await localManager.listAll();
+        console.log("[localSync] merge result after push", {
+          pulled,
+          total: after.length,
+        });
+      } else if (noteListQuery.error) {
+        console.warn("[localSync] noteListQuery error", noteListQuery.error);
+      }
 
       setStats((prev) => ({
         ...prev,
@@ -77,5 +94,23 @@ export default function useLocalSync() {
     return () => window.clearInterval(timer);
   }, [canUseNetwork, flush, online]);
 
-  return { flush, stats };
+  useEffect(() => {
+    if (!canUseNetwork()) return;
+    if (noteListQuery.data) {
+      console.log(
+        "[localSync] merging server notes into local",
+        noteListQuery.data.length,
+      );
+      void (async () => {
+        const pulled = await localManager.mergeFromServer(noteListQuery.data);
+        const after = await localManager.listAll();
+        console.log("[localSync] merge result", {
+          pulled,
+          total: after.length,
+        });
+      })();
+    }
+  }, [canUseNetwork, noteListQuery.data]);
+
+  return { flush, stats, online };
 }

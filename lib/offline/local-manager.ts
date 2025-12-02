@@ -1,10 +1,11 @@
 "use client";
 
+import { parseStoredTags } from "../tags";
 import type { LocalNoteRecord } from "./db";
 import { createLocalId, isLocalId } from "./ids";
 import { noteStorage } from "./note-storage";
 
-type SnapshotPayload = {
+type NotePayload = {
   id: string;
   title: string;
   markdown: string;
@@ -45,7 +46,7 @@ class LocalManager {
     return !this.isOnline();
   }
 
-  async saveSnapshot(payload: SnapshotPayload) {
+  async saveNote(payload: NotePayload) {
     const now = payload.updatedAt ?? Date.now();
     const record: LocalNoteRecord = {
       id: payload.id,
@@ -68,10 +69,10 @@ class LocalManager {
   }
 
   async createLocal(
-    payload: Omit<SnapshotPayload, "id" | "syncStatus" | "updatedAt">,
+    payload: Omit<NotePayload, "id" | "syncStatus" | "updatedAt">,
   ) {
     const id = createLocalId();
-    await this.saveSnapshot({
+    await this.saveNote({
       ...payload,
       id,
       folderId: payload.folderId ?? null,
@@ -86,7 +87,9 @@ class LocalManager {
   }
 
   async listAll() {
-    return noteStorage.list();
+    const list = await noteStorage.list();
+    console.log("[localManager] listAll", list.length, list.slice(0, 2));
+    return list;
   }
 
   async listDirty() {
@@ -94,6 +97,79 @@ class LocalManager {
     return all.filter(
       (note) => note.syncStatus !== "synced" || isLocalId(note.id),
     );
+  }
+
+  async mergeFromServer(
+    serverNotes: Array<{
+      id: string;
+      title: string | null;
+      markdown: string | null;
+      tags: string | string[] | null;
+      folderId: string | null;
+      updatedAt: Date | string | number | null;
+      isCollaborative: boolean | null;
+      version?: number | null;
+    }>,
+  ) {
+    let pulled = 0;
+    for (const note of serverNotes) {
+      try {
+        console.log(serverNotes);
+        console.log("[localManager] merge start", note.id);
+        const local = await noteStorage.get(note.id);
+        const serverUpdatedAt = note.updatedAt
+          ? new Date(note.updatedAt as any).getTime()
+          : Date.now();
+        if (!local) {
+          console.log("[localManager] merge insert", note.id, serverUpdatedAt);
+          await noteStorage.save({
+            id: note.id,
+            title: note.title ?? "未命名笔记",
+            markdown: note.markdown ?? "",
+            tags: parseStoredTags(note.tags ?? []),
+            folderId: note.folderId ?? null,
+            updatedAt: serverUpdatedAt,
+            syncStatus: "synced",
+            isCollaborative: note.isCollaborative ?? false,
+            version:
+              typeof note.version === "number" ? note.version : undefined,
+          });
+          pulled += 1;
+          continue;
+        }
+        const localUpdated = Number(local.updatedAt) || 0;
+        console.log("[localManager] merge compare", {
+          id: note.id,
+          serverUpdatedAt,
+          localUpdated,
+        });
+        if (serverUpdatedAt > localUpdated) {
+          await noteStorage.save({
+            ...local,
+            title: note.title ?? "未命名笔记",
+            markdown: note.markdown ?? "",
+            tags: parseStoredTags(note.tags ?? []),
+            folderId: note.folderId ?? null,
+            updatedAt: serverUpdatedAt,
+            syncStatus: "synced",
+            isCollaborative: note.isCollaborative ?? false,
+            version:
+              typeof note.version === "number" ? note.version : undefined,
+          });
+          pulled += 1;
+        } else if (serverUpdatedAt < localUpdated && !isLocalId(local.id)) {
+          // Local is newer; mark dirty to push on next sync.
+          await noteStorage.save({
+            ...local,
+            syncStatus: "dirty",
+          });
+        }
+      } catch (err) {
+        console.warn("[localManager] mergeFromServer failed", note.id, err);
+      }
+    }
+    console.log("[localManager] merge summary", { pulled });
+    return pulled;
   }
 
   async markSynced(noteId: string, overrides?: Partial<LocalNoteRecord>) {
