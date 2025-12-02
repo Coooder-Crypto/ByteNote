@@ -11,6 +11,7 @@ export type NoteDraft = {
   isCollaborative: boolean;
   version?: number;
   updatedAt: number;
+  status?: "local-only" | "server";
 };
 
 export async function saveDraft(draft: NoteDraft) {
@@ -32,4 +33,17 @@ export async function getDraft(noteId: string): Promise<NoteDraft | null> {
 
 export async function removeDraft(noteId: string) {
   return withStore(DRAFTS_STORE, "readwrite", (store) => store.delete(noteId));
+}
+
+export async function listDrafts(): Promise<NoteDraft[]> {
+  const dbResult = await withStore<IDBRequest<NoteDraft[]>>(
+    DRAFTS_STORE,
+    "readonly",
+    (store) => store.getAll(),
+  );
+  if (!dbResult) return [];
+  return new Promise((resolve, reject) => {
+    dbResult.onsuccess = () => resolve((dbResult.result ?? []) as NoteDraft[]);
+    dbResult.onerror = () => reject(dbResult.error);
+  });
 }

@@ -7,6 +7,8 @@ export type OutboxItem<TPayload> = {
   noteId: string;
   payload: TPayload;
   timestamp: number;
+  action: "create" | "update";
+  localOnly?: boolean;
 };
 
 export async function addOutboxItem<TPayload>(item: OutboxItem<TPayload>) {

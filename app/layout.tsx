@@ -2,6 +2,7 @@ import "./globals.css";
 
 import type { Metadata } from "next";
 
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { cn } from "@/lib/utils";
 
 import { Providers } from "./providers";
@@ -38,6 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={cn("bg-background min-h-svh font-sans antialiased")}>
+        <ServiceWorkerRegister />
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -1,3 +1,5 @@
+"use client";
+
 import { LogOut, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 

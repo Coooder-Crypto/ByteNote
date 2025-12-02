@@ -1,31 +1,49 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { isLocalId } from "@/lib/offline/ids";
 import { BnNote } from "@/types/entities";
 
 type NoteCardProps = {
   note: BnNote;
   sortKey: "updatedAt" | "createdAt";
+  onLocalSelect?: (id: string) => void;
+  onSelect?: (id: string) => void;
+  offline?: boolean;
 };
 
-export default function NoteCard({ note, sortKey }: NoteCardProps) {
-  const router = useRouter();
+export default function NoteCard({
+  note,
+  sortKey,
+  onLocalSelect,
+  onSelect,
+  offline = false,
+}: NoteCardProps) {
   const isTrashed = Boolean(note.deletedAt);
   const summary =
     note.content?.slice(0, 120).replace(/\n+/g, " ").trim() ?? "暂无内容";
   const displayDate = sortKey === "createdAt" ? note.createdAt : note.updatedAt;
+  const localOnly = isLocalId(note.id);
 
   return (
     <Card
       role="button"
       tabIndex={0}
-      onClick={() => router.push(`/notes/${note.id}`)}
+      onClick={() => {
+        if (onSelect) {
+          onSelect(note.id);
+        } else if (localOnly && onLocalSelect) {
+          onLocalSelect(note.id);
+        }
+      }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          router.push(`/notes/${note.id}`);
+          if (onSelect) {
+            onSelect(note.id);
+          } else if (localOnly && onLocalSelect) {
+            onLocalSelect(note.id);
+          }
         }
       }}
       className="group h-full cursor-pointer transition hover:-translate-y-0.5 hover:shadow-lg"
@@ -34,6 +52,11 @@ export default function NoteCard({ note, sortKey }: NoteCardProps) {
         <div className="text-muted-foreground flex items-center justify-between text-xs">
           <span>{new Date(displayDate).toLocaleDateString()}</span>
           <div className="flex items-center gap-2">
+            {localOnly && (
+              <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-700">
+                未同步
+              </span>
+            )}
             {note.isFavorite && (
               <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-600">
                 收藏

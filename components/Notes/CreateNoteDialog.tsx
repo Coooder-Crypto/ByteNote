@@ -18,6 +18,10 @@ import {
   SelectValue,
 } from "@/components/ui";
 import { useFolderActions, useNoteActions } from "@/hooks";
+import { createLocalId } from "@/lib/offline/ids";
+import { noteStorage } from "@/lib/offline/note-storage";
+import { saveDraft } from "@/lib/storage/drafts";
+import { addOutboxItem } from "@/lib/storage/outbox";
 import { NOTE_TAGS } from "@/lib/tags";
 
 import { TagInput } from "../TagInput";
@@ -29,6 +33,7 @@ type CreateNoteDialogProps = {
   onOpenChange: (open: boolean) => void;
   onCreated: (noteId: string) => void;
   onUnauthorized?: () => void;
+  onCreatedLocal?: (noteId: string) => void;
 };
 
 export default function CreateNoteDialog({
@@ -36,6 +41,7 @@ export default function CreateNoteDialog({
   onOpenChange,
   onCreated,
   onUnauthorized,
+  onCreatedLocal,
 }: CreateNoteDialogProps) {
   const { folders, isLoading: foldersLoading } = useFolderActions(open);
   const { createNote, createPending } = useNoteActions({});
@@ -56,28 +62,67 @@ export default function CreateNoteDialog({
 
   const handleCreate = () => {
     if (!title.trim() || createPending) return;
-    createNote(
-      {
-        title: title.trim(),
-        markdown: DEFAULT_MARKDOWN,
-        tags,
-        folderId: folderId ?? undefined,
-        isCollaborative,
+    const payload = {
+      title: title.trim(),
+      markdown: DEFAULT_MARKDOWN,
+      tags,
+      folderId: folderId ?? undefined,
+      isCollaborative,
+    };
+    const isOnline = typeof navigator === "undefined" || navigator.onLine;
+    if (!isOnline) {
+      const localId = createLocalId();
+      const now = Date.now();
+      void saveDraft({
+        noteId: localId,
+        title: payload.title,
+        markdown: payload.markdown,
+        tags: payload.tags,
+        folderId: payload.folderId ?? null,
+        isCollaborative: payload.isCollaborative,
+        updatedAt: now,
+        status: "local-only",
+      });
+      void noteStorage.save({
+        id: localId,
+        title: payload.title,
+        markdown: payload.markdown,
+        tags: payload.tags,
+        folderId: payload.folderId ?? null,
+        updatedAt: now,
+        syncStatus: "dirty",
+        tempId: localId,
+        isCollaborative: payload.isCollaborative,
+      });
+      void addOutboxItem({
+        noteId: localId,
+        payload: { id: localId, ...payload },
+        timestamp: now,
+        action: "create",
+        localOnly: true,
+      });
+      if (onCreatedLocal) {
+        onCreatedLocal(localId);
+      } else {
+        onCreated(localId);
+      }
+      resetForm();
+      onOpenChange(false);
+      return;
+    }
+    createNote(payload, {
+      onSuccess: (note) => {
+        onCreated(note.id);
+        resetForm();
+        onOpenChange(false);
       },
-      {
-        onSuccess: (note) => {
-          onCreated(note.id);
-          resetForm();
+      onError: (error) => {
+        if (error?.data?.code === "UNAUTHORIZED") {
+          onUnauthorized?.();
           onOpenChange(false);
-        },
-        onError: (error) => {
-          if (error.data?.code === "UNAUTHORIZED") {
-            onUnauthorized?.();
-            onOpenChange(false);
-          }
-        },
+        }
       },
-    );
+    });
   };
 
   return (

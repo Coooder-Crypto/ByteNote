@@ -1,12 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState } from "react";
-import * as Y from "yjs";
-
-import { useTheme } from "@/hooks";
-
-const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
+import { EditorContent,useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { useEffect, useMemo, useRef } from "react";
 
 type Props = {
   noteId: string;
@@ -15,88 +11,86 @@ type Props = {
   onDirtyChange?: (dirty: boolean) => void;
 };
 
-const FIELD = "md-text-v2";
-const LOCAL = "local";
-
+/**
+ * Tiptap-based markdown editor.
+ * - Emits markdown/plaintext via onChange
+ * - Marks dirty only when user input differs from initial content
+ */
 export default function CollaborativeEditor({
   noteId,
   initialMarkdown,
   onChange,
   onDirtyChange,
 }: Props) {
-  const { theme } = useTheme();
-  const doc = useMemo(
-    () => new Y.Doc(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [noteId],
+  const initialRef = useRef(initialMarkdown ?? "");
+  const applyingRef = useRef(false);
+
+  const markdownToDoc = useMemo(
+    () => (text: string) => {
+      const paragraphs = text.split(/\n{2,}/);
+      const content =
+        paragraphs.length === 0
+          ? [{ type: "paragraph" }]
+          : paragraphs.map((paragraph) => {
+              const lines = paragraph.split("\n");
+              const nodes =
+                lines.length === 0
+                  ? [{ type: "text", text: "" }]
+                  : lines.flatMap((line, idx) =>
+                      idx === 0
+                        ? [{ type: "text", text: line }]
+                        : [{ type: "hardBreak" }, { type: "text", text: line }],
+                    );
+              return {
+                type: "paragraph",
+                content: nodes,
+              };
+            });
+      return { type: "doc", content };
+    },
+    [],
   );
-  const yText = useMemo(() => doc.getText(FIELD), [doc]);
-  const initializedRef = useRef(false);
-  const valueRef = useRef(initialMarkdown);
-  const [value, setValue] = useState(initialMarkdown);
 
-  // Init Y.Text once per note
+  const extensions = useMemo(
+    () => [
+      StarterKit.configure({
+        history: true,
+      }),
+    ],
+    [],
+  );
+
+  const editor = useEditor({
+    extensions,
+    content: markdownToDoc(initialMarkdown || ""),
+    onUpdate: ({ editor }) => {
+      if (applyingRef.current) return;
+      const markdown = editor.getText({ blockSeparator: "\n\n" });
+      onChange(markdown);
+      onDirtyChange?.(markdown !== initialRef.current);
+    },
+  });
+
+  // When switching noteId or receiving new initial content, reset editor without marking dirty
   useEffect(() => {
-    if (initializedRef.current) return;
-    yText.delete(0, yText.length);
-    if (initialMarkdown) {
-      yText.insert(0, initialMarkdown, LOCAL);
-    }
-    initializedRef.current = true;
-  }, [initialMarkdown, yText]);
+    if (!editor) return;
+    applyingRef.current = true;
+    const next = initialMarkdown || "";
+    initialRef.current = next;
+    editor.commands.setContent(markdownToDoc(next));
+    onDirtyChange?.(false);
+    applyingRef.current = false;
+  }, [editor, initialMarkdown, markdownToDoc, noteId, onDirtyChange]);
 
-  // Sync external markdown changes (e.g., server-saved updates)
   useEffect(() => {
-    if (!initializedRef.current) return;
-    const current = yText.toString();
-    const next = initialMarkdown ?? "";
-    if (current === next) return;
-    doc.transact(() => {
-      yText.delete(0, yText.length);
-      yText.insert(0, next, "remote");
-    }, "remote");
-  }, [doc, initialMarkdown, yText]);
-
-  // Observe text and doc updates
-  useEffect(() => {
-    const handleText = () => {
-      const text = yText.toString();
-      if (text === valueRef.current) return;
-      valueRef.current = text;
-      setValue(text);
-      onChange(text);
-    };
-    yText.observe(handleText);
-
-    const handleDocUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === LOCAL) {
-        onDirtyChange?.(true);
-      }
-    };
-    doc.on("update", handleDocUpdate);
-
     return () => {
-      yText.unobserve(handleText);
-      doc.off("update", handleDocUpdate);
+      editor?.destroy();
     };
-  }, [doc, onChange, onDirtyChange, yText]);
+  }, [editor]);
 
   return (
-    <MDEditor
-      value={value}
-      onChange={(val) => {
-        const next = val ?? "";
-        doc.transact(() => {
-          yText.delete(0, yText.length);
-          yText.insert(0, next, LOCAL);
-        }, LOCAL);
-      }}
-      height={520}
-      hideToolbar={false}
-      data-color-mode={theme}
-      previewOptions={{
-        className: theme === "dark" ? "bg-neutral-900" : "bg-white",
-      }}
-    />
+    <div className="border-border/60 bg-background/80 rounded-xl border p-3">
+      <EditorContent editor={editor} className="prose prose-sm max-w-none" />
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { computeAccess } from "@/lib/noteAccess";
 
 import { isLocalId } from "./offline/ids";
+import { noteStorage, queueStorage } from "./offline/note-storage";
 import { parseStoredTags } from "./tags";
 
 export type EditorSnapshot = {
@@ -17,6 +18,19 @@ export type EditorSnapshot = {
     isOwner: boolean;
     isCollaborator: boolean;
   };
+};
+
+export type ServerNotePayload = {
+  title: string;
+  markdown: string;
+  tags: string | string[];
+  isCollaborative: boolean;
+  folderId: string | null;
+  isFavorite: boolean;
+  version?: number;
+  deletedAt?: string | Date | null;
+  userId?: string | null;
+  collaborators?: { userId: string }[];
 };
 
 export class EditorManager {
@@ -45,18 +59,16 @@ export class EditorManager {
     };
   }
 
-  setFromServer(note: {
-    title: string;
-    markdown: string;
-    tags: string | string[];
-    isCollaborative: boolean;
-    folderId: string | null;
-    isFavorite: boolean;
-    version?: number;
-    deletedAt?: string | Date | null;
-    userId?: string | null;
-    collaborators?: { userId: string }[];
-  }) {
+  hydrate(note?: ServerNotePayload): EditorSnapshot {
+    if (note) {
+      this.setFromServer(note);
+    } else if (isLocalId(this.noteId)) {
+      this.setLocalEditable();
+    }
+    return this.getSnapshot();
+  }
+
+  setFromServer(note: ServerNotePayload) {
     const parsedTags = this.parseTags(note.tags);
     const access = computeAccess({
       note: {
@@ -103,12 +115,55 @@ export class EditorManager {
     this.state = { ...this.state, title };
   }
 
+  updateTitleAndSnapshot(title: string): EditorSnapshot {
+    this.updateTitle(title);
+    return this.getSnapshot();
+  }
+
   updateTags(tags: string[]) {
     this.state = { ...this.state, tags };
   }
 
+  updateTagsAndSnapshot(tags: string[]): EditorSnapshot {
+    this.updateTags(tags);
+    return this.getSnapshot();
+  }
+
   updateMarkdown(markdown: string) {
     this.state = { ...this.state, markdown };
+  }
+
+  updateMarkdownAndPersist(markdown: string): EditorSnapshot {
+    this.updateMarkdown(markdown);
+    const snapshot = this.getSnapshot();
+    const updatedAt = Date.now();
+    const title = snapshot.title || "未命名笔记";
+    void noteStorage.save({
+      id: this.noteId,
+      title,
+      markdown,
+      tags: snapshot.tags,
+      folderId: snapshot.folderId,
+      updatedAt,
+      syncStatus: "dirty",
+      tempId: isLocalId(this.noteId) ? this.noteId : undefined,
+    });
+    void queueStorage.enqueue({
+      noteId: this.noteId,
+      action: "update",
+      payload: {
+        id: this.noteId,
+        title,
+        tags: snapshot.tags,
+        folderId: snapshot.folderId,
+        markdown,
+        updatedAt,
+        isCollaborative: snapshot.isCollaborative,
+      },
+      timestamp: updatedAt,
+      tempId: isLocalId(this.noteId) ? this.noteId : undefined,
+    });
+    return snapshot;
   }
 
   updateFavorite(isFavorite: boolean) {

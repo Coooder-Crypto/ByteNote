@@ -1,17 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { MarkdownEditor } from "@/components/Editor";
 import { NoteTags } from "@/components/NoteTags";
 import { TagInput } from "@/components/TagInput";
+import { Button } from "@/components/ui";
 import { useNoteActions } from "@/hooks";
+import useEditorPersistence from "@/hooks/Common/useEditorPersistence";
 import EditorManager, { type EditorSnapshot } from "@/lib/EditorManager";
-import { isLocalId } from "@/lib/offline/ids";
-import { noteStorage, queueStorage } from "@/lib/offline/note-storage";
 
 export default function NoteEditor({ noteId }: { noteId: string }) {
-  const { meQuery, noteQuery } = useNoteActions({
+  const { meQuery, noteQuery, setNoteDetailCache } = useNoteActions({
     noteId,
     withQueries: true,
   });
@@ -24,66 +24,32 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     manager.getSnapshot(),
   );
 
+  const { save, saving } = useEditorPersistence(
+    noteId,
+    manager,
+    setNoteDetailCache,
+  );
+
   useEffect(() => {
-    if (noteQuery.data) {
-      manager.setFromServer(noteQuery.data);
-    } else if (isLocalId(noteId)) {
-      manager.setLocalEditable();
-    }
-    setSnapshot(manager.getSnapshot());
-  }, [manager, noteId, noteQuery.data]);
+    setSnapshot(manager.hydrate(noteQuery.data));
+  }, [manager, noteQuery.data]);
 
-  const handleTitleChange = useCallback(
-    (value: string) => {
-      manager.updateTitle(value);
-      setSnapshot(manager.getSnapshot());
-    },
-    [manager],
-  );
+  const handleTitleChange = (value: string) =>
+    setSnapshot(manager.updateTitleAndSnapshot(value));
 
-  const handleTagsChange = useCallback(
-    (tags: string[]) => {
-      manager.updateTags(tags);
-      setSnapshot(manager.getSnapshot());
-    },
-    [manager],
-  );
+  const handleTagsChange = (tags: string[]) =>
+    setSnapshot(manager.updateTagsAndSnapshot(tags));
 
-  const handleContentChange = useCallback(
-    (markdown: string) => {
-      manager.updateMarkdown(markdown);
-      const next = manager.getSnapshot();
-      setSnapshot(next);
-      const updatedAt = Date.now();
-      const title = next.title || "未命名笔记";
-      void noteStorage.save({
-        id: noteId,
-        title,
-        markdown,
-        tags: next.tags,
-        folderId: next.folderId,
-        updatedAt,
-        syncStatus: "dirty",
-        tempId: isLocalId(noteId) ? noteId : undefined,
-      });
-      void queueStorage.enqueue({
-        noteId,
-        action: "update",
-        payload: {
-          id: noteId,
-          title,
-          tags: next.tags,
-          folderId: next.folderId,
-          markdown,
-          updatedAt,
-          isCollaborative: next.isCollaborative,
-        },
-        timestamp: updatedAt,
-        tempId: isLocalId(noteId) ? noteId : undefined,
-      });
-    },
-    [manager, noteId],
-  );
+  const handleContentChange = (markdown: string) =>
+    setSnapshot(manager.updateMarkdownAndPersist(markdown));
+
+  const handleSave = async () => {
+    const snap = manager.getSnapshot();
+    if (!snap.access.canEdit || snap.access.isTrashed) return;
+    try {
+      await save();
+    } catch {}
+  };
 
   const titlePlaceholder = useMemo(
     () => (snapshot.access.canEdit ? "输入标题" : "无权限编辑"),
@@ -94,25 +60,39 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        {canEdit ? (
-          <input
-            className="bg-card text-lg font-semibold outline-none"
-            value={snapshot.title}
-            placeholder={titlePlaceholder}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            disabled={!canEdit || isTrashed}
-          />
-        ) : (
-          <h2 className="text-lg font-semibold">{snapshot.title || "笔记"}</h2>
-        )}
-        <div className="text-muted-foreground text-xs">
-          {isTrashed
-            ? "该笔记已在回收站，恢复后才能编辑。"
-            : canEdit
-              ? "可编辑"
-              : "仅作者或协作者可编辑"}
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-2">
+          {canEdit ? (
+            <input
+              className="bg-card text-lg font-semibold outline-none"
+              value={snapshot.title}
+              placeholder={titlePlaceholder}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              disabled={!canEdit || isTrashed}
+            />
+          ) : (
+            <h2 className="text-lg font-semibold">
+              {snapshot.title || "笔记"}
+            </h2>
+          )}
+          <div className="text-muted-foreground text-xs">
+            {isTrashed
+              ? "该笔记已在回收站，恢复后才能编辑。"
+              : canEdit
+                ? "可编辑"
+                : "仅作者或协作者可编辑"}
+          </div>
         </div>
+        {canEdit && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSave}
+            disabled={!canEdit || isTrashed || saving}
+          >
+            {saving ? "保存中..." : "保存"}
+          </Button>
+        )}
       </div>
 
       <div>

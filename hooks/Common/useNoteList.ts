@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { isLocalId } from "@/lib/offline/ids";
+import { listDrafts } from "@/lib/storage/drafts";
 import { parseStoredTags } from "@/lib/tags";
 import { trpc } from "@/lib/trpc/client";
 import type { BnNote } from "@/types/entities";
@@ -36,24 +38,63 @@ export default function useNoteList({
     },
     { enabled },
   );
+  const [localNotes, setLocalNotes] = useState<BnNote[]>([]);
+
+  useEffect(() => {
+    const loadLocal = async () => {
+      const drafts = await listDrafts();
+      const locals = drafts
+        .filter((d) => isLocalId(d.noteId))
+        .map<BnNote>((d) => ({
+          id: d.noteId,
+          title: d.title,
+          content: d.markdown,
+          markdown: d.markdown,
+          createdAt: new Date(d.updatedAt).toISOString(),
+          updatedAt: new Date(d.updatedAt).toISOString(),
+          deletedAt: null,
+          isFavorite: false,
+          folderId: d.folderId,
+          tags: d.tags,
+          isCollaborative: d.isCollaborative,
+        }));
+      setLocalNotes(locals);
+    };
+    void loadLocal();
+  }, []);
 
   const notes: BnNote[] = useMemo(() => {
-    return (
+    const serverNotes: BnNote[] =
       query.data?.map((note) => ({
         id: note.id,
         title: note.title,
-        content: note.content ?? note.markdown,
-        markdown: note.markdown,
-        createdAt: note.createdAt,
-        updatedAt: note.updatedAt,
-        deletedAt: note.deletedAt,
+        content: (note.content ?? note.markdown ?? "") as string,
+        markdown: (note.markdown ?? "") as string,
+        createdAt: note.createdAt as Date | string,
+        updatedAt: note.updatedAt as Date | string,
+        deletedAt: (note.deletedAt ?? null) as Date | string | null,
         isFavorite: note.isFavorite,
-        folderId: note.folderId,
+        folderId: note.folderId ?? null,
         tags: parseStoredTags(note.tags),
         isCollaborative: note.isCollaborative,
-      })) ?? []
-    );
-  }, [query.data]);
+      })) ?? [];
+    const ids = new Set(serverNotes.map((n) => n.id));
+    const merged: BnNote[] = [...serverNotes];
+    localNotes.forEach((ln: BnNote) => {
+      if (!ids.has(ln.id)) {
+        merged.push({
+          ...ln,
+          content: ln.content ?? ln.markdown ?? "",
+          markdown: ln.markdown ?? "",
+          deletedAt: (ln.deletedAt ?? null) as Date | string | null,
+          folderId: ln.folderId ?? null,
+          createdAt: ln.createdAt,
+          updatedAt: ln.updatedAt,
+        });
+      }
+    });
+    return merged;
+  }, [localNotes, query.data]);
 
   const availableTags = useMemo(() => {
     const base = new Set<string>();

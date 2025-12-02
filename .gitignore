@@ -46,3 +46,7 @@ next-env.d.ts
 /bytenote
 
 .pnpm-store
+/public/sw.js
+/public/workbox-*.js
+/public/fallback-*.js
+/demo
