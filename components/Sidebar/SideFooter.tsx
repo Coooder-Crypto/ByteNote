@@ -3,6 +3,8 @@ import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { useTheme, useUserStore } from "@/hooks";
+import useNetworkStatus from "@/hooks/Common/useNetworkStatus";
+import { cn } from "@/lib/utils";
 
 import ProfileSettingsDialog from "./ProfileSettingsDialog";
 
@@ -19,8 +21,18 @@ export default function SideFooter({
 }: SideFooterProps) {
   const { user } = useUserStore();
   const { theme, toggleTheme } = useTheme();
+  const online = useNetworkStatus();
   return (
     <div className="border-border/60 border-t px-4 py-4">
+      <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs">
+        <span
+          className={cn(
+            "inline-block h-2.5 w-2.5 rounded-full",
+            online ? "bg-emerald-500" : "bg-rose-500",
+          )}
+        />
+        <span>{online ? "在线" : "离线"}</span>
+      </div>
       {user ? (
         <div className="space-y-3">
           <div className="bg-muted/60 flex items-center gap-3 rounded-xl px-3 py-2">
