@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { Sidebar } from "@/components/Sidebar";
 
 export default function SiteLayout({
@@ -7,7 +9,9 @@ export default function SiteLayout({
 }) {
   return (
     <div className="bg-background text-foreground flex h-svh w-full overflow-hidden">
-      <Sidebar />
+      <Suspense fallback={null}>
+        <Sidebar />
+      </Suspense>
       <div className="flex-1 overflow-y-auto">{children}</div>
     </div>
   );
