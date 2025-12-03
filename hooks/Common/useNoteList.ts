@@ -45,15 +45,9 @@ export default function useNoteList({
   const [localNotes, setLocalNotes] = useState<LocalNoteRecord[]>([]);
 
   useEffect(() => {
-    console.log("[useNoteList] start loading local notes");
     let cancelled = false;
     const loadLocal = async () => {
       const cached = await localManager.listAll();
-      console.log("[useNoteList] loadLocal", {
-        count: cached.length,
-        sample: cached.slice(0, 2),
-        ids: cached.map((c) => c.id),
-      });
       if (cancelled) return;
       setLocalNotes(cached);
     };

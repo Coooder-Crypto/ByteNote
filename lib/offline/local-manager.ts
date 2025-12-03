@@ -88,7 +88,6 @@ class LocalManager {
 
   async listAll() {
     const list = await noteStorage.list();
-    console.log("[localManager] listAll", list.length, list.slice(0, 2));
     return list;
   }
 
@@ -114,14 +113,11 @@ class LocalManager {
     let pulled = 0;
     for (const note of serverNotes) {
       try {
-        console.log(serverNotes);
-        console.log("[localManager] merge start", note.id);
         const local = await noteStorage.get(note.id);
         const serverUpdatedAt = note.updatedAt
           ? new Date(note.updatedAt as any).getTime()
           : Date.now();
         if (!local) {
-          console.log("[localManager] merge insert", note.id, serverUpdatedAt);
           await noteStorage.save({
             id: note.id,
             title: note.title ?? "未命名笔记",
@@ -138,11 +134,6 @@ class LocalManager {
           continue;
         }
         const localUpdated = Number(local.updatedAt) || 0;
-        console.log("[localManager] merge compare", {
-          id: note.id,
-          serverUpdatedAt,
-          localUpdated,
-        });
         if (serverUpdatedAt > localUpdated) {
           await noteStorage.save({
             ...local,
@@ -168,7 +159,6 @@ class LocalManager {
         console.warn("[localManager] mergeFromServer failed", note.id, err);
       }
     }
-    console.log("[localManager] merge summary", { pulled });
     return pulled;
   }
 

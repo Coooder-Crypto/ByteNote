@@ -29,7 +29,6 @@ export default function useLocalSync() {
     if (syncingRef.current) return;
     syncingRef.current = true;
 
-    console.log("[localSync] flush start");
     try {
       const dirty = await localManager.listDirty();
       setStats((prev) => ({
@@ -47,15 +46,7 @@ export default function useLocalSync() {
       });
 
       if (noteListQuery.data) {
-        console.log("[localSync] merge after push", noteListQuery.data.length);
-        const pulled = await localManager.mergeFromServer(noteListQuery.data);
-        const after = await localManager.listAll();
-        console.log("[localSync] merge result after push", {
-          pulled,
-          total: after.length,
-        });
-      } else if (noteListQuery.error) {
-        console.warn("[localSync] noteListQuery error", noteListQuery.error);
+        await localManager.mergeFromServer(noteListQuery.data);
       }
 
       setStats((prev) => ({
@@ -74,7 +65,6 @@ export default function useLocalSync() {
         lastSyncedId: undefined,
       });
 
-      console.log("[localSync] flush done, pending:", pending);
       if (pending === 0) {
         toast.success("离线内容已同步", { id: "outbox-sync" });
       } else {
@@ -84,7 +74,6 @@ export default function useLocalSync() {
   }, [createNoteAsync, updateNoteAsync]);
 
   useEffect(() => {
-    console.log("[localSync] online state", online);
     if (!canUseNetwork()) return;
     void flush();
     const timer = window.setInterval(() => {
@@ -97,18 +86,7 @@ export default function useLocalSync() {
   useEffect(() => {
     if (!canUseNetwork()) return;
     if (noteListQuery.data) {
-      console.log(
-        "[localSync] merging server notes into local",
-        noteListQuery.data.length,
-      );
-      void (async () => {
-        const pulled = await localManager.mergeFromServer(noteListQuery.data);
-        const after = await localManager.listAll();
-        console.log("[localSync] merge result", {
-          pulled,
-          total: after.length,
-        });
-      })();
+      void localManager.mergeFromServer(noteListQuery.data);
     }
   }, [canUseNetwork, noteListQuery.data]);
 
