@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Descendant } from "slate";
 
-import { PlateEditor } from "@/components/Editor";
+import { CollaboratorDialog, PlateEditor } from "@/components/Editor";
 import { NoteTags } from "@/components/NoteTags";
 import { TagInput } from "@/components/TagInput";
 import { Button } from "@/components/ui";
@@ -14,6 +14,7 @@ const EMPTY_VALUE: Descendant[] = [
 ];
 
 export default function NoteEditor({ noteId }: { noteId: string }) {
+  const [collabOpen, setCollabOpen] = useState(false);
   const {
     note,
     saving,
@@ -68,6 +69,14 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
             >
               {saving ? "保存中..." : "保存"}
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setCollabOpen(true)}
+              disabled={isTrashed}
+            >
+              管理协作者
+            </Button>
           </div>
         )}
       </div>
@@ -100,6 +109,11 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
           />
         </div>
       </div>
+      <CollaboratorDialog
+        noteId={noteId}
+        open={collabOpen}
+        onOpenChange={setCollabOpen}
+      />
     </div>
   );
 }

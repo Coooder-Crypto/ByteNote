@@ -2,6 +2,7 @@
 
 import { Loader2, UserPlus, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import {
   Button,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui";
 import { useCollaboratorActions } from "@/hooks";
 import { trpc } from "@/lib/trpc/client";
+import { copyToClipboard } from "@/lib/utils";
 import type { BnUser } from "@/types/entities";
 
 type CollaboratorDialogProps = {
@@ -42,6 +44,10 @@ export default function CollaboratorDialog({
   const [email, setEmail] = useState("");
   const [searchResults, setSearchResults] = useState<BnUser[]>([]);
   const [searching, setSearching] = useState(false);
+  const [wsUrl, setWsUrl] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("byte-note-ws-url") ?? "";
+  });
 
   const collaborators = useMemo(() => listQuery.data ?? [], [listQuery.data]);
 
@@ -60,6 +66,23 @@ export default function CollaboratorDialog({
     addCollaborator(userId, "editor");
     setEmail("");
     setSearchResults([]);
+  };
+
+  const handleGenerateLink = () => {
+    if (!wsUrl.trim()) {
+      toast.error("请先填写协同服务器的 WS 地址");
+      return;
+    }
+    try {
+      const encodedWs = encodeURIComponent(wsUrl.trim());
+      const link = `${window.location.origin}/notes/${noteId}?ws=${encodedWs}`;
+      copyToClipboard(link);
+      localStorage.setItem("byte-note-ws-url", wsUrl.trim());
+      toast.success("协作链接已复制");
+    } catch (error) {
+      console.error(error);
+      toast.error("生成协作链接失败");
+    }
   };
 
   return (
@@ -113,6 +136,23 @@ export default function CollaboratorDialog({
               ))}
             </div>
           )}
+          <div className="space-y-2 rounded-lg border border-dashed p-3">
+            <p className="text-sm font-medium">协作分享</p>
+            <p className="text-muted-foreground text-xs">
+              填写自部署的协同 WS
+              地址，生成包含该地址的分享链接。协作者需登录且在列表中才能协同编辑。
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                value={wsUrl}
+                onChange={(e) => setWsUrl(e.target.value)}
+                placeholder="例如 ws://localhost:1234"
+              />
+              <Button variant="outline" onClick={handleGenerateLink}>
+                生成并复制链接
+              </Button>
+            </div>
+          </div>
           <div className="space-y-2">
             <p className="text-muted-foreground text-xs">已有协作者</p>
             <div className="space-y-2">
