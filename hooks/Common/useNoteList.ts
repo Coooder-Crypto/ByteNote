@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useSession } from "next-auth/react";
+import { useEffect, useMemo, useState } from "react";
 
+import type { LocalNoteRecord } from "@/lib/offline/db";
+import { localManager } from "@/lib/offline/LocalManager";
 import { parseStoredTags } from "@/lib/tags";
-import { trpc } from "@/lib/trpc/client";
 import type { BnNote } from "@/types/entities";
+
+import useNoteActions from "../Actions/useNoteActions";
+import { useNetworkStatus } from "../Store/useNetworkStore";
 
 type NoteListParams = {
   filter: "all" | "favorite" | "trash" | "collab";
@@ -27,33 +32,99 @@ export default function useNoteList({
   sortKey = "updatedAt",
   searchQuery = "",
 }: NoteListParams) {
-  const query = trpc.note.list.useQuery(
+  const { canUseNetwork } = useNetworkStatus();
+  const { useNoteListQuery } = useNoteActions({});
+  const { status } = useSession();
+  const loggedIn = status === "authenticated";
+  const queryEnabled = enabled && canUseNetwork() && loggedIn;
+  const query = useNoteListQuery(
     {
       filter,
       folderId,
       search: search || undefined,
       collaborativeOnly: collaborativeOnly || undefined,
     },
-    { enabled },
+    {
+      staleTime: 60000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
   );
+  const [localNotes, setLocalNotes] = useState<LocalNoteRecord[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadLocal = async () => {
+      const cached = await localManager.listAll();
+      if (cancelled) return;
+      setLocalNotes(cached);
+    };
+    void loadLocal();
+    const tick = window.setInterval(() => void loadLocal(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(tick);
+    };
+  }, []);
 
   const notes: BnNote[] = useMemo(() => {
-    return (
-      query.data?.map((note) => ({
+    const extractText = (contentJson: any): string => {
+      const walk = (node: any): string => {
+        if (!node) return "";
+        if (typeof node.text === "string") return node.text;
+        if (Array.isArray(node.children)) {
+          return node.children.map(walk).join("");
+        }
+        if (Array.isArray(node)) {
+          return node.map(walk).join("\n");
+        }
+        return "";
+      };
+      return Array.isArray(contentJson)
+        ? contentJson.map(walk).join("\n")
+        : walk(contentJson);
+    };
+
+    const mapLocal = (note: LocalNoteRecord): BnNote => {
+      const contentJson = note.contentJson as any;
+      const text = extractText(contentJson);
+      return {
         id: note.id,
-        title: note.title,
-        content: note.content ?? note.markdown,
-        markdown: note.markdown,
-        createdAt: note.createdAt,
-        updatedAt: note.updatedAt,
-        deletedAt: note.deletedAt,
-        isFavorite: note.isFavorite,
-        folderId: note.folderId,
-        tags: parseStoredTags(note.tags),
-        isCollaborative: note.isCollaborative,
-      })) ?? []
-    );
-  }, [query.data]);
+        title: note.title ?? "未命名笔记",
+        content: text,
+        contentJson,
+        createdAt: new Date(note.updatedAt).toISOString(),
+        updatedAt: new Date(note.updatedAt).toISOString(),
+        deletedAt: null,
+        isFavorite: false,
+        folderId: note.folderId ?? null,
+        tags: note.tags ?? [],
+        isCollaborative: note.isCollaborative ?? false,
+      };
+    };
+
+    if (queryEnabled && Array.isArray(query.data)) {
+      return query.data.map((note) => {
+        const contentJson = (note as any).contentJson as any;
+        const text = extractText(contentJson);
+        return {
+          id: note.id,
+          title: note.title,
+          content: text,
+          contentJson,
+          createdAt: note.createdAt as Date | string,
+          updatedAt: note.updatedAt as Date | string,
+          deletedAt: (note.deletedAt ?? null) as Date | string | null,
+          isFavorite: note.isFavorite,
+          folderId: note.folderId ?? null,
+          tags: parseStoredTags(note.tags),
+          isCollaborative: note.isCollaborative,
+        };
+      });
+    }
+
+    return localNotes.map(mapLocal);
+  }, [localNotes, query.data, queryEnabled]);
 
   const availableTags = useMemo(() => {
     const base = new Set<string>();

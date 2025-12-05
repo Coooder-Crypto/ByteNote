@@ -7,7 +7,7 @@ import { protectedProcedure, router } from "@/server/api/trpc";
 
 const noteInput = z.object({
   title: z.string().min(1).max(120),
-  markdown: z.string().min(1),
+  contentJson: z.any(),
   tags: z.array(z.string()).optional(),
   summary: z.string().optional(),
   folderId: z.string().uuid().optional().nullable(),
@@ -58,33 +58,15 @@ export const noteRouter = router({
       }
 
       const searchTerm = input?.search?.trim();
-
       if (searchTerm) {
         if (!Array.isArray(where.AND)) {
           where.AND = where.AND ? [where.AND] : [];
         }
-
         where.AND.push({
-          OR: [
-            {
-              title: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
-            },
-            {
-              content: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
-            },
-            {
-              markdown: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
-            },
-          ],
+          title: {
+            contains: searchTerm,
+            mode: "insensitive",
+          },
         });
       }
 
@@ -97,8 +79,7 @@ export const noteRouter = router({
           summary: true,
           createdAt: true,
           updatedAt: true,
-          markdown: true,
-          content: true,
+          contentJson: true,
           isFavorite: true,
           isCollaborative: true,
           deletedAt: true,
@@ -133,7 +114,7 @@ export const noteRouter = router({
         select: {
           id: true,
           title: true,
-          markdown: true,
+          contentJson: true,
           summary: true,
           tags: true,
           folderId: true,
@@ -158,8 +139,7 @@ export const noteRouter = router({
       const note = await ctx.prisma.note.create({
         data: {
           title: input.title,
-          markdown: input.markdown,
-          content: input.markdown,
+          contentJson: input.contentJson ?? {},
           summary: input.summary ?? "",
           isFavorite: false,
           isCollaborative: input.isCollaborative ?? false,
@@ -207,8 +187,7 @@ export const noteRouter = router({
           },
           data: {
             title: rest.title,
-            markdown: rest.markdown,
-            content: rest.markdown,
+            contentJson: rest.contentJson ?? {},
             summary: rest.summary ?? "",
             tags: JSON.stringify(rest.tags ?? []),
             folderId: rest.folderId ?? null,
@@ -240,8 +219,7 @@ export const noteRouter = router({
           select: {
             id: true,
             title: true,
-            markdown: true,
-            content: true,
+            contentJson: true,
             tags: true,
             folderId: true,
             version: true,
@@ -264,7 +242,7 @@ export const noteRouter = router({
             {
               noteId: id,
               title: result.title,
-              markdown: result.markdown,
+              contentJson: result.contentJson,
               updatedAt: result.updatedAt,
               version: result.version,
             },

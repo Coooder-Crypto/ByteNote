@@ -1,11 +1,13 @@
 import { Suspense } from "react";
 
-import { NotesHome } from "@/components/Notes";
+import { NotesPage } from "@/components/Notes";
 
-export default function NotesPage() {
+export const dynamic = "force-static";
+
+export default function Notes() {
   return (
     <Suspense fallback={null}>
-      <NotesHome />
+      <NotesPage />
     </Suspense>
   );
 }

@@ -27,7 +27,7 @@ export type BnNote = {
   id: string;
   title: string;
   content?: string | null;
-  markdown: string;
+  contentJson?: any;
   createdAt: Date | string;
   updatedAt: Date | string;
   deletedAt?: Date | string | null;
@@ -39,7 +39,7 @@ export type BnNote = {
 
 export type EditorState = {
   title: string;
-  markdown: string;
+  contentJson: any;
   isFavorite: boolean;
   isCollaborative: boolean;
   folderId: string | null;

@@ -1,7 +1,11 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+
 import { trpc } from "@/lib/trpc/client";
 import type { BnFolder } from "@/types/entities";
+
+import { useNetworkStatus } from "../Store/useNetworkStore";
 
 type FolderActionsResult = {
   folders: BnFolder[];
@@ -14,8 +18,11 @@ type FolderActionsResult = {
 };
 
 export default function useFolderActions(enabled = true): FolderActionsResult {
+  const { online, canUseNetwork } = useNetworkStatus();
+  const { status } = useSession();
+  const loggedIn = status === "authenticated";
   const query = trpc.folder.list.useQuery(undefined, {
-    enabled,
+    enabled: enabled && canUseNetwork() && loggedIn,
   });
 
   const folders: BnFolder[] =
@@ -26,6 +33,7 @@ export default function useFolderActions(enabled = true): FolderActionsResult {
     })) ?? [];
 
   const refetch = async () => {
+    if (!canUseNetwork() || !loggedIn) return;
     await query.refetch();
   };
 
@@ -37,14 +45,15 @@ export default function useFolderActions(enabled = true): FolderActionsResult {
 
   const createFolder = (name: string) => {
     const trimmed = name.trim();
-    if (!trimmed || createMutation.isPending) return;
+    if (!trimmed || createMutation.isPending || !canUseNetwork() || !loggedIn)
+      return;
     createMutation.mutate({ name: trimmed });
   };
 
   return {
     folders,
     totalCount: query.data?.totalCount ?? 0,
-    isLoading: query.isLoading,
+    isLoading: query.isLoading || !online,
     refetch,
     createFolder,
     createPending: createMutation.isPending,

@@ -13,7 +13,7 @@ export default function AuthPageClient() {
   const { user, setUser, clear } = useUserStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = searchParams?.get("callbackUrl") ?? "/";
 
   useEffect(() => {
     if (status === "authenticated" && session?.user?.id) {
@@ -54,7 +54,8 @@ export default function AuthPageClient() {
           {session ? (
             <>
               <p className="text-muted-foreground text-sm">
-                当前账号：{session.user?.email ?? session.user?.name ?? "未命名"}
+                当前账号：
+                {session.user?.email ?? session.user?.name ?? "未命名"}
               </p>
               <Button
                 className="w-full"
