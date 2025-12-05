@@ -88,14 +88,10 @@ export class EditorManager {
       currentUserId: this.currentUserId,
       localOnly: isLocalId(this.noteId),
     });
+    const contentJson = this.normalizeContent(note.contentJson);
     this.state = {
       title: note.title,
-      contentJson: note.contentJson ?? [
-        {
-          type: "paragraph",
-          children: [{ text: "" }],
-        },
-      ],
+      contentJson,
       collabWsUrl: (note as any).collabWsUrl ?? null,
       tags: parsedTags,
       isCollaborative: note.isCollaborative,
@@ -176,6 +172,31 @@ export class EditorManager {
 
   private parseTags(raw: string | string[]): string[] {
     return parseStoredTags(raw);
+  }
+
+  private normalizeContent(raw: any): any[] {
+    if (Array.isArray(raw) && raw.length > 0) return raw as any[];
+    const text = this.extractText(raw);
+    return [
+      {
+        type: "paragraph",
+        children: [{ text }],
+      },
+    ];
+  }
+
+  private extractText(node: any): string {
+    if (!node) return "";
+    if (typeof node === "string") return node;
+    if (typeof node.text === "string") return node.text;
+    if (Array.isArray(node)) return node.map((n) => this.extractText(n)).join("");
+    if (Array.isArray(node.children))
+      return node.children.map((n: any) => this.extractText(n)).join("");
+    if (Array.isArray(node.content))
+      return node.content.map((n: any) => this.extractText(n)).join("");
+    if (typeof node === "object")
+      return Object.values(node).map((v) => this.extractText(v)).join("");
+    return "";
   }
 }
 

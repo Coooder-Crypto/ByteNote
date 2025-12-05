@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import type { Descendant } from "slate";
+import { toSlateDoc } from "slate-yjs";
 
 import { CollaboratorDialog, PlateEditor } from "@/components/Editor";
 import { NoteTags } from "@/components/NoteTags";
 import { TagInput } from "@/components/TagInput";
 import { Button } from "@/components/ui";
 import useEditor from "@/hooks/editor/useEditor";
+import { trpc } from "@/lib/trpc/client";
 
 const EMPTY_VALUE: Descendant[] = [
   { type: "paragraph", children: [{ text: "" }] } as unknown as Descendant,
@@ -15,14 +17,23 @@ const EMPTY_VALUE: Descendant[] = [
 
 export default function NoteEditor({ noteId }: { noteId: string }) {
   const [collabOpen, setCollabOpen] = useState(false);
+  const [collabEnabled, setCollabEnabled] = useState(false);
+  const utils = trpc.useUtils();
+  const setWsMutation = trpc.note.setCollabWsUrl.useMutation({
+    onSuccess: () => {
+      utils.note.detail.invalidate({ id: noteId });
+      utils.note.list.invalidate();
+    },
+  });
   const {
     note,
     saving,
+    sharedType,
     handleTitleChange,
     handleTagsChange,
     handleContentChange,
     handleSave,
-  } = useEditor(noteId);
+  } = useEditor(noteId, { collabEnabled });
 
   const { canEdit, isTrashed } = note.access;
   const titlePlaceholder = useMemo(
@@ -31,10 +42,24 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   );
 
   const value = useMemo(() => {
+    if (sharedType && collabEnabled) {
+      const doc = toSlateDoc(sharedType) as Descendant[];
+      if (Array.isArray(doc) && doc.length > 0) return doc;
+      return EMPTY_VALUE;
+    }
     const content = (note.contentJson as Descendant[]) ?? [];
+
     if (Array.isArray(content) && content.length > 0) return content;
     return EMPTY_VALUE;
-  }, [note.contentJson]);
+  }, [note.contentJson, sharedType, collabEnabled]);
+
+  const valueKey = useMemo(() => {
+    try {
+      return `${noteId}-${note.version}-${JSON.stringify(value).length}`;
+    } catch {
+      return `${noteId}-${note.version}-na`;
+    }
+  }, [noteId, note.version, value]);
 
   return (
     <div className="space-y-4">
@@ -77,6 +102,16 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
             >
               管理协作者
             </Button>
+            {note.isCollaborative && (
+              <Button
+                size="sm"
+                variant={collabEnabled ? "outline" : "default"}
+                onClick={() => setCollabEnabled((v) => !v)}
+                disabled={isTrashed}
+              >
+                {collabEnabled ? "断开协作" : "连接协作"}
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -102,10 +137,13 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         </div>
         <div className="px-3 py-3">
           <PlateEditor
+            noteId={noteId}
+            valueKey={valueKey}
             value={value}
             onChange={(val) => handleContentChange(val as Descendant[])}
             readOnly={!canEdit || isTrashed}
             placeholder="开始输入..."
+            sharedType={collabEnabled ? (sharedType ?? null) : null}
           />
         </div>
       </div>
@@ -113,6 +151,9 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         noteId={noteId}
         open={collabOpen}
         onOpenChange={setCollabOpen}
+        onUpdateWs={(ws) => setWsMutation.mutate({ noteId, collabWsUrl: ws })}
+        wsUrl={typeof note.collabWsUrl === "string" ? note.collabWsUrl : ""}
+        wsUpdating={setWsMutation.isPending}
       />
     </div>
   );
