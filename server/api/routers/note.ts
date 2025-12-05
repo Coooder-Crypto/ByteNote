@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { pusherServer } from "@/lib/pusher/server";
 import { protectedProcedure, router } from "@/server/api/trpc";
 
 const noteInput = z.object({
@@ -232,24 +231,6 @@ export const noteRouter = router({
 
       if (!result) {
         throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      try {
-        if (pusherServer && result.isCollaborative) {
-          await pusherServer.trigger(
-            `presence-note-${id}`,
-            "server-note-saved",
-            {
-              noteId: id,
-              title: result.title,
-              contentJson: result.contentJson,
-              updatedAt: result.updatedAt,
-              version: result.version,
-            },
-          );
-        }
-      } catch (error) {
-        console.warn("[pusher] broadcast note update failed", error);
       }
 
       return result;

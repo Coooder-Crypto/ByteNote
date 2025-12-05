@@ -54,7 +54,6 @@ pnpm dev
 
 ## 协作编辑简述
 - 前端：`CollaborativeEditor` 使用 Yjs 文档；`useNoteSync` 处理自动保存与服务器广播。
-- 后端：Pusher presence 鉴权 `/api/pusher/auth`；保存后通过 `server-note-saved` 事件广播最新版本。
 
 ## 许可证
 MIT
