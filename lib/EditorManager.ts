@@ -6,6 +6,7 @@ import { parseStoredTags } from "./tags";
 export type EditorNote = {
   title: string;
   contentJson: any;
+  collabWsUrl?: string | null;
   tags: string[];
   isCollaborative: boolean;
   folderId: string | null;
@@ -22,6 +23,7 @@ export type EditorNote = {
 export type ServerNotePayload = {
   title: string;
   contentJson: any;
+  collabWsUrl?: string | null;
   tags: string | string[];
   isCollaborative: boolean;
   folderId: string | null;
@@ -49,6 +51,7 @@ export class EditorManager {
           children: [{ text: "" }],
         },
       ],
+      collabWsUrl: null,
       tags: [],
       isCollaborative: false,
       folderId: null,
@@ -93,6 +96,7 @@ export class EditorManager {
           children: [{ text: "" }],
         },
       ],
+      collabWsUrl: (note as any).collabWsUrl ?? null,
       tags: parsedTags,
       isCollaborative: note.isCollaborative,
       folderId: note.folderId,

@@ -52,6 +52,7 @@ model Note {
   id             String   @id @default(uuid())
   title          String
   contentJson    Json
+  collabWsUrl    String?
   isFavorite     Boolean  @default(false)
   isCollaborative Boolean @default(false)
   summary        String?  @db.Text
