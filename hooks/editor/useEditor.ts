@@ -1,9 +1,11 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Descendant } from "slate";
 import { toast } from "sonner";
+import { WebsocketProvider } from "y-websocket";
+import * as Y from "yjs";
 
 import { useNoteActions } from "@/hooks";
 import { useNetworkStatus } from "@/hooks/Store/useNetworkStore";
@@ -38,6 +40,13 @@ export default function useEditor(noteId: string) {
   const [savingLocal, setSavingLocal] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const isLocal = isLocalId(noteId);
+  const ySyncRef = useRef<{
+    doc: Y.Doc;
+    content: Y.Map<any>;
+    provider: WebsocketProvider;
+  } | null>(null);
+  const wsWarnedRef = useRef(false);
+  const suppressRemoteRef = useRef(false);
 
   useEffect(() => {
     const serverNote = noteQuery?.data;
@@ -85,6 +94,73 @@ export default function useEditor(noteId: string) {
     };
   }, [allowQueries, hydrated, manager, noteId, noteQuery?.data]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!note.isCollaborative) return;
+    if (!canUse || !loggedIn) return;
+
+    let wsUrl: string | null = null;
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      wsUrl = params.get("ws");
+      if (!wsUrl) {
+        wsUrl = localStorage.getItem("byte-note-ws-url");
+      }
+    }
+
+    if (!wsUrl) {
+      if (!wsWarnedRef.current) {
+        toast.info("请在协作分享中填写协同服务器 WS 地址");
+        wsWarnedRef.current = true;
+      }
+      return;
+    }
+
+    if (!wsUrl.startsWith("ws://") && !wsUrl.startsWith("wss://")) {
+      toast.error("WS 地址不合法，请检查");
+      return;
+    }
+
+    const doc = new Y.Doc();
+    const provider = new WebsocketProvider(wsUrl, noteId, doc);
+    const content = doc.getMap("content");
+    ySyncRef.current = { doc, content, provider };
+
+    const existing = content.get("json") as Descendant[] | undefined;
+    if (existing && Array.isArray(existing)) {
+      suppressRemoteRef.current = true;
+      setNote(manager.updateContentAndNote(existing));
+      suppressRemoteRef.current = false;
+    } else {
+      content.set("json", (note.contentJson as Descendant[]) ?? []);
+    }
+
+    const observer = () => {
+      const incoming = content.get("json") as Descendant[] | undefined;
+      if (!incoming || !Array.isArray(incoming)) return;
+      suppressRemoteRef.current = true;
+      setNote(manager.updateContentAndNote(incoming));
+      suppressRemoteRef.current = false;
+    };
+
+    content.observe(observer);
+
+    return () => {
+      content.unobserve(observer);
+      provider.destroy();
+      doc.destroy();
+      ySyncRef.current = null;
+    };
+  }, [
+    canUse,
+    hydrated,
+    loggedIn,
+    manager,
+    note.contentJson,
+    note.isCollaborative,
+    noteId,
+  ]);
+
   const handleTitleChange = useCallback(
     (value: string) => {
       if (!hydrated) return;
@@ -108,6 +184,11 @@ export default function useEditor(noteId: string) {
       if (!hydrated) return;
       const next = manager.updateContentAndNote(contentJson);
       setNote(next);
+      if (suppressRemoteRef.current) return;
+      const sync = ySyncRef.current;
+      if (sync) {
+        sync.content.set("json", contentJson);
+      }
     },
     [hydrated, manager],
   );
