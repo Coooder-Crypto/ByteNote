@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
 import { useNetworkStatus } from "@/hooks";
 import { useNoteList } from "@/hooks/Note";
-import { localManager } from "@/lib/manager/LocalManager";
 import { trpc } from "@/lib/trpc/client";
 
 type NoteBoardProps = {
@@ -102,10 +101,8 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
             }
             sortKey={sortKey}
             onSortChange={setSortKey}
-            onClearLocal={async () => {
-              await localManager.clearAll();
-              window.location.reload();
-            }}
+            onClearTags={() => setSelectedTags([])}
+            activeFilter={filter}
           />
         </div>
       </div>
