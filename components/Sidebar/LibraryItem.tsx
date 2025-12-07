@@ -7,9 +7,15 @@ type LibraryItemProps = {
   item: BnNav;
   active: boolean;
   onNavigate?: () => void;
+  collapsed?: boolean;
 };
 
-export function LibraryItem({ item, active, onNavigate }: LibraryItemProps) {
+export function LibraryItem({
+  item,
+  active,
+  onNavigate,
+  collapsed = false,
+}: LibraryItemProps) {
   return (
     <Link
       href={item.path}
@@ -28,7 +34,7 @@ export function LibraryItem({ item, active, onNavigate }: LibraryItemProps) {
             active ? "text-primary" : "text-muted-foreground",
           )}
         />
-        {item.label}
+        {!collapsed && item.label}
       </div>
     </Link>
   );
