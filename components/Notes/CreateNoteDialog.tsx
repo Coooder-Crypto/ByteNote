@@ -17,9 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
-import { useFolderActions, useNoteActions } from "@/hooks";
-import { localManager } from "@/lib/offline/LocalManager";
-import { NOTE_TAGS } from "@/lib/tags";
+import { useFolderActions, useNoteActions } from "@/hooks/Note";
+import { NOTE_TAGS } from "@/lib/constants/tags";
+import { localManager } from "@/lib/manager/LocalManager";
 
 import { TagInput } from "../TagInput";
 

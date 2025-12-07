@@ -23,6 +23,7 @@ type NotesHeaderProps = {
   onToggleTag: (tag: string) => void;
   sortKey: "updatedAt" | "createdAt";
   onSortChange: (key: "updatedAt" | "createdAt") => void;
+  onClearLocal?: () => void;
 };
 
 export default function NotesHeader({
@@ -35,6 +36,7 @@ export default function NotesHeader({
   onToggleTag,
   sortKey,
   onSortChange,
+  onClearLocal,
 }: NotesHeaderProps) {
   const sortedTags = useMemo(() => [...tags].sort(), [tags]);
   const [sortOpen, setSortOpen] = useState(false);
@@ -53,10 +55,22 @@ export default function NotesHeader({
             共 {total} 条笔记，继续保持创作吧。
           </p>
         </div>
-        <Button size="lg" className="rounded-2xl" onClick={onCreate}>
-          <Plus className="size-4" />
-          新建笔记
-        </Button>
+        <div className="flex gap-2">
+          {onClearLocal && (
+            <Button
+              variant="outline"
+              size="lg"
+              className="rounded-2xl"
+              onClick={onClearLocal}
+            >
+              清除本地缓存
+            </Button>
+          )}
+          <Button size="lg" className="rounded-2xl" onClick={onCreate}>
+            <Plus className="size-4" />
+            新建笔记
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

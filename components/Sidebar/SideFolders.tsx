@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 
-import type { BnFolder } from "@/types/entities";
+import type { BnFolder } from "@/types";
 
 import FolderItem from "./FolderItem";
 

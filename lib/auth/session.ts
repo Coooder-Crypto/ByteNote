@@ -5,7 +5,7 @@ import type { Session } from "next-auth";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/server/auth-options";
-import type { BnUser } from "@/types/entities";
+import type { BnUser } from "@/types";
 
 import { getAuthToken, normalizeAuthToken } from "./token";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { BnNote } from "@/types/entities";
+import { BnNote } from "@/types";
 
 import NoteCard from "./NoteCard";
 

@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { pusherServer } from "@/lib/pusher/server";
 import { protectedProcedure, router } from "@/server/api/trpc";
 
 const noteInput = z.object({
@@ -10,12 +9,33 @@ const noteInput = z.object({
   contentJson: z.any(),
   tags: z.array(z.string()).optional(),
   summary: z.string().optional(),
+  collabWsUrl: z.string().url().optional().nullable(),
   folderId: z.string().uuid().optional().nullable(),
   version: z.number().optional(),
   isCollaborative: z.boolean().optional(),
 });
 
 export const noteRouter = router({
+  setCollabWsUrl: protectedProcedure
+    .input(
+      z.object({
+        noteId: z.string().uuid(),
+        collabWsUrl: z.string().min(1).url().optional().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const note = await ctx.prisma.note.findFirst({
+        where: { id: input.noteId, userId: ctx.session!.user.id },
+        select: { id: true },
+      });
+      if (!note) throw new TRPCError({ code: "FORBIDDEN" });
+      const updated = await ctx.prisma.note.update({
+        where: { id: input.noteId },
+        data: { collabWsUrl: input.collabWsUrl ?? null },
+        select: { id: true, collabWsUrl: true },
+      });
+      return updated;
+    }),
   list: protectedProcedure
     .input(
       z
@@ -80,6 +100,7 @@ export const noteRouter = router({
           createdAt: true,
           updatedAt: true,
           contentJson: true,
+          collabWsUrl: true,
           isFavorite: true,
           isCollaborative: true,
           deletedAt: true,
@@ -115,6 +136,7 @@ export const noteRouter = router({
           id: true,
           title: true,
           contentJson: true,
+          collabWsUrl: true,
           summary: true,
           tags: true,
           folderId: true,
@@ -140,6 +162,7 @@ export const noteRouter = router({
         data: {
           title: input.title,
           contentJson: input.contentJson ?? {},
+          collabWsUrl: input.collabWsUrl ?? null,
           summary: input.summary ?? "",
           isFavorite: false,
           isCollaborative: input.isCollaborative ?? false,
@@ -192,6 +215,7 @@ export const noteRouter = router({
             tags: JSON.stringify(rest.tags ?? []),
             folderId: rest.folderId ?? null,
             isCollaborative: rest.isCollaborative ?? false,
+            collabWsUrl: rest.collabWsUrl ?? null,
             version: { increment: 1 },
           },
         });
@@ -220,6 +244,7 @@ export const noteRouter = router({
             id: true,
             title: true,
             contentJson: true,
+            collabWsUrl: true,
             tags: true,
             folderId: true,
             version: true,
@@ -232,24 +257,6 @@ export const noteRouter = router({
 
       if (!result) {
         throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      try {
-        if (pusherServer && result.isCollaborative) {
-          await pusherServer.trigger(
-            `presence-note-${id}`,
-            "server-note-saved",
-            {
-              noteId: id,
-              title: result.title,
-              contentJson: result.contentJson,
-              updatedAt: result.updatedAt,
-              version: result.version,
-            },
-          );
-        }
-      } catch (error) {
-        console.warn("[pusher] broadcast note update failed", error);
       }
 
       return result;

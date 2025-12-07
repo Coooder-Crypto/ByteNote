@@ -1,6 +1,6 @@
 import { Folder } from "lucide-react";
 
-import type { BnFolder } from "@/types/entities";
+import type { BnFolder } from "@/types";
 
 type FolderItemProps = {
   folder: BnFolder;

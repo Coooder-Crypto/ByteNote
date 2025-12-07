@@ -1,4 +1,4 @@
-import type { BnNav } from "@/types/entities";
+import type { BnNav } from "@/types";
 
 import { LibraryItem } from "./LibraryItem";
 

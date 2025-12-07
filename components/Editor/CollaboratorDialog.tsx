@@ -1,7 +1,8 @@
 "use client";
 
 import { Loader2, UserPlus, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import {
   Button,
@@ -12,20 +13,26 @@ import {
   DialogTitle,
   Input,
 } from "@/components/ui";
-import { useCollaboratorActions } from "@/hooks";
+import { useCollaboratorActions } from "@/hooks/Note";
 import { trpc } from "@/lib/trpc/client";
-import type { BnUser } from "@/types/entities";
+import type { BnUser } from "@/types";
 
 type CollaboratorDialogProps = {
   noteId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  wsUrl?: string;
+  wsUpdating?: boolean;
+  onUpdateWs?: (ws: string) => void;
 };
 
 export default function CollaboratorDialog({
   noteId,
   open,
   onOpenChange,
+  wsUrl = "",
+  wsUpdating = false,
+  onUpdateWs,
 }: CollaboratorDialogProps) {
   const listQuery = trpc.collaborator.list.useQuery(
     { noteId },
@@ -42,6 +49,11 @@ export default function CollaboratorDialog({
   const [email, setEmail] = useState("");
   const [searchResults, setSearchResults] = useState<BnUser[]>([]);
   const [searching, setSearching] = useState(false);
+  const [wsInput, setWsInput] = useState<string>(wsUrl);
+
+  useEffect(() => {
+    setWsInput(wsUrl ?? "");
+  }, [wsUrl, open]);
 
   const collaborators = useMemo(() => listQuery.data ?? [], [listQuery.data]);
 
@@ -60,6 +72,20 @@ export default function CollaboratorDialog({
     addCollaborator(userId, "editor");
     setEmail("");
     setSearchResults([]);
+  };
+
+  const handleSaveWs = () => {
+    const trimmed = wsInput.trim();
+    if (!trimmed) {
+      toast.error("请先填写协同服务器的 WS 地址");
+      return;
+    }
+    if (!trimmed.startsWith("ws://") && !trimmed.startsWith("wss://")) {
+      toast.error("WS 地址格式不正确");
+      return;
+    }
+    onUpdateWs?.(trimmed);
+    toast.success("协作服务器已保存");
   };
 
   return (
@@ -113,6 +139,28 @@ export default function CollaboratorDialog({
               ))}
             </div>
           )}
+          <div className="space-y-2 rounded-lg border border-dashed p-3">
+            <p className="text-sm font-medium">协作服务器</p>
+            <p className="text-muted-foreground text-xs">
+              填写协同 WS
+              地址（仅拥有者可改），保存后所有协作者将使用该地址连接。
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                value={wsInput}
+                onChange={(e) => setWsInput(e.target.value)}
+                placeholder="例如 ws://localhost:1234"
+                disabled={wsUpdating}
+              />
+              <Button
+                variant="outline"
+                onClick={handleSaveWs}
+                disabled={wsUpdating}
+              >
+                保存
+              </Button>
+            </div>
+          </div>
           <div className="space-y-2">
             <p className="text-muted-foreground text-xs">已有协作者</p>
             <div className="space-y-2">

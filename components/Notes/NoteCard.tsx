@@ -1,8 +1,8 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { isLocalId } from "@/lib/offline/ids";
-import { BnNote } from "@/types/entities";
+import { isLocalId } from "@/lib/utils/offline/ids";
+import { BnNote } from "@/types";
 
 type NoteCardProps = {
   note: BnNote;

@@ -4,7 +4,7 @@ import superjson from "superjson";
 
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import type { BnUser } from "@/types/entities";
+import type { BnUser } from "@/types";
 
 type CreateContextOptions = {
   req: NextRequest;

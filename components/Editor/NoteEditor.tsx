@@ -1,27 +1,35 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Descendant } from "slate";
 
-import { PlateEditor } from "@/components/Editor";
-import { NoteTags } from "@/components/NoteTags";
+import { NoteTags } from "@/components/Common";
+import { CollaboratorDialog, SlateEditor } from "@/components/Editor";
 import { TagInput } from "@/components/TagInput";
 import { Button } from "@/components/ui";
-import useEditor from "@/hooks/editor/useEditor";
+import useEditor from "@/hooks/Editor/useEditor";
+import { useNoteActions } from "@/hooks/Note";
 
 const EMPTY_VALUE: Descendant[] = [
   { type: "paragraph", children: [{ text: "" }] } as unknown as Descendant,
 ];
 
 export default function NoteEditor({ noteId }: { noteId: string }) {
+  const [collabOpen, setCollabOpen] = useState(false);
+  const [collabEnabled, setCollabEnabled] = useState(false);
+  const { setWsUrl, setWsPending } = useNoteActions({});
   const {
     note,
     saving,
+    sharedType,
+    collabStatus,
+    flushCollabToServer,
     handleTitleChange,
     handleTagsChange,
     handleContentChange,
     handleSave,
-  } = useEditor(noteId);
+    setCollabWs,
+  } = useEditor(noteId, { collabEnabled });
 
   const { canEdit, isTrashed } = note.access;
   const titlePlaceholder = useMemo(
@@ -29,11 +37,27 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     [note.access.canEdit],
   );
 
+  const collabIndicator = useMemo(() => {
+    if (!collabEnabled) return "idle";
+    if (collabStatus === "connected") return "connected";
+    if (collabStatus === "error") return "error";
+    // connecting 或初始 idle 时展示连接中
+    return "connecting";
+  }, [collabEnabled, collabStatus]);
+
   const value = useMemo(() => {
     const content = (note.contentJson as Descendant[]) ?? [];
     if (Array.isArray(content) && content.length > 0) return content;
     return EMPTY_VALUE;
   }, [note.contentJson]);
+
+  const valueKey = useMemo(() => {
+    try {
+      return `${noteId}-${note.version}-${JSON.stringify(value).length}`;
+    } catch {
+      return `${noteId}-${note.version}-na`;
+    }
+  }, [noteId, note.version, value]);
 
   return (
     <div className="space-y-4">
@@ -68,6 +92,40 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
             >
               {saving ? "保存中..." : "保存"}
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setCollabOpen(true)}
+              disabled={isTrashed}
+            >
+              管理协作者
+            </Button>
+            {note.isCollaborative && (
+              <Button
+                size="sm"
+                variant={collabEnabled ? "outline" : "default"}
+                onClick={async () => {
+                  if (collabEnabled) {
+                    await flushCollabToServer();
+                    setCollabEnabled(false);
+                  } else {
+                    setCollabEnabled(true);
+                  }
+                }}
+                disabled={isTrashed}
+              >
+                <span
+                  className={`mr-2 inline-block h-2 w-2 rounded-full ${
+                    collabIndicator === "connected"
+                      ? "bg-emerald-500"
+                      : collabIndicator === "connecting"
+                        ? "bg-amber-500"
+                        : "bg-rose-500"
+                  }`}
+                />
+                {collabEnabled ? "断开协作" : "连接协作"}
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -92,14 +150,42 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
           </span>
         </div>
         <div className="px-3 py-3">
-          <PlateEditor
-            value={value}
-            onChange={(val) => handleContentChange(val as Descendant[])}
-            readOnly={!canEdit || isTrashed}
-            placeholder="开始输入..."
-          />
+          {collabEnabled ? (
+            sharedType ? (
+              <SlateEditor
+                valueKey={`collab-${noteId}`}
+                value={value}
+                onChange={(val) => handleContentChange(val as Descendant[])}
+                readOnly={!canEdit || isTrashed}
+                placeholder="开始输入..."
+                sharedType={sharedType}
+              />
+            ) : (
+              <div className="text-muted-foreground text-sm">协作连接中...</div>
+            )
+          ) : (
+            <SlateEditor
+              valueKey={`local-${valueKey}`}
+              value={value}
+              onChange={(val) => handleContentChange(val as Descendant[])}
+              readOnly={!canEdit || isTrashed}
+              placeholder="开始输入..."
+              sharedType={null}
+            />
+          )}
         </div>
       </div>
+      <CollaboratorDialog
+        noteId={noteId}
+        open={collabOpen}
+        onOpenChange={setCollabOpen}
+        onUpdateWs={(ws) => {
+          setCollabWs(ws);
+          setWsUrl({ noteId, collabWsUrl: ws });
+        }}
+        wsUrl={typeof note.collabWsUrl === "string" ? note.collabWsUrl : ""}
+        wsUpdating={setWsPending}
+      />
     </div>
   );
 }

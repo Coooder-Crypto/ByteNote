@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
-import type { BnNav } from "@/types/entities";
+import type { BnNav } from "@/types";
 
 type LibraryItemProps = {
   item: BnNav;

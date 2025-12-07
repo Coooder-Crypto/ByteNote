@@ -5,8 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useTheme, useUserStore } from "@/hooks";
-import { useNetworkStatus } from "@/hooks/Store/useNetworkStore";
+import { useNetworkStatus, useTheme, useUserStore } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 import ProfileSettingsDialog from "./ProfileSettingsDialog";
@@ -75,11 +74,15 @@ export default function SideFooter({
               onClick={toggleTheme}
               aria-label="切换主题"
             >
-              {mounted
-                ? theme === "dark"
-                  ? <Sun className="size-4" />
-                  : <Moon className="size-4" />
-                : <Sun className="size-4" />}
+              {mounted ? (
+                theme === "dark" ? (
+                  <Sun className="size-4" />
+                ) : (
+                  <Moon className="size-4" />
+                )
+              ) : (
+                <Sun className="size-4" />
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -107,10 +110,14 @@ export default function SideFooter({
             onClick={toggleTheme}
             aria-label="切换主题"
           >
-            {theme === "dark" ? (
-              <Sun className="size-4" />
+            {mounted ? (
+              theme === "dark" ? (
+                <Sun className="size-4" />
+              ) : (
+                <Moon className="size-4" />
+              )
             ) : (
-              <Moon className="size-4" />
+              <Sun className="size-4" />
             )}
           </Button>
         </div>

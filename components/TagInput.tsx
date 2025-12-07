@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
-import { getTagLabel, NOTE_TAGS } from "@/lib/tags";
+import { getTagLabel, NOTE_TAGS } from "@/lib/constants/tags";
 import { cn } from "@/lib/utils";
 
 type TagInputProps = {

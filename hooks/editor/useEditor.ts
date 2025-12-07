@@ -1,17 +1,24 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Descendant } from "slate";
 import { toast } from "sonner";
 
-import { useNoteActions } from "@/hooks";
-import { useNetworkStatus } from "@/hooks/Store/useNetworkStore";
-import EditorManager, { type EditorNote } from "@/lib/EditorManager";
-import { isLocalId } from "@/lib/offline/ids";
-import { localManager } from "@/lib/offline/LocalManager";
+import EditorManager from "@/lib/manager/EditorManager";
+import { localManager } from "@/lib/manager/LocalManager";
+import { isLocalId } from "@/lib/utils/offline/ids";
+import { type EditorNote } from "@/types";
 
-export default function useEditor(noteId: string) {
+import { useNetworkStatus, useSocket } from "../Network";
+import { useNoteActions } from "../Note";
+
+export default function useEditor(
+  noteId: string,
+  opts?: {
+    collabEnabled?: boolean;
+  },
+) {
   const { canUseNetwork } = useNetworkStatus();
   const canUse = canUseNetwork();
   const session = useSession();
@@ -24,6 +31,7 @@ export default function useEditor(noteId: string) {
     updateNoteAsync,
     createPending,
     updatePending,
+    fetchNote,
   } = useNoteActions({
     noteId,
     withQueries: allowQueries,
@@ -38,6 +46,8 @@ export default function useEditor(noteId: string) {
   const [savingLocal, setSavingLocal] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const isLocal = isLocalId(noteId);
+  const [sharedType, setSharedType] = useState<any>(null);
+  const retryingRef = useRef(false);
 
   useEffect(() => {
     const serverNote = noteQuery?.data;
@@ -85,6 +95,38 @@ export default function useEditor(noteId: string) {
     };
   }, [allowQueries, hydrated, manager, noteId, noteQuery?.data]);
 
+  const collab = useSocket({
+    noteId,
+    enabled:
+      hydrated &&
+      note.isCollaborative &&
+      canUse &&
+      loggedIn &&
+      (opts?.collabEnabled ?? true),
+    wsUrl: typeof note.collabWsUrl === "string" ? note.collabWsUrl : null,
+    seedContent:
+      Array.isArray(note.contentJson) && note.contentJson.length > 0
+        ? (note.contentJson as Descendant[])
+        : undefined,
+    seedVersion: note.version,
+    isOwner: note.access.isOwner,
+  });
+
+  useEffect(() => {
+    setSharedType(collab.sharedType);
+  }, [collab.sharedType]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (typeof collab.metaVersion !== "number") return;
+    if (collab.metaVersion === note.version) return;
+    const next = manager.updateVersionAndNote(collab.metaVersion);
+    setNote((prev) => {
+      if (prev.version === next.version) return prev;
+      return { ...next };
+    });
+  }, [collab.metaVersion, hydrated, manager, note.version]);
+
   const handleTitleChange = useCallback(
     (value: string) => {
       if (!hydrated) return;
@@ -103,13 +145,22 @@ export default function useEditor(noteId: string) {
     [hydrated, manager, noteId],
   );
 
+  const setCollabWs = useCallback(
+    (ws: string | null) => {
+      manager.updateCollabWsUrl(ws);
+      setNote((prev) => ({ ...prev, collabWsUrl: ws }));
+    },
+    [manager],
+  );
+
   const handleContentChange = useCallback(
     (contentJson: Descendant[]) => {
       if (!hydrated) return;
+      if (sharedType) return; // 协同模式由 Yjs 驱动，不再手动 setNote
       const next = manager.updateContentAndNote(contentJson);
       setNote(next);
     },
-    [hydrated, manager],
+    [hydrated, manager, sharedType],
   );
 
   const save = useCallback(
@@ -118,14 +169,21 @@ export default function useEditor(noteId: string) {
       setSavingLocal(true);
       const current = manager.getNote();
       const now = Date.now();
+      const contentFromShared =
+        sharedType && sharedType.length > 0
+          ? ((require("slate-yjs") as any).toSlateDoc(
+              sharedType,
+            ) as Descendant[])
+          : ((note.contentJson as Descendant[]) ?? [
+              { type: "paragraph", children: [{ text: "" }] },
+            ]);
       const baseRecord = {
         title: current.title || "未命名笔记",
-        contentJson: (note.contentJson as Descendant[]) ?? [
-          { type: "paragraph", children: [{ text: "" }] },
-        ],
+        contentJson: contentFromShared,
         tags: current.tags,
         folderId: current.folderId,
         isCollaborative: current.isCollaborative,
+        collabWsUrl: current.collabWsUrl ?? null,
       };
 
       const persistDirty = () =>
@@ -152,6 +210,7 @@ export default function useEditor(noteId: string) {
             tags: baseRecord.tags,
             folderId: baseRecord.folderId ?? undefined,
             isCollaborative: baseRecord.isCollaborative,
+            collabWsUrl: baseRecord.collabWsUrl ?? undefined,
             version: current.version,
           });
           if (created?.id) {
@@ -163,6 +222,10 @@ export default function useEditor(noteId: string) {
                   ? created.version
                   : current.version,
             });
+            if (typeof created.version === "number") {
+              manager.updateVersion(created.version);
+              collab.setMetaVersion(created.version);
+            }
             setNote((prev) => ({
               ...prev,
               version:
@@ -190,27 +253,61 @@ export default function useEditor(noteId: string) {
             "version" in updated &&
             typeof (updated as any).version === "number"
           ) {
+            manager.updateVersion((updated as any).version);
+            collab.setMetaVersion((updated as any).version);
             setNote((prev) => ({ ...prev, version: (updated as any).version }));
           }
         }
-      } catch {
+      } catch (err: any) {
+        const code =
+          err?.data?.code ?? err?.shape?.code ?? err?.message ?? "UNKNOWN";
+        const needRetry =
+          !retryingRef.current &&
+          (code === "NOT_FOUND" || code === "CONFLICT");
+        if (needRetry) {
+          retryingRef.current = true;
+          const latest = await fetchNote(noteId);
+          if (latest && typeof (latest as any).version === "number") {
+            manager.updateVersion((latest as any).version);
+            collab.setMetaVersion((latest as any).version);
+            setNote((prev) => ({
+              ...prev,
+              version: (latest as any).version,
+            }));
+            // retry once with refreshed version
+            await save(true);
+          }
+        }
       } finally {
+        retryingRef.current = false;
         setSavingLocal(false);
       }
     },
-    [canUseNetwork, createNoteAsync, isLocal, manager, noteId, updateNoteAsync],
+    [
+      canUseNetwork,
+      collab,
+      createNoteAsync,
+      fetchNote,
+      isLocal,
+      manager,
+      noteId,
+      updateNoteAsync,
+    ],
   );
 
   const handleSave = useCallback(async () => {
+    // 确保协作模式下使用最新的协作 version
+    if (typeof collab.metaVersion === "number") {
+      manager.updateVersion(collab.metaVersion);
+    }
     const snap = manager.getNote();
     if (!snap.access.canEdit || snap.access.isTrashed) return;
     if (!snap.title.trim()) {
       toast.error("标题不能为空");
       return;
     }
-    setNote(snap);
     await save(true);
-  }, [manager, save]);
+  }, [collab.metaVersion, manager, save]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -228,9 +325,18 @@ export default function useEditor(noteId: string) {
   return {
     note,
     saving,
+    sharedType,
+    collabStatus: collab.status,
+    flushCollabToServer: async () => {
+      if (typeof collab.metaVersion === "number") {
+        manager.updateVersion(collab.metaVersion);
+      }
+      await save(true);
+    },
     handleTitleChange,
     handleTagsChange,
     handleContentChange,
     handleSave,
+    setCollabWs,
   };
 }

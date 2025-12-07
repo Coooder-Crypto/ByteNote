@@ -17,7 +17,7 @@ import {
 } from "@/components/ui";
 import { useUserActions } from "@/hooks";
 import { cn } from "@/lib/utils";
-import type { BnUser } from "@/types/entities";
+import type { BnUser } from "@/types";
 
 import AvatarUploader from "./AvatarUploader";
 

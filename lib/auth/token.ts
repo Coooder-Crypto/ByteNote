@@ -2,7 +2,7 @@
 
 import type { NextRequest } from "next/server";
 
-import type { BnUser } from "@/types/entities";
+import type { BnUser } from "@/types";
 
 type AnyRequest = Request | NextRequest;
 

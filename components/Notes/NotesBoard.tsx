@@ -4,8 +4,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
-import { useNoteList } from "@/hooks";
-import { useNetworkStatus } from "@/hooks/Store/useNetworkStore";
+import { useNetworkStatus } from "@/hooks";
+import { useNoteList } from "@/hooks/Note";
+import { localManager } from "@/lib/manager/LocalManager";
 import { trpc } from "@/lib/trpc/client";
 
 type NoteBoardProps = {
@@ -101,6 +102,10 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
             }
             sortKey={sortKey}
             onSortChange={setSortKey}
+            onClearLocal={async () => {
+              await localManager.clearAll();
+              window.location.reload();
+            }}
           />
         </div>
       </div>
