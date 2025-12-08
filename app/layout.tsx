@@ -10,7 +10,7 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: {
-    default: "Byte Note · 字节训练营前端笔记",
+    default: "Byte Note",
     template: "%s · Byte Note",
   },
   description:

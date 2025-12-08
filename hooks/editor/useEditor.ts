@@ -145,6 +145,15 @@ export default function useEditor(
     [hydrated, manager, noteId],
   );
 
+  const setCollaborative = useCallback(
+    (enabled: boolean) => {
+      if (!hydrated) return;
+      const next = manager.updateCollaborativeAndNote(enabled);
+      setNote({ ...next });
+    },
+    [hydrated, manager],
+  );
+
   const setCollabWs = useCallback(
     (ws: string | null) => {
       manager.updateCollabWsUrl(ws);
@@ -338,5 +347,6 @@ export default function useEditor(
     handleContentChange,
     handleSave,
     setCollabWs,
+    setCollaborative,
   };
 }
