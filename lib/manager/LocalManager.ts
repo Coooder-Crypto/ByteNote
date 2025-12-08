@@ -15,6 +15,8 @@ type NotePayload = {
   version?: number;
   updatedAt?: number;
   syncStatus?: LocalNoteRecord["syncStatus"];
+  summary?: string | null;
+  aiMeta?: any;
 };
 
 type SyncActions = {
@@ -83,6 +85,8 @@ class LocalManager {
           : undefined,
       isCollaborative: payload.isCollaborative,
       version: payload.version,
+      summary: payload.summary,
+      aiMeta: payload.aiMeta,
     };
     await noteStorage.save(record);
     return record;
@@ -128,6 +132,8 @@ class LocalManager {
       updatedAt: Date | string | number | null;
       isCollaborative: boolean | null;
       version?: number | null;
+      summary?: string | null;
+      aiMeta?: any;
     }>,
   ) {
     let pulled = 0;
@@ -143,6 +149,9 @@ class LocalManager {
         const serverFolder = note.folderId ?? null;
         const serverVersion =
           typeof note.version === "number" ? note.version : undefined;
+        const serverSummary =
+          typeof note.summary === "string" ? note.summary : null;
+        const serverAiMeta = (note as any).aiMeta;
         if (!local) {
           await noteStorage.save({
             id: note.id,
@@ -154,6 +163,8 @@ class LocalManager {
             syncStatus: "synced",
             isCollaborative: note.isCollaborative ?? false,
             version: serverVersion,
+            summary: serverSummary,
+            aiMeta: serverAiMeta,
           });
           pulled += 1;
           continue;
@@ -170,6 +181,8 @@ class LocalManager {
             syncStatus: "synced",
             isCollaborative: note.isCollaborative ?? false,
             version: serverVersion,
+            summary: serverSummary,
+            aiMeta: serverAiMeta,
           });
           pulled += 1;
         }

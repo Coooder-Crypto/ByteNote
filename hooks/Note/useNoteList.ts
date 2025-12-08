@@ -92,6 +92,8 @@ export default function useNoteList({
         title: note.title ?? "未命名笔记",
         content: text,
         contentJson,
+        summary: note.summary ?? undefined,
+        aiMeta: note.aiMeta,
         createdAt: new Date(note.updatedAt).toISOString(),
         updatedAt: new Date(note.updatedAt).toISOString(),
         deletedAt: null,
@@ -111,6 +113,8 @@ export default function useNoteList({
           title: note.title,
           content: text,
           contentJson,
+          summary: (note as any).summary ?? undefined,
+          aiMeta: (note as any).aiMeta,
           createdAt: note.createdAt as Date | string,
           updatedAt: note.updatedAt as Date | string,
           deletedAt: (note.deletedAt ?? null) as Date | string | null,
@@ -138,6 +142,7 @@ export default function useNoteList({
         lower.length === 0 ||
         note.title.toLowerCase().includes(lower) ||
         (note.content ?? "").toLowerCase().includes(lower) ||
+        (note.summary ?? "").toLowerCase().includes(lower) ||
         note.tags.some((tag) => tag.toLowerCase().includes(lower));
       const matchesTags =
         selectedTags.length === 0 ||
