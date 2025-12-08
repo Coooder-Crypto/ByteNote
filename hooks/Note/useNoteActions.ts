@@ -44,6 +44,8 @@ export default function useNoteActions<
           ...prev,
           title: data.title ?? prev.title,
           contentJson: (data as any).contentJson ?? prev.contentJson,
+          summary: (data as any).summary ?? (prev as any).summary,
+          aiMeta: (data as any).aiMeta ?? (prev as any).aiMeta,
           version:
             typeof data.version === "number" ? data.version : prev.version,
         }));

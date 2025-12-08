@@ -28,6 +28,8 @@ export type BnNote = {
   title: string;
   content?: string | null;
   contentJson?: any;
+  summary?: string | null;
+  aiMeta?: any;
   createdAt: Date | string;
   updatedAt: Date | string;
   deletedAt?: Date | string | null;
@@ -56,6 +58,8 @@ export type EditorNote = {
   folderId: string | null;
   isFavorite: boolean;
   version: number;
+  summary?: string;
+  aiMeta?: any;
   access: {
     canEdit: boolean;
     isTrashed: boolean;
@@ -73,6 +77,8 @@ export type ServerNotePayload = {
   folderId: string | null;
   isFavorite: boolean;
   version?: number;
+  summary?: string | null;
+  aiMeta?: any;
   deletedAt?: string | Date | null;
   userId?: string | null;
   collaborators?: { userId: string }[];
@@ -111,4 +117,6 @@ export type LocalNoteRecord = {
   syncStatus?: "dirty" | "synced" | "pending";
   isCollaborative?: boolean;
   version?: number;
+  summary?: string | null;
+  aiMeta?: any;
 };

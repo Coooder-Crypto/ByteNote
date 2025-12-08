@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
 import type { Descendant } from "slate";
+import { toast } from "sonner";
 
 import { CollaboratorDialog, SlateEditor } from "@/components/Editor";
 import EditorHeader from "@/components/Editor/EditorHeader";
 import { useUserStore } from "@/hooks";
 import useEditor from "@/hooks/Editor/useEditor";
+import useNetworkStatus from "@/hooks/Network/useNetworkStore";
 import { useNoteActions } from "@/hooks/Note";
-import { useRouter, useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 
 const EMPTY_VALUE: Descendant[] = [
@@ -21,7 +23,9 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUserStore();
+  const { online } = useNetworkStatus();
   const { setWsUrl, setWsPending } = useNoteActions({});
+  const utils = trpc.useUtils();
   const {
     note,
     saving,
@@ -34,6 +38,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     handleSave,
     setCollabWs,
     setCollaborative,
+    applyServerUpdate,
   } = useEditor(noteId, { collabEnabled });
 
   const { canEdit, isTrashed } = note.access;
@@ -66,6 +71,78 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     };
     return walk(value).length;
   }, [value]);
+
+  const syncSharedContent = useCallback(
+    (nextContent: Descendant[]) => {
+      if (!collabEnabled || !sharedType) return;
+      try {
+        const { toSharedType } = require("slate-yjs") as any;
+        const doc = (sharedType as any).doc as any;
+        if (doc && typeof doc.transact === "function") {
+          doc.transact(() => {
+            (sharedType as any).delete(0, (sharedType as any).length);
+            toSharedType(sharedType as any, nextContent as any);
+          });
+        } else if (typeof (sharedType as any).delete === "function") {
+          (sharedType as any).delete(0, (sharedType as any).length);
+          toSharedType(sharedType as any, nextContent as any);
+        }
+      } catch (err) {
+        console.warn("[ai] 同步协作内容失败", err);
+      }
+    },
+    [collabEnabled, sharedType],
+  );
+
+  const handleAiResult = useCallback(
+    (data: any) => {
+      if (!data) return;
+      const nextContent = (data as any).contentJson as
+        | Descendant[]
+        | undefined
+        | null;
+      const nextSummary =
+        typeof (data as any).summary === "string"
+          ? (data as any).summary
+          : undefined;
+      const nextVersion =
+        typeof (data as any).version === "number"
+          ? (data as any).version
+          : undefined;
+
+      applyServerUpdate({
+        contentJson: nextContent ?? (note.contentJson as Descendant[]),
+        summary: nextSummary ?? (note as any).summary,
+        aiMeta: (data as any).aiMeta,
+        version: nextVersion,
+      });
+      if (nextContent) {
+        syncSharedContent(nextContent);
+      }
+    },
+    [applyServerUpdate, note, syncSharedContent],
+  );
+
+  const aiSummarize = trpc.note.aiSummarize.useMutation({
+    onSuccess: (data) => {
+      handleAiResult(data);
+      void utils.note.detail.invalidate({ id: noteId });
+      void utils.note.list.invalidate();
+      toast.success("已生成摘要");
+    },
+    onError: (err) => {
+      toast.error(err?.message ?? "生成摘要失败");
+    },
+  });
+
+  const triggerSummary = useCallback(() => {
+    if (!canEdit || isTrashed) return;
+    if (!online) {
+      toast.error("当前离线，无法使用 AI");
+      return;
+    }
+    aiSummarize.mutate({ id: noteId });
+  }, [aiSummarize, canEdit, isTrashed, noteId, online]);
 
   const collaboratorsQuery = trpc.collaborator.list.useQuery(
     { noteId },
@@ -113,7 +190,9 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         onBack={() => {
           const params = new URLSearchParams(searchParams ?? undefined);
           params.delete("noteId");
-          router.replace(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
+          router.replace(
+            `/notes${params.toString() ? `?${params.toString()}` : ""}`,
+          );
         }}
       />
 
@@ -128,7 +207,10 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
             titlePlaceholder={titlePlaceholder}
             tags={note.tags}
             onTagsChange={handleTagsChange}
-            tagPlaceholder="添加标签，如 #design"
+            tagPlaceholder="添加标签"
+            summary={note.summary ?? ""}
+            summarizing={aiSummarize.isPending}
+            onGenerateSummary={triggerSummary}
             readOnly={!canEdit || isTrashed}
             placeholder="Start writing..."
             sharedType={sharedType}
@@ -146,7 +228,10 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
           titlePlaceholder={titlePlaceholder}
           tags={note.tags}
           onTagsChange={handleTagsChange}
-          tagPlaceholder="添加标签，如 #design"
+          tagPlaceholder="添加标签"
+          summary={note.summary ?? ""}
+          summarizing={aiSummarize.isPending}
+          onGenerateSummary={triggerSummary}
           readOnly={!canEdit || isTrashed}
           placeholder="Start writing..."
           sharedType={null}

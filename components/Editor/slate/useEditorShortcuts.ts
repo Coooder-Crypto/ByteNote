@@ -82,7 +82,8 @@ function handleMarkdownShortcut(editor: Editor, event: React.KeyboardEvent) {
 
 function toggleMark(editor: Editor, format: string) {
   if (!editor.selection) return;
-  const active = Editor.marks(editor)?.[format] === true;
+  const marks = Editor.marks(editor) as Record<string, unknown> | null;
+  const active = marks ? marks[format] === true : false;
   if (active) {
     Editor.removeMark(editor, format);
   } else {
@@ -281,7 +282,7 @@ export function useEditorShortcuts(editor: Editor) {
       try {
         const sel = editor.selection;
         if (!sel) return false;
-        const marks = Editor.marks(editor);
+        const marks = Editor.marks(editor) as Record<string, unknown> | null;
         return marks ? marks[format] === true : false;
       } catch {
         return false;

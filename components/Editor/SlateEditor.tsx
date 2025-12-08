@@ -29,6 +29,9 @@ type SlateEditorProps = {
   readOnly?: boolean;
   placeholder?: string;
   sharedType?: SharedType | null;
+  summary?: string | null;
+  summarizing?: boolean;
+  onGenerateSummary?: () => void;
 };
 
 export default function SlateEditor({
@@ -40,10 +43,13 @@ export default function SlateEditor({
   titlePlaceholder = "Untitled note",
   tags,
   onTagsChange,
-  tagPlaceholder = "添加标签，如 #design",
+  tagPlaceholder = "添加标签",
   readOnly = false,
   placeholder = "开始输入…",
   sharedType,
+  summary,
+  summarizing,
+  onGenerateSummary,
 }: SlateEditorProps) {
   const [wide, setWide] = useState(false);
   const baseEditor = useMemo(() => withReact(createEditor()), []);
@@ -146,7 +152,7 @@ export default function SlateEditor({
         />
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground inline-flex h-9 items-center gap-2 rounded-lg border border-transparent px-3 text-xs transition hover:bg-muted/60"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted/60 inline-flex h-9 items-center gap-2 rounded-lg border border-transparent px-3 text-xs transition"
           onClick={toggleWidth}
           aria-label="切换编辑区域宽度"
         >
@@ -156,7 +162,7 @@ export default function SlateEditor({
       </div>
 
       <div className={contentWidthClass}>
-        <div className="space-y-4 rounded-2xl border border-border/60 bg-card/40 p-4">
+        <div className="border-border/60 bg-card/40 space-y-4 rounded-2xl border p-4">
           <div className="space-y-2">
             {readOnly ? (
               <h2 className="text-foreground text-3xl font-bold">
@@ -183,7 +189,40 @@ export default function SlateEditor({
             )}
           </div>
 
-          <div className="rounded-2xl border border-border/60 bg-card/60 p-3">
+          {/* Summary block */}
+          <div className="border-border/60 bg-card/40 rounded-xl border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  AI 摘要
+                </span>
+                {summarizing && (
+                  <span className="text-primary text-[11px]">生成中...</span>
+                )}
+              </div>
+              {onGenerateSummary && (
+                <button
+                  type="button"
+                  className="text-primary hover:text-primary/80 rounded-md px-2 py-1 text-xs font-medium transition disabled:opacity-50"
+                  onClick={onGenerateSummary}
+                  disabled={readOnly || summarizing}
+                >
+                  {summary ? "重新生成" : "生成摘要"}
+                </button>
+              )}
+            </div>
+            <div className="text-muted-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
+              {summary && summary.trim().length > 0 ? (
+                summary
+              ) : (
+                <span className="text-muted-foreground/80 italic">
+                  暂无摘要，点击生成试试
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="border-border/60 bg-card/60 rounded-2xl border p-3">
             {sharedType ? (
               collabReady ? (
                 <Slate
@@ -202,14 +241,15 @@ export default function SlateEditor({
                   />
                 </Slate>
               ) : (
-                <div className="text-muted-foreground text-sm">协作连接中...</div>
+                <div className="text-muted-foreground text-sm">
+                  协作连接中...
+                </div>
               )
             ) : (
               <Slate
                 key={`local-${valueKey}`}
                 editor={editor as any}
                 initialValue={displayValue}
-                value={displayValue}
                 onChange={(val) => {
                   const normalized = normalizeDescendants(val);
                   onChange(normalized);

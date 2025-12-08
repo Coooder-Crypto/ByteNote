@@ -21,8 +21,10 @@ export default function NoteCard({
   offline = false,
 }: NoteCardProps) {
   const summary =
-    note.content?.slice(0, 220).replace(/\n+/g, " ").trim() ??
-    "Empty note content...";
+    note.summary?.trim() && note.summary.trim().length > 0
+      ? note.summary.trim()
+      : note.content?.slice(0, 220).replace(/\n+/g, " ").trim() ??
+        "Empty note content...";
   const displayDate = sortKey === "createdAt" ? note.createdAt : note.updatedAt;
   const localOnly = isLocalId(note.id);
   const isOfflineCard = offline || localOnly;

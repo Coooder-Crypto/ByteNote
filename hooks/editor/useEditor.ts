@@ -76,6 +76,8 @@ export default function useEditor(
           isCollaborative: cached.isCollaborative ?? false,
           folderId: cached.folderId ?? null,
           isFavorite: false,
+          summary: cached.summary ?? "",
+          aiMeta: cached.aiMeta,
           version: cached.version,
           deletedAt: null,
           userId: undefined,
@@ -193,6 +195,8 @@ export default function useEditor(
         folderId: current.folderId,
         isCollaborative: current.isCollaborative,
         collabWsUrl: current.collabWsUrl ?? null,
+        summary: current.summary ?? "",
+        aiMeta: current.aiMeta,
       };
 
       const persistDirty = () =>
@@ -220,6 +224,7 @@ export default function useEditor(
             folderId: baseRecord.folderId ?? undefined,
             isCollaborative: baseRecord.isCollaborative,
             collabWsUrl: baseRecord.collabWsUrl ?? undefined,
+            summary: baseRecord.summary,
             version: current.version,
           });
           if (created?.id) {
@@ -331,6 +336,31 @@ export default function useEditor(
 
   const saving = savingLocal || createPending || updatePending;
 
+  const applyServerUpdate = useCallback(
+    (payload: {
+      title?: string;
+      contentJson?: Descendant[];
+      summary?: string | null;
+      tags?: string[];
+      version?: number;
+      aiMeta?: any;
+    }) => {
+      if (!hydrated) return;
+      if (typeof payload.title === "string") manager.updateTitle(payload.title);
+      if (Array.isArray(payload.tags)) manager.updateTags(payload.tags);
+      if (payload.contentJson) manager.updateContentJson(payload.contentJson);
+      if (payload.summary !== undefined)
+        manager.updateSummary(payload.summary ?? "");
+      if (payload.aiMeta !== undefined) manager.updateAiMeta(payload.aiMeta);
+      if (typeof payload.version === "number") {
+        manager.updateVersion(payload.version);
+        collab.setMetaVersion?.(payload.version);
+      }
+      setNote({ ...manager.getNote() });
+    },
+    [collab, hydrated, manager],
+  );
+
   return {
     note,
     saving,
@@ -348,5 +378,6 @@ export default function useEditor(
     handleSave,
     setCollabWs,
     setCollaborative,
+    applyServerUpdate,
   };
 }

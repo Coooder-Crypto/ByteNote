@@ -56,6 +56,8 @@ export class EditorManager {
       folderId: null,
       isFavorite: false,
       version: 1,
+      summary: "",
+      aiMeta: undefined,
       access: {
         canEdit: isLocalId(noteId),
         isTrashed: false,
@@ -97,6 +99,8 @@ export class EditorManager {
       folderId: note.folderId,
       isFavorite: note.isFavorite,
       version: typeof note.version === "number" ? note.version : 1,
+      summary: typeof (note as any).summary === "string" ? (note as any).summary : "",
+      aiMeta: (note as any).aiMeta,
       access: {
         canEdit: access.canEdit,
         isTrashed: access.isTrashed,
@@ -168,16 +172,25 @@ export class EditorManager {
     this.state = { ...this.state, collabWsUrl };
   }
 
+  updateSummary(summary: string) {
+    this.state = { ...this.state, summary };
+  }
+
+  updateSummaryAndNote(summary: string): EditorNote {
+    this.updateSummary(summary);
+    return this.getNote();
+  }
+
+  updateAiMeta(aiMeta: any) {
+    this.state = { ...this.state, aiMeta };
+  }
+
   updateFavorite(isFavorite: boolean) {
     this.state = { ...this.state, isFavorite };
   }
 
   updateFolder(folderId: string | null) {
     this.state = { ...this.state, folderId };
-  }
-
-  updateCollaborative(isCollaborative: boolean) {
-    this.state = { ...this.state, isCollaborative };
   }
 
   updateAccess(partial: Partial<EditorNote["access"]>) {

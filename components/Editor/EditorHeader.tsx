@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Save, Wifi, WifiOff } from "lucide-react";
+import { ArrowLeft, Save, Wand2, Wifi, WifiOff } from "lucide-react";
 import Image from "next/image";
 
 type EditorHeaderProps = {
@@ -18,6 +18,10 @@ type EditorHeaderProps = {
   onSave: () => void;
   onManageCollaborators: () => void;
   onToggleCollab?: () => void;
+  onAiSummarize?: () => void;
+  summarizing?: boolean;
+  aiDisabled?: boolean;
+  aiDisabledReason?: string;
 };
 
 export default function EditorHeader({
@@ -35,6 +39,10 @@ export default function EditorHeader({
   onSave,
   onManageCollaborators,
   onToggleCollab,
+  onAiSummarize,
+  summarizing,
+  aiDisabled,
+  aiDisabledReason,
 }: EditorHeaderProps) {
   const connected =
     collabStatus === "connected" || (collabEnabled && collabStatus === "idle");
@@ -101,15 +109,29 @@ export default function EditorHeader({
           </div>
 
           {canEdit && (
+            <div className="flex items-center gap-2">
+              {onAiSummarize && (
+                <button
+                  type="button"
+                  className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white inline-flex h-8 items-center gap-1 rounded-lg border border-border/60 bg-white px-2.5 text-[11px] font-semibold transition hover:border-primary-300 dark:border-slate-700 dark:bg-slate-800"
+                  onClick={onAiSummarize}
+                  disabled={aiDisabled || summarizing || isTrashed}
+                  title={aiDisabledReason ?? "生成摘要"}
+                >
+                  <Wand2 className="size-3.5" />
+                  {summarizing ? "摘要中..." : "AI 摘要"}
+                </button>
+              )}
             <button
               type="button"
-              className="bg-primary hover:bg-primary/90 inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-70"
+              className="bg-primary hover:bg-primary/90 inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-70"
               onClick={onSave}
               disabled={isTrashed || saving}
-            >
-              <Save className="size-4" />
-              {saving ? "保存中..." : "保存"}
-            </button>
+              >
+                <Save className="size-4" />
+                {saving ? "保存中..." : "保存"}
+              </button>
+            </div>
           )}
         </div>
       </div>
