@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Descendant } from "slate";
+import { toast } from "sonner";
 
 import { CollaboratorDialog, SlateEditor } from "@/components/Editor";
 import EditorHeader from "@/components/Editor/EditorHeader";
@@ -22,6 +23,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const searchParams = useSearchParams();
   const { user } = useUserStore();
   const { setWsUrl, setWsPending } = useNoteActions({});
+  const utils = trpc.useUtils();
   const {
     note,
     saving,
@@ -34,6 +36,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     handleSave,
     setCollabWs,
     setCollaborative,
+    applyServerUpdate,
   } = useEditor(noteId, { collabEnabled });
 
   const { canEdit, isTrashed } = note.access;
@@ -66,6 +69,79 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     };
     return walk(value).length;
   }, [value]);
+
+  const syncSharedContent = useCallback(
+    (nextContent: Descendant[]) => {
+      if (!collabEnabled || !sharedType) return;
+      try {
+        const { toSharedType } = require("slate-yjs") as any;
+        const doc = (sharedType as any).doc as any;
+        if (doc && typeof doc.transact === "function") {
+          doc.transact(() => {
+            (sharedType as any).delete(0, (sharedType as any).length);
+            toSharedType(sharedType as any, nextContent as any);
+          });
+        } else if (typeof (sharedType as any).delete === "function") {
+          (sharedType as any).delete(0, (sharedType as any).length);
+          toSharedType(sharedType as any, nextContent as any);
+        }
+      } catch (err) {
+        console.warn("[ai] 同步协作内容失败", err);
+      }
+    },
+    [collabEnabled, sharedType],
+  );
+
+  const handleAiResult = useCallback(
+    (data: any) => {
+      if (!data) return;
+      const nextContent =
+        (data as any).contentJson as Descendant[] | undefined | null;
+      const nextSummary =
+        typeof (data as any).summary === "string"
+          ? (data as any).summary
+          : undefined;
+      const nextVersion =
+        typeof (data as any).version === "number"
+          ? (data as any).version
+          : undefined;
+
+      applyServerUpdate({
+        contentJson: nextContent ?? (note.contentJson as Descendant[]),
+        summary: nextSummary ?? (note as any).summary,
+        aiMeta: (data as any).aiMeta,
+        version: nextVersion,
+      });
+      if (nextContent) {
+        syncSharedContent(nextContent);
+      }
+    },
+    [applyServerUpdate, note, syncSharedContent],
+  );
+
+  const aiSummarize = trpc.note.aiSummarize.useMutation({
+    onSuccess: (data) => {
+      handleAiResult(data);
+      void utils.note.detail.invalidate({ id: noteId });
+      void utils.note.list.invalidate();
+      toast.success("已生成摘要");
+    },
+    onError: (err) => {
+      toast.error(err?.message ?? "生成摘要失败");
+    },
+  });
+
+  const aiEnhance = trpc.note.aiEnhance.useMutation({
+    onSuccess: (data) => {
+      handleAiResult(data);
+      void utils.note.detail.invalidate({ id: noteId });
+      void utils.note.list.invalidate();
+      toast.success("内容已丰富");
+    },
+    onError: (err) => {
+      toast.error(err?.message ?? "AI 丰富失败");
+    },
+  });
 
   const collaboratorsQuery = trpc.collaborator.list.useQuery(
     { noteId },
@@ -101,6 +177,16 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         collaborators={collaboratorAvatars}
         onSave={handleSave}
         onManageCollaborators={() => setCollabOpen(true)}
+        onAiSummarize={() => {
+          if (!canEdit || isTrashed) return;
+          aiSummarize.mutate({ id: noteId });
+        }}
+        onAiEnhance={() => {
+          if (!canEdit || isTrashed) return;
+          aiEnhance.mutate({ id: noteId, mode: "append" });
+        }}
+        summarizing={aiSummarize.isPending}
+        enhancing={aiEnhance.isPending}
         onToggleCollab={async () => {
           if (!note.isCollaborative) return;
           if (collabEnabled) {
