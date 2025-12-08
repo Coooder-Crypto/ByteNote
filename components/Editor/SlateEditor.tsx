@@ -209,7 +209,6 @@ export default function SlateEditor({
                 key={`local-${valueKey}`}
                 editor={editor as any}
                 initialValue={displayValue}
-                value={displayValue}
                 onChange={(val) => {
                   const normalized = normalizeDescendants(val);
                   onChange(normalized);

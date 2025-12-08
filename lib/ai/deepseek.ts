@@ -21,14 +21,18 @@ type ChatResult = {
   };
 };
 
-const API_URL = "https://api.deepseek.com/chat/completions";
+const API_URL =
+  process.env.SILICONFLOW_API_URL ??
+  process.env.DEEPSEEK_API_URL ??
+  "https://api.siliconflow.cn/v1/chat/completions";
 
 function getApiKey() {
-  const key = process.env.DEEPSEEK_API_KEY;
+  const key = process.env.SILICONFLOW_API_KEY ?? process.env.DEEPSEEK_API_KEY;
   if (!key) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "缺少 DeepSeek API Key，请设置 DEEPSEEK_API_KEY",
+      message:
+        "缺少模型 API Key，请设置 SILICONFLOW_API_KEY（或兼容的 DEEPSEEK_API_KEY）",
     });
   }
   return key;
@@ -39,7 +43,10 @@ export async function callDeepseekChat(
   options: ChatOptions = {},
 ): Promise<ChatResult> {
   const apiKey = getApiKey();
-  const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+  const model =
+    process.env.SILICONFLOW_MODEL ||
+    process.env.DEEPSEEK_MODEL ||
+    "deepseek-ai/DeepSeek-V3.2";
   const payload = {
     model,
     temperature: options.temperature ?? 0.7,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import type { Descendant } from "slate";
 import { toast } from "sonner";
@@ -8,8 +9,8 @@ import { CollaboratorDialog, SlateEditor } from "@/components/Editor";
 import EditorHeader from "@/components/Editor/EditorHeader";
 import { useUserStore } from "@/hooks";
 import useEditor from "@/hooks/Editor/useEditor";
+import useNetworkStatus from "@/hooks/Network/useNetworkStore";
 import { useNoteActions } from "@/hooks/Note";
-import { useRouter, useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 
 const EMPTY_VALUE: Descendant[] = [
@@ -22,6 +23,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUserStore();
+  const { online } = useNetworkStatus();
   const { setWsUrl, setWsPending } = useNoteActions({});
   const utils = trpc.useUtils();
   const {
@@ -95,8 +97,10 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const handleAiResult = useCallback(
     (data: any) => {
       if (!data) return;
-      const nextContent =
-        (data as any).contentJson as Descendant[] | undefined | null;
+      const nextContent = (data as any).contentJson as
+        | Descendant[]
+        | undefined
+        | null;
       const nextSummary =
         typeof (data as any).summary === "string"
           ? (data as any).summary
@@ -175,14 +179,24 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
           avatarUrl: user?.avatarUrl,
         }}
         collaborators={collaboratorAvatars}
+        aiDisabled={!online}
+        aiDisabledReason={!online ? "离线状态下无法使用 AI" : undefined}
         onSave={handleSave}
         onManageCollaborators={() => setCollabOpen(true)}
         onAiSummarize={() => {
           if (!canEdit || isTrashed) return;
+          if (!online) {
+            toast.error("当前离线，无法使用 AI");
+            return;
+          }
           aiSummarize.mutate({ id: noteId });
         }}
         onAiEnhance={() => {
           if (!canEdit || isTrashed) return;
+          if (!online) {
+            toast.error("当前离线，无法使用 AI");
+            return;
+          }
           aiEnhance.mutate({ id: noteId, mode: "append" });
         }}
         summarizing={aiSummarize.isPending}
@@ -199,7 +213,9 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         onBack={() => {
           const params = new URLSearchParams(searchParams ?? undefined);
           params.delete("noteId");
-          router.replace(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
+          router.replace(
+            `/notes${params.toString() ? `?${params.toString()}` : ""}`,
+          );
         }}
       />
 

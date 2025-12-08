@@ -44,6 +44,7 @@ export default function useNoteList({
       collaborativeOnly: collaborativeOnly || undefined,
     },
     {
+      enabled: queryEnabled,
       staleTime: 60000,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,

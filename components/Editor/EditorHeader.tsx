@@ -22,6 +22,8 @@ type EditorHeaderProps = {
   onAiEnhance?: () => void;
   summarizing?: boolean;
   enhancing?: boolean;
+  aiDisabled?: boolean;
+  aiDisabledReason?: string;
 };
 
 export default function EditorHeader({
@@ -43,6 +45,8 @@ export default function EditorHeader({
   onAiEnhance,
   summarizing,
   enhancing,
+  aiDisabled,
+  aiDisabledReason,
 }: EditorHeaderProps) {
   const connected =
     collabStatus === "connected" || (collabEnabled && collabStatus === "idle");
@@ -115,8 +119,8 @@ export default function EditorHeader({
                   type="button"
                   className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white inline-flex h-8 items-center gap-1 rounded-lg border border-border/60 bg-white px-2.5 text-[11px] font-semibold transition hover:border-primary-300 dark:border-slate-700 dark:bg-slate-800"
                   onClick={onAiSummarize}
-                  disabled={summarizing || saving || isTrashed}
-                  title="生成摘要"
+                  disabled={aiDisabled || summarizing || isTrashed}
+                  title={aiDisabledReason ?? "生成摘要"}
                 >
                   <Wand2 className="size-3.5" />
                   {summarizing ? "摘要中..." : "AI 摘要"}
@@ -127,8 +131,8 @@ export default function EditorHeader({
                   type="button"
                   className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white inline-flex h-8 items-center gap-1 rounded-lg border border-border/60 bg-white px-2.5 text-[11px] font-semibold transition hover:border-primary-300 dark:border-slate-700 dark:bg-slate-800"
                   onClick={onAiEnhance}
-                  disabled={enhancing || saving || isTrashed}
-                  title="AI 丰富内容"
+                  disabled={aiDisabled || enhancing || isTrashed}
+                  title={aiDisabledReason ?? "AI 丰富内容"}
                 >
                   <Sparkles className="size-3.5" />
                   {enhancing ? "丰富中..." : "AI 丰富"}

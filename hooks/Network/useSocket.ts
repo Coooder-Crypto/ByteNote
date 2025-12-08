@@ -51,7 +51,11 @@ export default function useSocket({
   useEffect(() => {
     console.log("[collab] effect", { noteId, enabled, wsUrl });
     let statusListener:
-      | ((event: { status: "connected" | "disconnected" }) => void)
+      | ((
+          event: {
+            status: "connecting" | "connected" | "disconnected";
+          },
+        ) => void)
       | null = null;
 
     const cleanup = () => {
@@ -115,14 +119,15 @@ export default function useSocket({
       setMetaVersionState(null);
     }
 
-    metaListenerRef.current = () => {
+    const handleMeta = () => {
       const next = readMetaVersion();
       if (metaVersionRef.current === next) return;
       metaVersionRef.current = next;
       setMetaVersionState(next);
     };
-    meta.observe(metaListenerRef.current);
-    metaListenerRef.current();
+    metaListenerRef.current = handleMeta;
+    meta.observe(handleMeta);
+    handleMeta();
 
     const seedOrFallback = () =>
       Array.isArray(seedContentRef.current) && seedContentRef.current.length > 0
@@ -150,14 +155,20 @@ export default function useSocket({
     };
 
     const provider = new WebsocketProvider(wsUrl!, noteId, doc);
-    provider.on("synced", () => {
-      if (!seededRef.current) {
+    provider.on("sync", (isSynced: boolean) => {
+      if (isSynced && !seededRef.current) {
         applySeed();
       }
     });
-    statusListener = (event: { status: "connected" | "disconnected" }) => {
+    statusListener = (event: {
+      status: "connecting" | "connected" | "disconnected";
+    }) => {
       const next =
-        event.status === "connected" ? "connected" : ("error" as const);
+        event.status === "connected"
+          ? "connected"
+          : event.status === "connecting"
+            ? "connecting"
+            : ("error" as const);
       console.log("[collab] status", { noteId, wsUrl, status: next });
       setStatus(next);
     };

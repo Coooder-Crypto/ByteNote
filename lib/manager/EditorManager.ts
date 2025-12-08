@@ -193,10 +193,6 @@ export class EditorManager {
     this.state = { ...this.state, folderId };
   }
 
-  updateCollaborative(isCollaborative: boolean) {
-    this.state = { ...this.state, isCollaborative };
-  }
-
   updateAccess(partial: Partial<EditorNote["access"]>) {
     this.state = {
       ...this.state,
