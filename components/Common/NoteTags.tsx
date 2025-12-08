@@ -10,16 +10,15 @@ export default function NoteTags({ tags }: NoteTagsProps) {
   const parsed = parseStoredTags(tags);
 
   if (parsed.length === 0) {
-    return <span className="text-muted-foreground text-xs">标签：无</span>;
+    return <span className="text-muted-foreground text-xs italic">No tags</span>;
   }
 
   return (
-    <div className="flex flex-wrap gap-1 text-xs">
-      <span className="text-muted-foreground">标签：</span>
+    <div className="flex flex-wrap gap-2 text-xs">
       {parsed.map((tag) => (
         <span
           key={tag}
-          className="border-border text-foreground rounded-full border px-2 py-0.5"
+          className="inline-flex items-center rounded-lg bg-muted/70 px-2.5 py-1 font-medium text-foreground/80"
         >
           {getTagLabel(tag)}
         </span>

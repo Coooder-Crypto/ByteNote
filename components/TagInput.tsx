@@ -58,15 +58,15 @@ export function TagInput({
   return (
     <div
       className={cn(
-        "border-border/70 bg-card min-h-[44px] rounded-lg border px-3 py-2 shadow-sm",
+        "bg-card/40 flex items-center gap-2 rounded-xl px-2 py-2",
         className,
       )}
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-1 flex-wrap items-center gap-2">
         {value.map((tag) => (
           <span
             key={tag}
-            className="border-border/80 bg-muted/40 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs"
+            className="bg-muted/70 text-foreground/80 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm"
           >
             {getTagLabel(tag)}
             <button
@@ -80,29 +80,30 @@ export function TagInput({
           </span>
         ))}
         <input
-          className="placeholder:text-muted-foreground min-w-[100px] flex-1 border-none bg-transparent text-sm transition-[width] outline-none sm:min-w-[180px]"
+          className="text-foreground placeholder:text-muted-foreground min-w-[140px] flex-1 border-none bg-transparent text-sm outline-none"
           value={inputValue}
           onChange={(event) => setInputValue(event.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           placeholder={value.length === 0 ? placeholder : undefined}
         />
-        <Select
-          key={value.join("|")}
-          onValueChange={(selection) => addTag(selection)}
-        >
-          <SelectTrigger className="border-border/60 bg-background/80 h-10 w-[150px] rounded-lg border text-xs">
-            <SelectValue placeholder="选择标签" />
-          </SelectTrigger>
-          <SelectContent>
-            {(suggestions ?? NOTE_TAGS.map((tag) => tag.value)).map((tag) => (
-              <SelectItem key={tag} value={tag}>
-                {getTagLabel(tag)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
+
+      <Select
+        key={value.join("|")}
+        onValueChange={(selection) => addTag(selection)}
+      >
+        <SelectTrigger className="text-muted-foreground hover:bg-muted/60 h-8 w-[110px] flex-none rounded-lg border-none bg-transparent px-2 text-xs shadow-none">
+          <SelectValue placeholder="选择标签" />
+        </SelectTrigger>
+        <SelectContent>
+          {(suggestions ?? NOTE_TAGS.map((tag) => tag.value)).map((tag) => (
+            <SelectItem key={tag} value={tag}>
+              {getTagLabel(tag)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

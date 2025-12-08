@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 import type { Descendant } from "slate";
 
-import { NoteTags } from "@/components/Common";
 import { CollaboratorDialog, SlateEditor } from "@/components/Editor";
-import { TagInput } from "@/components/TagInput";
-import { Button } from "@/components/ui";
+import EditorHeader from "@/components/Editor/EditorHeader";
+import { useUserStore } from "@/hooks";
 import useEditor from "@/hooks/Editor/useEditor";
 import { useNoteActions } from "@/hooks/Note";
+import { useRouter, useSearchParams } from "next/navigation";
+import { trpc } from "@/lib/trpc/client";
 
 const EMPTY_VALUE: Descendant[] = [
   { type: "paragraph", children: [{ text: "" }] } as unknown as Descendant,
@@ -17,6 +18,9 @@ const EMPTY_VALUE: Descendant[] = [
 export default function NoteEditor({ noteId }: { noteId: string }) {
   const [collabOpen, setCollabOpen] = useState(false);
   const [collabEnabled, setCollabEnabled] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useUserStore();
   const { setWsUrl, setWsPending } = useNoteActions({});
   const {
     note,
@@ -29,21 +33,14 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     handleContentChange,
     handleSave,
     setCollabWs,
+    setCollaborative,
   } = useEditor(noteId, { collabEnabled });
 
   const { canEdit, isTrashed } = note.access;
   const titlePlaceholder = useMemo(
-    () => (note.access.canEdit ? "输入标题" : "无权限编辑"),
+    () => (note.access.canEdit ? "Untitled note" : "无权限编辑"),
     [note.access.canEdit],
   );
-
-  const collabIndicator = useMemo(() => {
-    if (!collabEnabled) return "idle";
-    if (collabStatus === "connected") return "connected";
-    if (collabStatus === "error") return "error";
-    // connecting 或初始 idle 时展示连接中
-    return "connecting";
-  }, [collabEnabled, collabStatus]);
 
   const value = useMemo(() => {
     const content = (note.contentJson as Descendant[]) ?? [];
@@ -59,122 +56,103 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     }
   }, [noteId, note.version, value]);
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-2">
-          {canEdit ? (
-            <input
-              className="bg-card text-lg font-semibold outline-none"
-              value={note.title}
-              placeholder={titlePlaceholder}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              disabled={!canEdit || isTrashed}
-            />
-          ) : (
-            <h2 className="text-lg font-semibold">{note.title || "笔记"}</h2>
-          )}
-          <div className="text-muted-foreground text-xs">
-            {isTrashed
-              ? "该笔记已在回收站，恢复后才能编辑。"
-              : canEdit
-                ? "可编辑"
-                : "仅作者或协作者可编辑"}
-          </div>
-        </div>
-        {canEdit && (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleSave}
-              disabled={!canEdit || isTrashed || saving}
-            >
-              {saving ? "保存中..." : "保存"}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setCollabOpen(true)}
-              disabled={isTrashed}
-            >
-              管理协作者
-            </Button>
-            {note.isCollaborative && (
-              <Button
-                size="sm"
-                variant={collabEnabled ? "outline" : "default"}
-                onClick={async () => {
-                  if (collabEnabled) {
-                    await flushCollabToServer();
-                    setCollabEnabled(false);
-                  } else {
-                    setCollabEnabled(true);
-                  }
-                }}
-                disabled={isTrashed}
-              >
-                <span
-                  className={`mr-2 inline-block h-2 w-2 rounded-full ${
-                    collabIndicator === "connected"
-                      ? "bg-emerald-500"
-                      : collabIndicator === "connecting"
-                        ? "bg-amber-500"
-                        : "bg-rose-500"
-                  }`}
-                />
-                {collabEnabled ? "断开协作" : "连接协作"}
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+  const charCount = useMemo(() => {
+    const walk = (node: any): string => {
+      if (!node) return "";
+      if (typeof node.text === "string") return node.text;
+      if (Array.isArray(node.children)) return node.children.map(walk).join("");
+      if (Array.isArray(node)) return node.map(walk).join("");
+      return "";
+    };
+    return walk(value).length;
+  }, [value]);
 
-      <div>
-        {canEdit ? (
-          <TagInput
-            value={note.tags}
-            onChange={handleTagsChange}
-            placeholder="添加标签"
-            className="w-full"
+  const collaboratorsQuery = trpc.collaborator.list.useQuery(
+    { noteId },
+    { enabled: note.isCollaborative },
+  );
+
+  const collaboratorAvatars = useMemo(
+    () =>
+      (collaboratorsQuery.data ?? [])
+        .filter((c) => c.user?.id !== user?.id)
+        .map((c) => ({
+          name: c.user?.name ?? c.user?.email ?? "协作者",
+          avatarUrl: c.user?.avatarUrl ?? null,
+        })),
+    [collaboratorsQuery.data, user?.id],
+  );
+
+  return (
+    <div className="bg-background flex h-full flex-col">
+      <EditorHeader
+        isCollaborative={note.isCollaborative}
+        collabEnabled={collabEnabled}
+        collabStatus={collabStatus}
+        isTrashed={isTrashed}
+        canEdit={canEdit}
+        charCount={charCount}
+        saving={saving}
+        folderLabel="Notes"
+        currentUser={{
+          name: user?.name ?? user?.email ?? "我",
+          avatarUrl: user?.avatarUrl,
+        }}
+        collaborators={collaboratorAvatars}
+        onSave={handleSave}
+        onManageCollaborators={() => setCollabOpen(true)}
+        onToggleCollab={async () => {
+          if (!note.isCollaborative) return;
+          if (collabEnabled) {
+            await flushCollabToServer?.();
+            setCollabEnabled(false);
+          } else {
+            setCollabEnabled(true);
+          }
+        }}
+        onBack={() => {
+          const params = new URLSearchParams(searchParams ?? undefined);
+          params.delete("noteId");
+          router.replace(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
+        }}
+      />
+
+      {collabEnabled ? (
+        sharedType ? (
+          <SlateEditor
+            valueKey={`collab-${noteId}`}
+            value={value}
+            onChange={(val) => handleContentChange(val as Descendant[])}
+            title={note.title}
+            onTitleChange={handleTitleChange}
+            titlePlaceholder={titlePlaceholder}
+            tags={note.tags}
+            onTagsChange={handleTagsChange}
+            tagPlaceholder="添加标签，如 #design"
+            readOnly={!canEdit || isTrashed}
+            placeholder="Start writing..."
+            sharedType={sharedType}
           />
         ) : (
-          <NoteTags tags={note.tags} />
-        )}
-      </div>
+          <div className="text-muted-foreground text-sm">协作连接中...</div>
+        )
+      ) : (
+        <SlateEditor
+          valueKey={`local-${valueKey}`}
+          value={value}
+          onChange={(val) => handleContentChange(val as Descendant[])}
+          title={note.title}
+          onTitleChange={handleTitleChange}
+          titlePlaceholder={titlePlaceholder}
+          tags={note.tags}
+          onTagsChange={handleTagsChange}
+          tagPlaceholder="添加标签，如 #design"
+          readOnly={!canEdit || isTrashed}
+          placeholder="Start writing..."
+          sharedType={null}
+        />
+      )}
 
-      <div className="border-border/60 bg-card/80 rounded-xl border shadow-sm">
-        <div className="flex items-center justify-between border-b px-3 py-2">
-          <span className="text-muted-foreground text-xs">
-            {canEdit ? "实时编辑" : "内容"}
-          </span>
-        </div>
-        <div className="px-3 py-3">
-          {collabEnabled ? (
-            sharedType ? (
-              <SlateEditor
-                valueKey={`collab-${noteId}`}
-                value={value}
-                onChange={(val) => handleContentChange(val as Descendant[])}
-                readOnly={!canEdit || isTrashed}
-                placeholder="开始输入..."
-                sharedType={sharedType}
-              />
-            ) : (
-              <div className="text-muted-foreground text-sm">协作连接中...</div>
-            )
-          ) : (
-            <SlateEditor
-              valueKey={`local-${valueKey}`}
-              value={value}
-              onChange={(val) => handleContentChange(val as Descendant[])}
-              readOnly={!canEdit || isTrashed}
-              placeholder="开始输入..."
-              sharedType={null}
-            />
-          )}
-        </div>
-      </div>
       <CollaboratorDialog
         noteId={noteId}
         open={collabOpen}
@@ -185,6 +163,12 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         }}
         wsUrl={typeof note.collabWsUrl === "string" ? note.collabWsUrl : ""}
         wsUpdating={setWsPending}
+        isCollaborative={note.isCollaborative}
+        onToggleCollaborative={(next) => {
+          setCollaborative(next);
+          // 切换协作模式仅更新字段，不自动连接/断开 WS
+          setCollabEnabled((prev) => (next ? prev : false));
+        }}
       />
     </div>
   );

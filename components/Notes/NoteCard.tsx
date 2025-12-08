@@ -1,8 +1,9 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { Star, Users } from "lucide-react";
+
 import { isLocalId } from "@/lib/utils/offline/ids";
-import { BnNote } from "@/types";
+import type { BnNote } from "@/types";
 
 type NoteCardProps = {
   note: BnNote;
@@ -19,81 +20,95 @@ export default function NoteCard({
   onSelect,
   offline = false,
 }: NoteCardProps) {
-  const isTrashed = Boolean(note.deletedAt);
   const summary =
-    note.content?.slice(0, 120).replace(/\n+/g, " ").trim() ?? "暂无内容";
+    note.content?.slice(0, 220).replace(/\n+/g, " ").trim() ??
+    "Empty note content...";
   const displayDate = sortKey === "createdAt" ? note.createdAt : note.updatedAt;
   const localOnly = isLocalId(note.id);
   const isOfflineCard = offline || localOnly;
 
+  const handleSelect = () => {
+    if (onSelect) {
+      onSelect(note.id);
+    } else if (localOnly && onLocalSelect) {
+      onLocalSelect(note.id);
+    }
+  };
+
   return (
-    <Card
+    <div
       role="button"
       tabIndex={0}
-      onClick={() => {
-        if (onSelect) {
-          onSelect(note.id);
-        } else if (localOnly && onLocalSelect) {
-          onLocalSelect(note.id);
-        }
-      }}
+      onClick={handleSelect}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          if (onSelect) {
-            onSelect(note.id);
-          } else if (localOnly && onLocalSelect) {
-            onLocalSelect(note.id);
-          }
+          handleSelect();
         }
       }}
-      className="group h-full cursor-pointer transition hover:-translate-y-0.5 hover:shadow-lg"
+      className="flex h-64 flex-col bg-card p-5 rounded-2xl border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
     >
-      <CardHeader className="space-y-2 pb-2">
-        <div className="text-muted-foreground flex items-center justify-between text-xs">
-          <span>{new Date(displayDate).toLocaleDateString()}</span>
-          <div className="flex items-center gap-2">
-            {localOnly && (
-              <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-700">
-                未同步
-              </span>
-            )}
-            {note.isFavorite && (
-              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-600">
-                收藏
-              </span>
-            )}
-            {isTrashed && (
-              <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-600">
-                回收站
-              </span>
-            )}
-          </div>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0 pr-3">
+          <h3 className="font-bold text-lg text-foreground truncate">
+            {note.title || <span className="text-muted-foreground italic">Untitled</span>}
+          </h3>
         </div>
-        <CardTitle className="line-clamp-2 text-lg leading-snug font-semibold">
-          {note.title || "未命名笔记"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-muted-foreground line-clamp-3 text-sm">{summary}</p>
-        {note.tags.length > 0 && (
-          <div className="text-muted-foreground flex flex-wrap gap-2 text-[11px]">
-            {note.tags.map((tag) => (
-              <span
-                key={tag}
-                className="bg-muted/70 text-muted-foreground rounded-full px-2 py-0.5"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-        {isOfflineCard && (
-          <div className="text-[11px] text-sky-700">
-            离线可见，联网后将自动同步
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        <div className="flex items-start gap-2 shrink-0">
+          <span className="text-[11px] font-semibold text-muted-foreground/90">
+            {formatDate(displayDate)}
+          </span>
+          {note.isFavorite && (
+            <Star size={18} className="text-amber-400 fill-amber-400 shrink-0 mt-0.5" />
+          )}
+        </div>
+      </div>
+
+      <p className="flex-1 text-sm text-muted-foreground line-clamp-5 leading-relaxed font-medium">
+        {summary || <span className="italic opacity-50">Empty note content...</span>}
+      </p>
+
+      <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
+        <div className="flex items-center gap-2 overflow-hidden">
+          {note.isCollaborative && (
+            <div
+              className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center border border-primary/20"
+              title="Collaborative"
+            >
+              <Users size={12} />
+            </div>
+          )}
+          {note.tags.slice(0, 2).map((tag) => (
+            <span
+              key={tag}
+              className="px-2 py-1 bg-muted text-foreground/80 rounded-md text-xs font-medium truncate"
+            >
+              #{tag}
+            </span>
+          ))}
+          {note.tags.length > 2 && (
+            <span className="text-xs text-muted-foreground">
+              +{note.tags.length - 2}
+            </span>
+          )}
+          {isOfflineCard && (
+            <span className="text-[10px] rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-700">
+              未同步
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   );
+}
+
+function formatDate(dateStr: string | number | Date) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+
+  if (diff < 60000) return "Just now";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return date.toLocaleDateString();
 }

@@ -137,6 +137,15 @@ export class EditorManager {
     return this.getNote();
   }
 
+  updateCollaborative(enabled: boolean) {
+    this.state = { ...this.state, isCollaborative: enabled };
+  }
+
+  updateCollaborativeAndNote(enabled: boolean): EditorNote {
+    this.updateCollaborative(enabled);
+    return this.getNote();
+  }
+
   updateContentJson(contentJson: any) {
     this.state = { ...this.state, contentJson };
   }
