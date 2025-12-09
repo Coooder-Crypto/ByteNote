@@ -8,8 +8,7 @@ import { withHistory } from "slate-history";
 import { Editable, Slate, withReact } from "slate-react";
 import { type SharedType, withYjs } from "slate-yjs";
 
-import { NoteTags } from "@/components/Common";
-import { TagInput } from "@/components/TagInput";
+import { NoteTags, TagInput } from "@/components/Common";
 import { useShortcuts } from "@/hooks";
 import {
   BLOCK_CONFIGS,

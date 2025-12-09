@@ -20,7 +20,7 @@ type TagInputProps = {
   suggestions?: string[];
 };
 
-export function TagInput({
+export default function TagInput({
   value,
   onChange,
   placeholder,

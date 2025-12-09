@@ -21,7 +21,7 @@ import { useFolderActions, useNoteActions } from "@/hooks/Note";
 import { NOTE_TAGS } from "@/lib/constants/tags";
 import { localManager } from "@/lib/manager/LocalManager";
 
-import { TagInput } from "../TagInput";
+import { TagInput } from "../Common";
 
 type CreateNoteDialogProps = {
   open: boolean;

@@ -2,8 +2,7 @@ import "./globals.css";
 
 import type { Metadata } from "next";
 
-import { SyncBootstrap } from "@/components/Common";
-import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import { ServiceWorkerRegister, SyncBootstrap } from "@/components/Common";
 import { cn } from "@/lib/utils";
 
 import { Providers } from "./providers";
