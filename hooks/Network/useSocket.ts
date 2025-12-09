@@ -38,11 +38,13 @@ export default function useSocket({
   const metaVersionRef = useRef<number | null>(null);
   const seededRef = useRef(false);
   const syncListenerRef = useRef<((isSynced: boolean) => void) | null>(null);
-  const metaListenerRef = useRef<((event: Y.YEvent<any>) => void) | null>(null);
+  const metaListenerRef = useRef<
+    ((event: Y.YEvent<unknown>) => void) | null
+  >(null);
   const syncRef = useRef<{
     doc: Y.Doc;
     sharedType: SharedType;
-    meta: Y.Map<any>;
+    meta: Y.Map<unknown>;
     provider: WebsocketProvider;
     wsUrl: string;
     noteId: string;
@@ -138,10 +140,10 @@ export default function useSocket({
       const seed = seedOrFallback();
       doc.transact(() => {
         shared.delete(0, shared.length);
-        toSharedType(shared, seed as any);
+        toSharedType(shared, seed);
       });
       try {
-        const after = toSlateDoc(shared as any);
+        const after = toSlateDoc(shared);
         console.log("[collab] apply seed on sync", {
           noteId,
           wsUrl,

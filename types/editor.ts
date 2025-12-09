@@ -1,6 +1,6 @@
-import type { BaseEditor, Descendant } from "slate";
-import type { HistoryEditor } from "slate-history";
-import type { ReactEditor } from "slate-react";
+import type { Descendant } from "slate";
+
+import type { JsonValue } from "./json";
 
 export type CustomText = {
   text: string;
@@ -60,12 +60,18 @@ export type CustomElement =
   | BulletedListElement
   | NumberedListElement;
 
+export type EditorContent = Descendant[];
+
+export type AiMeta = Record<string, JsonValue>;
+
+export type ContentJson = Descendant[];
+
 declare module "slate" {
   interface CustomTypes {
-    Editor: BaseEditor & ReactEditor & HistoryEditor;
+    Editor: import("slate").BaseEditor &
+      import("slate-react").ReactEditor &
+      import("slate-history").HistoryEditor;
     Element: CustomElement;
     Text: CustomText;
   }
 }
-
-export type EditorContent = Descendant[];

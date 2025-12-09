@@ -3,7 +3,7 @@ import type { Descendant } from "slate";
 import { DEFAULT_VALUE } from "@/lib/constants/editor";
 import type { CustomElement, CustomText } from "@/types/editor";
 
-type UnknownNode =
+export type UnknownNode =
   | string
   | number
   | boolean
@@ -46,9 +46,11 @@ export function normalizeDescendants(input: unknown): Descendant[] {
       return { text: n.text } satisfies CustomText;
     }
     const type =
-      typeof (n as any)?.type === "string" ? (n as any).type : "paragraph";
-    const childrenRaw = Array.isArray((n as any)?.children)
-      ? ((n as any).children as UnknownNode[])
+      typeof (n as { type?: unknown }).type === "string"
+        ? (n as { type: string }).type
+        : "paragraph";
+    const childrenRaw = Array.isArray((n as { children?: UnknownNode[] }).children)
+      ? ((n as { children: UnknownNode[] }).children as UnknownNode[])
       : [];
     const children =
       childrenRaw.length > 0

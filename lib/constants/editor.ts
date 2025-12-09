@@ -1,6 +1,4 @@
-import { Descendant } from "slate";
-
-import { CustomElement } from "@/types/editor";
+import type { EditorContent } from "@/types/editor";
 
 export const MARK_KEYS = ["bold", "italic", "underline", "code"] as const;
 
@@ -13,8 +11,8 @@ export const BLOCK_CONFIGS = [
   { key: "codeBlock", type: "code-block" as const },
 ] as const;
 
-export const DEFAULT_VALUE: Descendant[] = [
-  { type: "paragraph", children: [{ text: "" }] } satisfies CustomElement,
+export const DEFAULT_VALUE: EditorContent = [
+  { type: "paragraph", children: [{ text: "" }] },
 ];
 
 export const LIST_TYPES = ["numbered-list", "bulleted-list"];

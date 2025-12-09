@@ -3,12 +3,14 @@
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Descendant } from "slate";
+import type { SharedType } from "slate-yjs";
+import { toSlateDoc } from "slate-yjs";
 import { toast } from "sonner";
 
 import EditorManager from "@/lib/manager/EditorManager";
 import { localManager } from "@/lib/manager/LocalManager";
 import { isLocalId } from "@/lib/utils/offline/ids";
-import { type EditorNote } from "@/types";
+import { type AiMeta, type EditorNote } from "@/types";
 
 import { useNetworkStatus, useSocket } from "../Network";
 import { useNoteActions } from "../Note";
@@ -42,21 +44,56 @@ export default function useEditor(
     [noteId, currentUserId],
   );
 
+  const extractVersion = (input: unknown): number | undefined => {
+    if (
+      input &&
+      typeof input === "object" &&
+      "version" in input &&
+      typeof (input as { version?: unknown }).version === "number"
+    ) {
+      return (input as { version: number }).version;
+    }
+    return undefined;
+  };
+
+  const extractAiMeta = (input: unknown) =>
+    input && typeof input === "object" ? (input as AiMeta) : undefined;
+
+  const getErrorCode = (err: unknown): string => {
+    if (err && typeof err === "object") {
+      const dataCode = (err as { data?: { code?: string } }).data?.code;
+      if (typeof dataCode === "string") return dataCode;
+      const shapeCode = (err as { shape?: { code?: string } }).shape?.code;
+      if (typeof shapeCode === "string") return shapeCode;
+      const message = (err as { message?: string }).message;
+      if (typeof message === "string") return message;
+    }
+    return "UNKNOWN";
+  };
+
   const [note, setNote] = useState<EditorNote>(() => manager.getNote());
   const [savingLocal, setSavingLocal] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const isLocal = isLocalId(noteId);
-  const [sharedType, setSharedType] = useState<any>(null);
+  const [sharedType, setSharedType] = useState<SharedType | null>(null);
   const retryingRef = useRef(false);
 
   useEffect(() => {
     const serverNote = noteQuery?.data;
     if (serverNote) {
-      const next = manager.hydrate(serverNote);
+      const contentJson = Array.isArray(serverNote.contentJson)
+        ? (serverNote.contentJson as Descendant[])
+        : [];
+      const aiMeta = extractAiMeta(serverNote.aiMeta);
+      const next = manager.hydrate({
+        ...serverNote,
+        aiMeta,
+        contentJson,
+      });
       setNote(next);
       setHydrated(true);
     }
-  }, [manager, noteQuery?.data]);
+  }, [extractAiMeta, manager, noteQuery?.data]);
 
   useEffect(() => {
     if (hydrated) return;
@@ -69,9 +106,10 @@ export default function useEditor(
       if (cached) {
         manager.hydrate({
           title: cached.title ?? "",
-          contentJson: (cached.contentJson as Descendant[]) ?? [
-            { type: "paragraph", children: [{ text: "" }] },
-          ],
+          contentJson:
+            Array.isArray(cached.contentJson) && cached.contentJson.length > 0
+              ? cached.contentJson
+              : [{ type: "paragraph", children: [{ text: "" }] }],
           tags: cached.tags ?? [],
           isCollaborative: cached.isCollaborative ?? false,
           folderId: cached.folderId ?? null,
@@ -108,7 +146,7 @@ export default function useEditor(
     wsUrl: typeof note.collabWsUrl === "string" ? note.collabWsUrl : null,
     seedContent:
       Array.isArray(note.contentJson) && note.contentJson.length > 0
-        ? (note.contentJson as Descendant[])
+        ? note.contentJson
         : undefined,
     seedVersion: note.version,
     isOwner: note.access.isOwner,
@@ -182,12 +220,10 @@ export default function useEditor(
       const now = Date.now();
       const contentFromShared =
         sharedType && sharedType.length > 0
-          ? ((require("slate-yjs") as any).toSlateDoc(
-              sharedType,
-            ) as Descendant[])
-          : ((note.contentJson as Descendant[]) ?? [
-              { type: "paragraph", children: [{ text: "" }] },
-            ]);
+          ? toSlateDoc(sharedType)
+          : note.contentJson.length > 0
+            ? note.contentJson
+            : [{ type: "paragraph", children: [{ text: "" }] }];
       const baseRecord = {
         title: current.title || "未命名笔记",
         contentJson: contentFromShared,
@@ -254,39 +290,32 @@ export default function useEditor(
             ...baseRecord,
             version: current.version,
           });
+          const updatedVersion = extractVersion(updated);
           await localManager.markSynced(noteId, {
             updatedAt: now,
-            version:
-              updated && typeof updated === "object" && "version" in updated
-                ? (updated as any).version
-                : current.version,
+            version: updatedVersion ?? current.version,
           });
-          if (
-            updated &&
-            typeof updated === "object" &&
-            "version" in updated &&
-            typeof (updated as any).version === "number"
-          ) {
-            manager.updateVersion((updated as any).version);
-            collab.setMetaVersion((updated as any).version);
-            setNote((prev) => ({ ...prev, version: (updated as any).version }));
+          if (typeof updatedVersion === "number") {
+            manager.updateVersion(updatedVersion);
+            collab.setMetaVersion(updatedVersion);
+            setNote((prev) => ({ ...prev, version: updatedVersion }));
           }
         }
-      } catch (err: any) {
-        const code =
-          err?.data?.code ?? err?.shape?.code ?? err?.message ?? "UNKNOWN";
+      } catch (err: unknown) {
+        const code = getErrorCode(err);
         const needRetry =
           !retryingRef.current &&
           (code === "NOT_FOUND" || code === "CONFLICT");
         if (needRetry) {
           retryingRef.current = true;
           const latest = await fetchNote(noteId);
-          if (latest && typeof (latest as any).version === "number") {
-            manager.updateVersion((latest as any).version);
-            collab.setMetaVersion((latest as any).version);
+          const latestVersion = extractVersion(latest);
+          if (typeof latestVersion === "number") {
+            manager.updateVersion(latestVersion);
+            collab.setMetaVersion(latestVersion);
             setNote((prev) => ({
               ...prev,
-              version: (latest as any).version,
+              version: latestVersion,
             }));
             // retry once with refreshed version
             await save(true);
@@ -343,7 +372,7 @@ export default function useEditor(
       summary?: string | null;
       tags?: string[];
       version?: number;
-      aiMeta?: any;
+      aiMeta?: AiMeta;
     }) => {
       if (!hydrated) return;
       if (typeof payload.title === "string") manager.updateTitle(payload.title);

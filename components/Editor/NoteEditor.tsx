@@ -16,7 +16,7 @@ import useNetworkStatus from "@/hooks/Network/useNetworkStore";
 import { useNoteActions } from "@/hooks/Note";
 import { DEFAULT_VALUE } from "@/lib/constants/editor";
 import { trpc } from "@/lib/trpc/client";
-import type { EditorContent } from "@/types/editor";
+import type { AiMeta, EditorContent } from "@/types/editor";
 
 export default function NoteEditor({ noteId }: { noteId: string }) {
   const [collabOpen, setCollabOpen] = useState(false);
@@ -49,9 +49,8 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   );
 
   const value: EditorContent = useMemo(() => {
-    const content = (note.contentJson as Descendant[]) ?? [];
-    if (Array.isArray(content) && content.length > 0) {
-      return content as EditorContent;
+    if (Array.isArray(note.contentJson) && note.contentJson.length > 0) {
+      return note.contentJson as EditorContent;
     }
     return DEFAULT_VALUE;
   }, [note.contentJson]);
@@ -86,7 +85,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   type AiResultPayload = {
     contentJson?: Descendant[] | null;
     summary?: string | null;
-    aiMeta?: unknown;
+    aiMeta?: AiMeta;
     version?: number | null;
   };
 
@@ -100,7 +99,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         typeof data.version === "number" ? data.version : undefined;
 
       applyServerUpdate({
-        contentJson: nextContent ?? (note.contentJson as Descendant[]),
+        contentJson: nextContent ?? note.contentJson,
         summary: nextSummary ?? note.summary,
         aiMeta: data.aiMeta,
         version: nextVersion,
@@ -115,10 +114,15 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const aiSummarize = trpc.note.aiSummarize.useMutation({
     onSuccess: (data) => {
       handleAiResult({
-        contentJson: data?.contentJson as Descendant[] | null | undefined,
+        contentJson: Array.isArray(data?.contentJson)
+          ? (data.contentJson as Descendant[])
+          : null,
         summary: typeof data?.summary === "string" ? data.summary : null,
-        aiMeta: (data as any)?.aiMeta,
-        version: (data as any)?.version,
+        aiMeta:
+          data?.aiMeta && typeof data.aiMeta === "object"
+            ? (data.aiMeta as AiMeta)
+            : undefined,
+        version: typeof data?.version === "number" ? data.version : undefined,
       });
       void utils.note.detail.invalidate({ id: noteId });
       void utils.note.list.invalidate();
@@ -245,7 +249,6 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         isCollaborative={note.isCollaborative}
         onToggleCollaborative={(next) => {
           setCollaborative(next);
-          // 切换协作模式仅更新字段，不自动连接/断开 WS
           setCollabEnabled((prev) => (next ? prev : false));
         }}
       />
