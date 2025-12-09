@@ -10,12 +10,16 @@ import { type SharedType, withYjs } from "slate-yjs";
 
 import { NoteTags } from "@/components/Common";
 import { TagInput } from "@/components/TagInput";
-import { BLOCK_CONFIGS, MARK_KEYS } from "@/lib/constants/editor";
+import { useShortcuts } from "@/hooks";
+import {
+  BLOCK_CONFIGS,
+  DEFAULT_VALUE,
+  MARK_KEYS,
+} from "@/lib/constants/editor";
 
-import { DEFAULT_VALUE, normalizeDescendants } from "./slate/normalize";
+import { normalizeDescendants } from "./slate/normalize";
 import { renderElement, renderLeaf } from "./slate/renderers";
-import { SlateToolbar } from "./slate/Toolbar";
-import { useEditorShortcuts } from "./slate/useEditorShortcuts";
+import { SlateToolbar, type ToolbarActions } from "./slate/Toolbar";
 
 type SlateEditorProps = {
   valueKey: string;
@@ -59,11 +63,11 @@ export default function SlateEditor({
   const collabEditor = useMemo(() => {
     if (!sharedType) return null;
     const ed = withYjs(withReact(createEditor()), sharedType);
-    (ed as any).__collab = true;
+    (ed as Editor & { __collab?: boolean }).__collab = true;
     return withHistory(ed);
   }, [sharedType]);
 
-  const editor = (sharedType ? collabEditor : localEditor) as Editor;
+  const editor = (sharedType ? collabEditor : localEditor)!;
 
   const normalizedProp = useMemo(() => normalizeDescendants(value), [value]);
 
@@ -72,7 +76,7 @@ export default function SlateEditor({
     [normalizedProp],
   );
   const collabInitialValue = DEFAULT_VALUE;
-  const collabReady = Boolean((sharedType as any)?.length > 0);
+  const collabReady = Boolean(sharedType && sharedType.length > 0);
 
   const {
     handleKeyDown,
@@ -80,7 +84,7 @@ export default function SlateEditor({
     isBlockActive,
     toggleMark,
     toggleBlock,
-  } = useEditorShortcuts(editor);
+  } = useShortcuts(editor);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -103,7 +107,7 @@ export default function SlateEditor({
 
   const contentWidthClass = wide ? "w-full" : "mx-auto w-full max-w-4xl";
 
-  const toolbarActions = useMemo(() => {
+  const toolbarActions: ToolbarActions = useMemo(() => {
     const marks = MARK_KEYS.reduce(
       (acc, key) => ({
         ...acc,
@@ -138,7 +142,7 @@ export default function SlateEditor({
   return (
     <div className="mt-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <SlateToolbar visible={!readOnly} actions={toolbarActions as any} />
+        <SlateToolbar visible={!readOnly} actions={toolbarActions} />
 
         <button
           type="button"
@@ -217,7 +221,7 @@ export default function SlateEditor({
               collabReady ? (
                 <Slate
                   key={`collab-${valueKey}`}
-                  editor={editor as any}
+                  editor={editor}
                   initialValue={collabInitialValue}
                   onChange={() => {}}
                 >
@@ -238,7 +242,7 @@ export default function SlateEditor({
             ) : (
               <Slate
                 key={`local-${valueKey}`}
-                editor={editor as any}
+                editor={editor}
                 initialValue={displayValue}
                 onChange={(val) => {
                   const normalized = normalizeDescendants(val);

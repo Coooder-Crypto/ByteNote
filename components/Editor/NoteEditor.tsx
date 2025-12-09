@@ -3,19 +3,20 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import type { Descendant } from "slate";
+import { toSharedType } from "slate-yjs";
 import { toast } from "sonner";
+import type { Doc } from "yjs";
 
 import { CollaboratorDialog, SlateEditor } from "@/components/Editor";
 import EditorHeader from "@/components/Editor/EditorHeader";
+import { toPlainText } from "@/components/Editor/slate/normalize";
 import { useUserStore } from "@/hooks";
 import useEditor from "@/hooks/Editor/useEditor";
 import useNetworkStatus from "@/hooks/Network/useNetworkStore";
 import { useNoteActions } from "@/hooks/Note";
+import { DEFAULT_VALUE } from "@/lib/constants/editor";
 import { trpc } from "@/lib/trpc/client";
-
-const EMPTY_VALUE: Descendant[] = [
-  { type: "paragraph", children: [{ text: "" }] } as unknown as Descendant,
-];
+import type { EditorContent } from "@/types/editor";
 
 export default function NoteEditor({ noteId }: { noteId: string }) {
   const [collabOpen, setCollabOpen] = useState(false);
@@ -47,10 +48,12 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     [note.access.canEdit],
   );
 
-  const value = useMemo(() => {
+  const value: EditorContent = useMemo(() => {
     const content = (note.contentJson as Descendant[]) ?? [];
-    if (Array.isArray(content) && content.length > 0) return content;
-    return EMPTY_VALUE;
+    if (Array.isArray(content) && content.length > 0) {
+      return content as EditorContent;
+    }
+    return DEFAULT_VALUE;
   }, [note.contentJson]);
 
   const valueKey = useMemo(() => {
@@ -61,32 +64,18 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     }
   }, [noteId, note.version, value]);
 
-  const charCount = useMemo(() => {
-    const walk = (node: any): string => {
-      if (!node) return "";
-      if (typeof node.text === "string") return node.text;
-      if (Array.isArray(node.children)) return node.children.map(walk).join("");
-      if (Array.isArray(node)) return node.map(walk).join("");
-      return "";
-    };
-    return walk(value).length;
-  }, [value]);
+  const charCount = useMemo(() => toPlainText(value).length, [value]);
 
   const syncSharedContent = useCallback(
     (nextContent: Descendant[]) => {
       if (!collabEnabled || !sharedType) return;
+      const yDoc = (sharedType as unknown as { doc?: Doc }).doc;
+      if (!yDoc) return;
       try {
-        const { toSharedType } = require("slate-yjs") as any;
-        const doc = (sharedType as any).doc as any;
-        if (doc && typeof doc.transact === "function") {
-          doc.transact(() => {
-            (sharedType as any).delete(0, (sharedType as any).length);
-            toSharedType(sharedType as any, nextContent as any);
-          });
-        } else if (typeof (sharedType as any).delete === "function") {
-          (sharedType as any).delete(0, (sharedType as any).length);
-          toSharedType(sharedType as any, nextContent as any);
-        }
+        yDoc.transact(() => {
+          sharedType.delete(0, sharedType.length);
+          toSharedType(sharedType, nextContent);
+        });
       } catch (err) {
         console.warn("[ai] 同步协作内容失败", err);
       }
@@ -94,38 +83,43 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     [collabEnabled, sharedType],
   );
 
+  type AiResultPayload = {
+    contentJson?: Descendant[] | null;
+    summary?: string | null;
+    aiMeta?: unknown;
+    version?: number | null;
+  };
+
   const handleAiResult = useCallback(
-    (data: any) => {
+    (data?: AiResultPayload | null) => {
       if (!data) return;
-      const nextContent = (data as any).contentJson as
-        | Descendant[]
-        | undefined
-        | null;
+      const nextContent = data.contentJson ?? undefined;
       const nextSummary =
-        typeof (data as any).summary === "string"
-          ? (data as any).summary
-          : undefined;
+        typeof data.summary === "string" ? data.summary : undefined;
       const nextVersion =
-        typeof (data as any).version === "number"
-          ? (data as any).version
-          : undefined;
+        typeof data.version === "number" ? data.version : undefined;
 
       applyServerUpdate({
         contentJson: nextContent ?? (note.contentJson as Descendant[]),
-        summary: nextSummary ?? (note as any).summary,
-        aiMeta: (data as any).aiMeta,
+        summary: nextSummary ?? note.summary,
+        aiMeta: data.aiMeta,
         version: nextVersion,
       });
       if (nextContent) {
         syncSharedContent(nextContent);
       }
     },
-    [applyServerUpdate, note, syncSharedContent],
+    [applyServerUpdate, note.contentJson, note.summary, syncSharedContent],
   );
 
   const aiSummarize = trpc.note.aiSummarize.useMutation({
     onSuccess: (data) => {
-      handleAiResult(data);
+      handleAiResult({
+        contentJson: data?.contentJson as Descendant[] | null | undefined,
+        summary: typeof data?.summary === "string" ? data.summary : null,
+        aiMeta: (data as any)?.aiMeta,
+        version: (data as any)?.version,
+      });
       void utils.note.detail.invalidate({ id: noteId });
       void utils.note.list.invalidate();
       toast.success("已生成摘要");

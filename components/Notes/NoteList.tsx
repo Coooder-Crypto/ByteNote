@@ -1,6 +1,6 @@
 "use client";
 
-import { BnNote } from "@/types";
+import type { BnNote } from "@/types";
 
 import NoteCard from "./NoteCard";
 
@@ -26,7 +26,7 @@ export default function NoteList({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-6">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
       {notes.map((note) => (
         <NoteCard
           key={note.id}
