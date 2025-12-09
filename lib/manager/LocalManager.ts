@@ -57,7 +57,7 @@ type SyncActions = {
   fetchNote?: (id: string) => Promise<{
     id: string;
     title: string | null;
-    contentJson: ContentJson;
+    contentJson: unknown;
     tags: string | string[] | null;
     folderId: string | null;
     updatedAt: Date | string | number | null;

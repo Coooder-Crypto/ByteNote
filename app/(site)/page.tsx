@@ -4,8 +4,7 @@ import { Github, Globe, Lock, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 
-import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Avatar, Button } from "@/components/ui";
 
 function ByteNoteLogo({ className = "w-8 h-8" }: { className?: string }) {
   return (

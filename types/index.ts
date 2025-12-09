@@ -1,4 +1,6 @@
 export type {
+  AccessInput,
+  AccessResult,
   BnFolder,
   BnNav,
   BnNote,
@@ -6,6 +8,9 @@ export type {
   BnUser,
   EditorNote,
   EditorState,
+  LocalNoteRecord,
+  ServerNotePayload,
+  Theme,
 } from "./app";
 export type {
   AiMeta,

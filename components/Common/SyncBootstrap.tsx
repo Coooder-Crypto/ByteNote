@@ -24,7 +24,6 @@ export default function SyncBootstrap() {
     const finishedSync =
       prevSyncing.current && !stats.syncing && stats.pending === 0;
 
-    // 仅在有同步过程且完成时提示成功
     if (finishedSync) {
       toast.success("离线内容已同步", {
         id: "sync-progress",

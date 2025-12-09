@@ -1,8 +1,7 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect */
 
 import { LogOut, Moon, Settings, Sun, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import {
   Button,
@@ -16,9 +15,9 @@ import {
   Label,
 } from "@/components/ui";
 import { useTheme, useUserActions } from "@/hooks";
+import { localManager } from "@/lib/manager/LocalManager";
 import { cn } from "@/lib/utils";
 import type { BnUser } from "@/types";
-import { localManager } from "@/lib/manager/LocalManager";
 
 import AvatarUploader from "./AvatarUploader";
 
@@ -143,7 +142,7 @@ export default function ProfileSettingsDialog({
               <Button
                 variant="outline"
                 size="sm"
-                className="justify-between text-destructive"
+                className="text-destructive justify-between"
                 disabled={clearing}
                 onClick={async () => {
                   setClearing(true);
@@ -165,7 +164,7 @@ export default function ProfileSettingsDialog({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="justify-start gap-2 text-destructive"
+                  className="text-destructive justify-start gap-2"
                   onClick={() => {
                     onLogout();
                     setOpen(false);

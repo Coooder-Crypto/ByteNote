@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { Button, Input } from "@/components/ui";
+import { Input } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type NotesHeaderProps = {

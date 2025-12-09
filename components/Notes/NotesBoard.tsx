@@ -4,8 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
-import { useNetworkStatus } from "@/hooks";
-import { useNoteList } from "@/hooks/Note";
+import { useNetworkStatus, useNoteList } from "@/hooks";
 import { trpc } from "@/lib/trpc/client";
 
 type NoteBoardProps = {

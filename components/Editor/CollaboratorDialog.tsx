@@ -13,7 +13,7 @@ import {
   DialogTitle,
   Input,
 } from "@/components/ui";
-import { useCollaboratorActions } from "@/hooks/Note";
+import { useCollaboratorActions } from "@/hooks";
 import { trpc } from "@/lib/trpc/client";
 import type { BnUser } from "@/types";
 

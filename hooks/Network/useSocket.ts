@@ -8,6 +8,7 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { toPlainText } from "@/components/Editor/slate/normalize";
+import { DEFAULT_VALUE } from "@/lib/constants/editor";
 
 type useSocketParams = {
   noteId: string;
@@ -24,7 +25,6 @@ export default function useSocket({
   wsUrl,
   seedContent,
   seedVersion,
-  isOwner = false,
 }: useSocketParams) {
   const seedContentRef = useRef<Descendant[] | undefined>(seedContent);
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function useSocket({
   const seededRef = useRef(false);
   const syncListenerRef = useRef<((isSynced: boolean) => void) | null>(null);
   const metaListenerRef = useRef<
-    ((event: Y.YEvent<unknown>) => void) | null
+    ((event: Y.YMapEvent<unknown>) => void) | null
   >(null);
   const syncRef = useRef<{
     doc: Y.Doc;
@@ -49,6 +49,17 @@ export default function useSocket({
     wsUrl: string;
     noteId: string;
   } | null>(null);
+
+  useEffect(() => {
+    const validWs =
+      !!wsUrl && (wsUrl.startsWith("ws://") || wsUrl.startsWith("wss://"));
+    if (!enabled || !validWs) return;
+    setTimeout(
+      () =>
+        setStatus((prev) => (prev === "connecting" ? prev : "connecting")),
+      0,
+    );
+  }, [enabled, wsUrl]);
 
   useEffect(() => {
     console.log("[collab] effect", { noteId, enabled, wsUrl });
@@ -92,7 +103,6 @@ export default function useSocket({
 
     cleanup();
 
-    setStatus("connecting");
     console.log("[collab] connecting", { noteId, wsUrl });
     const doc = new Y.Doc();
     const shared = doc.getArray("content") as SharedType;
@@ -115,10 +125,10 @@ export default function useSocket({
         meta.set("version", nextVersion);
       });
       metaVersionRef.current = nextVersion;
-      setMetaVersionState(nextVersion);
+      setTimeout(() => setMetaVersionState(nextVersion), 0);
     } else {
       metaVersionRef.current = null;
-      setMetaVersionState(null);
+      setTimeout(() => setMetaVersionState(null), 0);
     }
 
     const handleMeta = () => {
@@ -131,10 +141,10 @@ export default function useSocket({
     meta.observe(handleMeta);
     handleMeta();
 
-    const seedOrFallback = () =>
+    const seedOrFallback = (): Descendant[] =>
       Array.isArray(seedContentRef.current) && seedContentRef.current.length > 0
         ? seedContentRef.current
-        : [{ type: "paragraph", children: [{ text: "" }] }];
+        : DEFAULT_VALUE;
 
     const applySeed = () => {
       const seed = seedOrFallback();
@@ -194,7 +204,7 @@ export default function useSocket({
       wsUrl: wsUrl!,
       noteId,
     };
-    setSharedType(shared);
+    setTimeout(() => setSharedType(shared), 0);
 
     return () => {
       cleanup();

@@ -7,13 +7,18 @@ import { toSharedType } from "slate-yjs";
 import { toast } from "sonner";
 import type { Doc } from "yjs";
 
-import { CollaboratorDialog, SlateEditor } from "@/components/Editor";
-import EditorHeader from "@/components/Editor/EditorHeader";
+import {
+  CollaboratorDialog,
+  EditorHeader,
+  SlateEditor,
+} from "@/components/Editor";
 import { toPlainText } from "@/components/Editor/slate/normalize";
-import { useUserStore } from "@/hooks";
-import useEditor from "@/hooks/Editor/useEditor";
-import useNetworkStatus from "@/hooks/Network/useNetworkStore";
-import { useNoteActions } from "@/hooks/Note";
+import {
+  useEditor,
+  useNetworkStatus,
+  useNoteActions,
+  useUserStore,
+} from "@/hooks";
 import { DEFAULT_VALUE } from "@/lib/constants/editor";
 import { trpc } from "@/lib/trpc/client";
 import type { AiMeta, EditorContent } from "@/types/editor";

@@ -7,6 +7,7 @@ import type { SharedType } from "slate-yjs";
 import { toSlateDoc } from "slate-yjs";
 import { toast } from "sonner";
 
+import { DEFAULT_VALUE } from "@/lib/constants/editor";
 import EditorManager from "@/lib/manager/EditorManager";
 import { localManager } from "@/lib/manager/LocalManager";
 import { isLocalId } from "@/lib/utils/offline/ids";
@@ -56,8 +57,11 @@ export default function useEditor(
     return undefined;
   };
 
-  const extractAiMeta = (input: unknown) =>
-    input && typeof input === "object" ? (input as AiMeta) : undefined;
+  const extractAiMeta = useCallback(
+    (input: unknown) =>
+      input && typeof input === "object" ? (input as AiMeta) : undefined,
+    [],
+  );
 
   const getErrorCode = (err: unknown): string => {
     if (err && typeof err === "object") {
@@ -218,12 +222,12 @@ export default function useEditor(
       setSavingLocal(true);
       const current = manager.getNote();
       const now = Date.now();
-      const contentFromShared =
+      const contentFromShared: Descendant[] =
         sharedType && sharedType.length > 0
-          ? toSlateDoc(sharedType)
+          ? (toSlateDoc(sharedType) as unknown as Descendant[])
           : note.contentJson.length > 0
             ? note.contentJson
-            : [{ type: "paragraph", children: [{ text: "" }] }];
+            : DEFAULT_VALUE;
       const baseRecord = {
         title: current.title || "未命名笔记",
         contentJson: contentFromShared,
