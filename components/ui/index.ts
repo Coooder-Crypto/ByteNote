@@ -29,3 +29,4 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./select";
+export { Avatar, AvatarFallback, AvatarImage } from "./avatar";

@@ -1,7 +1,8 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { BarChart3, Moon, Sun } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,28 @@ export default function SideFooter({
 
   return (
     <div className="border-border/60 border-t px-4 py-4">
+      {user && (
+        <Link
+          href="/notes/stats"
+          className={cn(
+            "mb-3 flex items-center gap-3 rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium transition hover:border-primary/60 hover:text-primary",
+            collapsed ? "justify-center" : "",
+          )}
+          title="统计数据"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <BarChart3 className="size-5" />
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col">
+              <span>统计数据</span>
+              <span className="text-muted-foreground text-xs">
+                笔记概览与趋势
+              </span>
+            </div>
+          )}
+        </Link>
+      )}
       {!collapsed && (
         <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs">
           <span
