@@ -16,6 +16,7 @@ type SideFooterProps = {
   onLogout: () => void;
   onProfileUpdated?: () => void;
   collapsed?: boolean;
+  currentPath?: string;
 };
 
 export default function SideFooter({
@@ -23,6 +24,7 @@ export default function SideFooter({
   onLogout,
   onProfileUpdated,
   collapsed = false,
+  currentPath = "",
 }: SideFooterProps) {
   const { user } = useUserStore();
   const { theme, toggleTheme } = useTheme();
@@ -56,8 +58,11 @@ export default function SideFooter({
         <Link
           href="/notes/stats"
           className={cn(
-            "mb-3 flex items-center gap-3 rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium transition hover:border-primary/60 hover:text-primary",
+            "mb-3 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
             collapsed ? "justify-center" : "",
+            currentPath.startsWith("/notes/stats")
+              ? "bg-primary/10 text-primary border border-primary/30 shadow-sm"
+              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent",
           )}
           title="统计数据"
         >

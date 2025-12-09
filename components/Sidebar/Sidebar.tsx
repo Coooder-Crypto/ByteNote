@@ -112,6 +112,7 @@ export default function Sidebar() {
 
           <SideFooter
             collapsed={collapsed}
+            currentPath={currentPath}
             onLogin={() => {
               handleLoginRedirect();
               setMobileOpen(false);
