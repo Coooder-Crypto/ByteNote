@@ -2,7 +2,9 @@
 
 import { Github, Globe, Lock, Users, Zap } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 function ByteNoteLogo({ className = "w-8 h-8" }: { className?: string }) {
@@ -57,6 +59,9 @@ function ByteNoteLogo({ className = "w-8 h-8" }: { className?: string }) {
 }
 
 export default function LandingPage() {
+  const { data: session } = useSession();
+  const user = session?.user;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
       {/* Navbar */}
@@ -82,12 +87,24 @@ export default function LandingPage() {
                 进入笔记
               </Button>
             </Link>
-            <Link href="/auth">
-              <Button className="gap-2">
-                <Github size={16} />
-                使用 GitHub 登录
-              </Button>
-            </Link>
+            {user ? (
+              <Link href="/notes" className="flex items-center gap-2">
+                <Avatar
+                  src={user.avatarUrl ?? undefined}
+                  alt={user.name ?? user.email ?? "用户头像"}
+                  fallback={(user.name ?? user.email ?? "U").slice(0, 1)}
+                  className="border border-slate-200 shadow-sm"
+                  size={36}
+                />
+              </Link>
+            ) : (
+              <Link href="/auth">
+                <Button className="gap-2">
+                  <Github size={16} />
+                  使用 GitHub 登录
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </nav>
@@ -108,12 +125,20 @@ export default function LandingPage() {
             登录即可开始。
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/auth">
-              <Button size="lg" className="shadow-primary/30 gap-2 shadow-lg">
-                <Github size={18} />
-                使用 GitHub 登录
-              </Button>
-            </Link>
+            {user ? (
+              <Link href="/notes">
+                <Button size="lg" className="shadow-primary/30 gap-2 shadow-lg">
+                  进入笔记
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/auth">
+                <Button size="lg" className="shadow-primary/30 gap-2 shadow-lg">
+                  <Github size={18} />
+                  使用 GitHub 登录
+                </Button>
+              </Link>
+            )}
             <a href="#features">
               <Button size="lg" variant="outline">
                 查看功能
