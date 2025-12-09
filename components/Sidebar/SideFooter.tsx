@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui";
 import { useNetworkStatus, useTheme, useUserStore } from "@/hooks";
 import { cn } from "@/lib/utils";
 
@@ -61,12 +61,12 @@ export default function SideFooter({
             "mb-3 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
             collapsed ? "justify-center" : "",
             currentPath.startsWith("/notes/stats")
-              ? "bg-primary/10 text-primary border border-primary/30 shadow-sm"
+              ? "bg-primary/10 text-primary border-primary/30 border shadow-sm"
               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent",
           )}
           title="统计数据"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
             <BarChart3 className="size-5" />
           </div>
           {!collapsed && (

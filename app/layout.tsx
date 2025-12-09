@@ -2,8 +2,7 @@ import "./globals.css";
 
 import type { Metadata } from "next";
 
-import { SyncBootstrap } from "@/components/Common";
-import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import { ServiceWorkerRegister, SyncBootstrap } from "@/components/Common";
 import { cn } from "@/lib/utils";
 
 import { Providers } from "./providers";
@@ -12,6 +11,9 @@ export const metadata: Metadata = {
   title: {
     default: "Byte Note",
     template: "%s · Byte Note",
+  },
+  icons: {
+    icon: "/favicon.svg",
   },
   description:
     "Byte Note 是字节训练营前端课程的项目笔记平台，集成 Next.js + tRPC + Prisma，支持 Markdown 笔记管理。",

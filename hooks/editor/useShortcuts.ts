@@ -1,27 +1,42 @@
 import { useCallback } from "react";
-import { Editor, Element as SlateElement, Path, Range, Transforms } from "slate";
+import {
+  Editor,
+  Element as SlateElement,
+  Path,
+  Range,
+  Transforms,
+} from "slate";
 
-import { LIST_TYPES } from "./normalize";
+import { LIST_TYPES } from "@/lib/constants/editor";
+import type { CustomElement, CustomText } from "@/types/editor";
 
 function moveCursorToBlockStart(editor: Editor) {
   try {
     const entry = Editor.above(editor, {
-      match: (n) => Editor.isBlock(editor, n as any),
+      match: (n) => Editor.isBlock(editor, n as SlateElement),
     });
     if (!entry) return;
     const [, path] = entry;
     const firstChildPath = path.concat(0);
     try {
-      const firstChild = Editor.node(editor, firstChildPath)[0] as any;
-      if (!firstChild || (firstChild as any).text === undefined) {
-        Transforms.insertNodes(editor, { text: "" } as any, {
-          at: firstChildPath,
-        });
+      const firstChild = Editor.node(editor, firstChildPath)[0] as CustomText;
+      if (!firstChild || firstChild.text === undefined) {
+        Transforms.insertNodes(
+          editor,
+          { text: "" },
+          {
+            at: firstChildPath,
+          },
+        );
       }
     } catch {
-      Transforms.insertNodes(editor, { text: "" } as any, {
-        at: firstChildPath,
-      });
+      Transforms.insertNodes(
+        editor,
+        { text: "" },
+        {
+          at: firstChildPath,
+        },
+      );
     }
     const point = Editor.start(editor, firstChildPath);
     Transforms.select(editor, point);
@@ -38,7 +53,7 @@ function handleMarkdownShortcut(editor: Editor, event: React.KeyboardEvent) {
   if (!selection || !Range.isCollapsed(selection)) return false;
 
   const blockEntry = Editor.above(editor, {
-    match: (n) => Editor.isBlock(editor, n as any),
+    match: (n) => Editor.isBlock(editor, n as SlateElement),
   });
   if (!blockEntry) return false;
 
@@ -47,7 +62,7 @@ function handleMarkdownShortcut(editor: Editor, event: React.KeyboardEvent) {
   const before = text.slice(0, selection.anchor.offset);
   const trimmed = before.trim();
 
-  const convert = (type: any) => {
+  const convert = (type: CustomElement["type"]) => {
     event.preventDefault();
     Transforms.delete(editor, {
       at: { anchor: Editor.start(editor, path), focus: selection.anchor },
@@ -55,7 +70,9 @@ function handleMarkdownShortcut(editor: Editor, event: React.KeyboardEvent) {
     if (LIST_TYPES.includes(type)) {
       toggleBlock(editor, type);
     } else {
-      Transforms.setNodes(editor, { type } as any, { at: path });
+      Transforms.setNodes(editor, { type } as Partial<CustomElement>, {
+        at: path,
+      });
     }
     moveCursorToBlockStart(editor);
     return true;
@@ -97,7 +114,7 @@ function isBlockActive(editor: Editor, format: string) {
       match: (n) =>
         !Editor.isEditor(n) &&
         SlateElement.isElement(n) &&
-        (n as any).type === format,
+        (n as CustomElement).type === format,
     }),
   );
   return Boolean(match);
@@ -112,21 +129,29 @@ function toggleBlock(editor: Editor, format: string) {
     match: (n) =>
       !Editor.isEditor(n) &&
       SlateElement.isElement(n) &&
-      LIST_TYPES.includes((n as any).type as string),
+      LIST_TYPES.includes((n as CustomElement).type as string),
     split: true,
   });
 
   const newType = isActive ? "paragraph" : isList ? "list-item" : format;
-  Transforms.setNodes(editor, { type: newType } as any);
+  Transforms.setNodes(editor, { type: newType } as Partial<CustomElement>);
 
   if (!isActive && isList) {
-    const block: SlateElement = { type: format, children: [] } as any;
+    const emptyText: CustomText = { text: "" };
+    const listItem: CustomElement = {
+      type: "list-item",
+      children: [emptyText],
+    };
+    const block: CustomElement =
+      format === "bulleted-list"
+        ? { type: "bulleted-list", children: [listItem] }
+        : { type: "numbered-list", children: [listItem] };
     Transforms.wrapNodes(editor, block);
   }
   moveCursorToBlockStart(editor);
 }
 
-export function useEditorShortcuts(editor: Editor) {
+export default function useShortcuts(editor: Editor) {
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       if (handleMarkdownShortcut(editor, event)) return;
@@ -135,8 +160,8 @@ export function useEditorShortcuts(editor: Editor) {
         const headingEntry = Editor.above(editor, {
           match: (n) =>
             SlateElement.isElement(n) &&
-            ((n as any).type === "heading-one" ||
-              (n as any).type === "heading-two"),
+            ((n as CustomElement).type === "heading-one" ||
+              (n as CustomElement).type === "heading-two"),
         });
         const { selection } = editor;
         if (headingEntry && selection) {
@@ -145,8 +170,13 @@ export function useEditorShortcuts(editor: Editor) {
           const insertPath = Path.next(path);
           Transforms.insertNodes(
             editor,
-            { type: "paragraph", children: [{ text: "" }] } as any,
-            { at: insertPath },
+            {
+              type: "paragraph",
+              children: [{ text: "" }],
+            } as CustomElement,
+            {
+              at: insertPath,
+            },
           );
           Transforms.select(editor, Editor.start(editor, insertPath));
           return;
@@ -158,12 +188,13 @@ export function useEditorShortcuts(editor: Editor) {
         if (selection && Range.isCollapsed(selection)) {
           const listItemEntry = Editor.above(editor, {
             match: (n) =>
-              SlateElement.isElement(n) && (n as any).type === "list-item",
+              SlateElement.isElement(n) &&
+              (n as CustomElement).type === "list-item",
           });
           const listParentEntry = Editor.above(editor, {
             match: (n) =>
               SlateElement.isElement(n) &&
-              LIST_TYPES.includes((n as any).type as string),
+              LIST_TYPES.includes((n as CustomElement).type as string),
           });
 
           if (listItemEntry) {
@@ -172,15 +203,15 @@ export function useEditorShortcuts(editor: Editor) {
             const atStart = selection.anchor.offset === 0;
             const singleItemList =
               listParentEntry &&
-              Array.isArray((listParentEntry[0] as any).children) &&
-              (listParentEntry[0] as any).children.length <= 1;
+              Array.isArray((listParentEntry[0] as CustomElement).children) &&
+              (listParentEntry[0] as CustomElement).children.length <= 1;
 
             if (text.length === 0) {
               event.preventDefault();
               const listHasMultiple =
                 listParentEntry &&
-                Array.isArray((listParentEntry[0] as any).children) &&
-                (listParentEntry[0] as any).children.length > 1;
+                Array.isArray((listParentEntry[0] as CustomElement).children) &&
+                (listParentEntry[0] as CustomElement).children.length > 1;
 
               if (listHasMultiple) {
                 let targetPath: Path | null = null;
@@ -197,14 +228,18 @@ export function useEditorShortcuts(editor: Editor) {
                   /* ignore */
                 }
               } else {
-                Transforms.setNodes(editor, { type: "paragraph" } as any, {
-                  at: itemPath,
-                });
+                Transforms.setNodes(
+                  editor,
+                  { type: "paragraph" } as Partial<CustomElement>,
+                  {
+                    at: itemPath,
+                  },
+                );
                 Transforms.unwrapNodes(editor, {
                   at: itemPath,
                   match: (n) =>
                     SlateElement.isElement(n) &&
-                    LIST_TYPES.includes((n as any).type as string),
+                    LIST_TYPES.includes((n as CustomElement).type as string),
                   split: true,
                 });
                 moveCursorToBlockStart(editor);
@@ -214,14 +249,18 @@ export function useEditorShortcuts(editor: Editor) {
 
             if (atStart && singleItemList) {
               event.preventDefault();
-              Transforms.setNodes(editor, { type: "paragraph" } as any, {
-                at: itemPath,
-              });
+              Transforms.setNodes(
+                editor,
+                { type: "paragraph" } as Partial<CustomElement>,
+                {
+                  at: itemPath,
+                },
+              );
               Transforms.unwrapNodes(editor, {
                 at: itemPath,
                 match: (n) =>
                   SlateElement.isElement(n) &&
-                  LIST_TYPES.includes((n as any).type as string),
+                  LIST_TYPES.includes((n as CustomElement).type as string),
                 split: true,
               });
               moveCursorToBlockStart(editor);
@@ -232,16 +271,21 @@ export function useEditorShortcuts(editor: Editor) {
             const text = Editor.string(editor, listPath);
             if (text.length === 0) {
               event.preventDefault();
-              Transforms.setNodes(editor, { type: "paragraph" } as any, {
-                at: listPath,
-                match: (n) =>
-                  SlateElement.isElement(n) && (n as any).type === "list-item",
-              });
+              Transforms.setNodes(
+                editor,
+                { type: "paragraph" } as Partial<CustomElement>,
+                {
+                  at: listPath,
+                  match: (n) =>
+                    SlateElement.isElement(n) &&
+                    (n as CustomElement).type === "list-item",
+                },
+              );
               Transforms.unwrapNodes(editor, {
                 at: listPath,
                 match: (n) =>
                   SlateElement.isElement(n) &&
-                  LIST_TYPES.includes((n as any).type as string),
+                  LIST_TYPES.includes((n as CustomElement).type as string),
                 split: true,
               });
               moveCursorToBlockStart(editor);

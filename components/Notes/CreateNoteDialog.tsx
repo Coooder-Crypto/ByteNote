@@ -17,11 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
-import { useFolderActions, useNoteActions } from "@/hooks/Note";
+import { useFolderActions, useNoteActions } from "@/hooks";
+import { DEFAULT_VALUE } from "@/lib/constants/editor";
 import { NOTE_TAGS } from "@/lib/constants/tags";
 import { localManager } from "@/lib/manager/LocalManager";
+import { ContentJson } from "@/types";
 
-import { TagInput } from "../TagInput";
+import { TagInput } from "../Common";
 
 type CreateNoteDialogProps = {
   open: boolean;
@@ -40,6 +42,7 @@ export default function CreateNoteDialog({
 }: CreateNoteDialogProps) {
   const { folders, isLoading: foldersLoading } = useFolderActions(open);
   const { createNote, createPending } = useNoteActions({});
+  type CreateNotePayload = Parameters<typeof createNote>[0];
 
   const [title, setTitle] = useState("全新笔记");
   const [tags, setTags] = useState<string[]>([]);
@@ -58,7 +61,7 @@ export default function CreateNoteDialog({
   const createLocal = useCallback(
     async (payload: {
       title: string;
-      contentJson: any;
+      contentJson: ContentJson;
       tags: string[];
       folderId?: string;
       isCollaborative: boolean;
@@ -83,19 +86,24 @@ export default function CreateNoteDialog({
 
   const handleCreate = () => {
     if (!title.trim() || createPending) return;
-    const payload = {
+    const tagList = [...tags];
+    const localPayload = {
       title: title.trim(),
-      contentJson: { type: "doc", content: [] },
-      tags,
+      contentJson: DEFAULT_VALUE,
+      tags: tagList,
       folderId: folderId ?? undefined,
       isCollaborative,
     };
+    const serverPayload: CreateNotePayload = {
+      ...localPayload,
+      folderId: folderId ?? undefined,
+    };
     const isOnline = typeof navigator === "undefined" || navigator.onLine;
     if (!isOnline) {
-      void createLocal(payload);
+      void createLocal(localPayload);
       return;
     }
-    createNote(payload as any, {
+    createNote(serverPayload, {
       onSuccess: (note) => {
         onCreated(note.id);
         resetForm();
@@ -108,7 +116,7 @@ export default function CreateNoteDialog({
           return;
         }
         // 网络异常等错误时，回退为本地创建
-        createLocal(payload);
+        createLocal(localPayload);
       },
     });
   };

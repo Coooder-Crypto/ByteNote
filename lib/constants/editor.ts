@@ -1,3 +1,5 @@
+import type { EditorContent } from "@/types/editor";
+
 export const MARK_KEYS = ["bold", "italic", "underline", "code"] as const;
 
 export const BLOCK_CONFIGS = [
@@ -8,3 +10,9 @@ export const BLOCK_CONFIGS = [
   { key: "quote", type: "block-quote" as const },
   { key: "codeBlock", type: "code-block" as const },
 ] as const;
+
+export const DEFAULT_VALUE: EditorContent = [
+  { type: "paragraph", children: [{ text: "" }] },
+];
+
+export const LIST_TYPES = ["numbered-list", "bulleted-list"];

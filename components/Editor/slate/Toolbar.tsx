@@ -88,3 +88,5 @@ export function SlateToolbar({ visible, actions }: ToolbarProps) {
     </div>
   );
 }
+
+export type ToolbarActions = ToolbarProps["actions"];

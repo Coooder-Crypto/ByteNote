@@ -1,8 +1,11 @@
+import { toPlainText, type UnknownNode } from "@/components/Editor/slate/normalize";
 import { parseStoredTags } from "@/lib/constants/tags";
 import { isLocalId } from "@/lib/utils/offline/ids";
 import type {
   AccessInput,
   AccessResult,
+  AiMeta,
+  ContentJson,
   EditorNote,
   ServerNotePayload,
 } from "@/types";
@@ -90,17 +93,31 @@ export class EditorManager {
       localOnly: isLocalId(this.noteId),
     });
     const contentJson = this.normalizeContent(note.contentJson);
+    const collabWs =
+      typeof (note as { collabWsUrl?: unknown }).collabWsUrl === "string"
+        ? (note as { collabWsUrl?: string }).collabWsUrl
+        : null;
+    const summary =
+      typeof (note as { summary?: unknown }).summary === "string"
+        ? (note as { summary: string }).summary
+        : "";
+    const aiMeta =
+      (note as { aiMeta?: unknown }).aiMeta &&
+      typeof (note as { aiMeta?: unknown }).aiMeta === "object"
+        ? ((note as { aiMeta?: AiMeta }).aiMeta as AiMeta)
+        : undefined;
+
     this.state = {
       title: note.title,
       contentJson,
-      collabWsUrl: (note as any).collabWsUrl ?? null,
+      collabWsUrl: collabWs,
       tags: parsedTags,
       isCollaborative: note.isCollaborative,
       folderId: note.folderId,
       isFavorite: note.isFavorite,
       version: typeof note.version === "number" ? note.version : 1,
-      summary: typeof (note as any).summary === "string" ? (note as any).summary : "",
-      aiMeta: (note as any).aiMeta,
+      summary,
+      aiMeta,
       access: {
         canEdit: access.canEdit,
         isTrashed: access.isTrashed,
@@ -150,11 +167,11 @@ export class EditorManager {
     return this.getNote();
   }
 
-  updateContentJson(contentJson: any) {
+  updateContentJson(contentJson: ContentJson) {
     this.state = { ...this.state, contentJson };
   }
 
-  updateContentAndNote(contentJson: any): EditorNote {
+  updateContentAndNote(contentJson: ContentJson): EditorNote {
     this.updateContentJson(contentJson);
     return this.getNote();
   }
@@ -181,7 +198,7 @@ export class EditorManager {
     return this.getNote();
   }
 
-  updateAiMeta(aiMeta: any) {
+  updateAiMeta(aiMeta: AiMeta | undefined) {
     this.state = { ...this.state, aiMeta };
   }
 
@@ -208,32 +225,15 @@ export class EditorManager {
     return parseStoredTags(raw);
   }
 
-  private normalizeContent(raw: any): any[] {
-    if (Array.isArray(raw) && raw.length > 0) return raw as any[];
-    const text = this.extractText(raw);
+  private normalizeContent(raw: unknown): ContentJson {
+    if (Array.isArray(raw) && raw.length > 0) return raw as ContentJson;
+    const text = toPlainText(raw as UnknownNode);
     return [
       {
         type: "paragraph",
         children: [{ text }],
       },
-    ];
-  }
-
-  private extractText(node: any): string {
-    if (!node) return "";
-    if (typeof node === "string") return node;
-    if (typeof node.text === "string") return node.text;
-    if (Array.isArray(node))
-      return node.map((n) => this.extractText(n)).join("");
-    if (Array.isArray(node.children))
-      return node.children.map((n: any) => this.extractText(n)).join("");
-    if (Array.isArray(node.content))
-      return node.content.map((n: any) => this.extractText(n)).join("");
-    if (typeof node === "object")
-      return Object.values(node)
-        .map((v) => this.extractText(v))
-        .join("");
-    return "";
+    ] as ContentJson;
   }
 }
 

@@ -1,9 +1,11 @@
-import React from "react";
 import type { RenderElementProps, RenderLeafProps } from "slate-react";
+
+import type { CustomElement, CustomText } from "@/types/editor";
 
 export function renderElement(props: RenderElementProps) {
   const { attributes, children, element } = props;
-  switch ((element as any).type) {
+  const el = element as CustomElement;
+  switch (el.type) {
     case "paragraph":
       return <p {...attributes}>{children}</p>;
     case "heading-one":
@@ -20,7 +22,10 @@ export function renderElement(props: RenderElementProps) {
       );
     case "bulleted-list":
       return (
-        <ul className="list-disc space-y-1 pl-6 leading-relaxed" {...attributes}>
+        <ul
+          className="list-disc space-y-1 pl-6 leading-relaxed"
+          {...attributes}
+        >
           {children}
         </ul>
       );
@@ -63,12 +68,13 @@ export function renderElement(props: RenderElementProps) {
 }
 
 export function renderLeaf(props: RenderLeafProps) {
-  const { attributes, children, leaf } = props as any;
+  const { attributes, children, leaf } = props;
+  const lf = leaf as CustomText;
   let el = children;
-  if (leaf.bold) el = <strong>{el}</strong>;
-  if (leaf.italic) el = <em>{el}</em>;
-  if (leaf.underline) el = <u>{el}</u>;
-  if (leaf.code)
+  if (lf.bold) el = <strong>{el}</strong>;
+  if (lf.italic) el = <em>{el}</em>;
+  if (lf.underline) el = <u>{el}</u>;
+  if (lf.code)
     el = (
       <code className="bg-muted rounded px-1 py-0.5 font-mono text-[90%]">
         {el}

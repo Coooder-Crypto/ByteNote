@@ -8,6 +8,7 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { toPlainText } from "@/components/Editor/slate/normalize";
+import { DEFAULT_VALUE } from "@/lib/constants/editor";
 
 type useSocketParams = {
   noteId: string;
@@ -24,7 +25,6 @@ export default function useSocket({
   wsUrl,
   seedContent,
   seedVersion,
-  isOwner = false,
 }: useSocketParams) {
   const seedContentRef = useRef<Descendant[] | undefined>(seedContent);
   useEffect(() => {
@@ -38,15 +38,28 @@ export default function useSocket({
   const metaVersionRef = useRef<number | null>(null);
   const seededRef = useRef(false);
   const syncListenerRef = useRef<((isSynced: boolean) => void) | null>(null);
-  const metaListenerRef = useRef<((event: Y.YEvent<any>) => void) | null>(null);
+  const metaListenerRef = useRef<
+    ((event: Y.YMapEvent<unknown>) => void) | null
+  >(null);
   const syncRef = useRef<{
     doc: Y.Doc;
     sharedType: SharedType;
-    meta: Y.Map<any>;
+    meta: Y.Map<unknown>;
     provider: WebsocketProvider;
     wsUrl: string;
     noteId: string;
   } | null>(null);
+
+  useEffect(() => {
+    const validWs =
+      !!wsUrl && (wsUrl.startsWith("ws://") || wsUrl.startsWith("wss://"));
+    if (!enabled || !validWs) return;
+    setTimeout(
+      () =>
+        setStatus((prev) => (prev === "connecting" ? prev : "connecting")),
+      0,
+    );
+  }, [enabled, wsUrl]);
 
   useEffect(() => {
     console.log("[collab] effect", { noteId, enabled, wsUrl });
@@ -90,7 +103,6 @@ export default function useSocket({
 
     cleanup();
 
-    setStatus("connecting");
     console.log("[collab] connecting", { noteId, wsUrl });
     const doc = new Y.Doc();
     const shared = doc.getArray("content") as SharedType;
@@ -113,10 +125,10 @@ export default function useSocket({
         meta.set("version", nextVersion);
       });
       metaVersionRef.current = nextVersion;
-      setMetaVersionState(nextVersion);
+      setTimeout(() => setMetaVersionState(nextVersion), 0);
     } else {
       metaVersionRef.current = null;
-      setMetaVersionState(null);
+      setTimeout(() => setMetaVersionState(null), 0);
     }
 
     const handleMeta = () => {
@@ -129,19 +141,19 @@ export default function useSocket({
     meta.observe(handleMeta);
     handleMeta();
 
-    const seedOrFallback = () =>
+    const seedOrFallback = (): Descendant[] =>
       Array.isArray(seedContentRef.current) && seedContentRef.current.length > 0
         ? seedContentRef.current
-        : [{ type: "paragraph", children: [{ text: "" }] }];
+        : DEFAULT_VALUE;
 
     const applySeed = () => {
       const seed = seedOrFallback();
       doc.transact(() => {
         shared.delete(0, shared.length);
-        toSharedType(shared, seed as any);
+        toSharedType(shared, seed);
       });
       try {
-        const after = toSlateDoc(shared as any);
+        const after = toSlateDoc(shared);
         console.log("[collab] apply seed on sync", {
           noteId,
           wsUrl,
@@ -192,7 +204,7 @@ export default function useSocket({
       wsUrl: wsUrl!,
       noteId,
     };
-    setSharedType(shared);
+    setTimeout(() => setSharedType(shared), 0);
 
     return () => {
       cleanup();

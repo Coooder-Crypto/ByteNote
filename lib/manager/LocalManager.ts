@@ -3,12 +3,23 @@
 import { parseStoredTags } from "@/lib/constants/tags";
 import { createLocalId, isLocalId } from "@/lib/utils/offline/ids";
 import { noteStorage } from "@/lib/utils/offline/noteStorage";
-import type { LocalNoteRecord } from "@/types";
+import type { AiMeta, ContentJson, LocalNoteRecord } from "@/types";
+
+const toContentJson = (raw: unknown): ContentJson =>
+  Array.isArray(raw) ? (raw as ContentJson) : [];
+
+const toTimestamp = (
+  value: Date | string | number | null | undefined,
+): number => {
+  if (value === null || value === undefined) return Date.now();
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : Date.now();
+};
 
 type NotePayload = {
   id: string;
   title: string;
-  contentJson: any;
+  contentJson: ContentJson;
   tags: string[];
   folderId: string | null;
   isCollaborative: boolean;
@@ -16,13 +27,13 @@ type NotePayload = {
   updatedAt?: number;
   syncStatus?: LocalNoteRecord["syncStatus"];
   summary?: string | null;
-  aiMeta?: any;
+  aiMeta?: AiMeta;
 };
 
 type SyncActions = {
   createNote: (payload: {
     title: string;
-    contentJson: any;
+    contentJson: ContentJson;
     tags: string[];
     folderId?: string;
     isCollaborative: boolean;
@@ -31,7 +42,7 @@ type SyncActions = {
   updateNote: (payload: {
     id: string;
     title: string;
-    contentJson: any;
+    contentJson: ContentJson;
     tags?: string[];
     folderId?: string;
     isCollaborative?: boolean;
@@ -46,7 +57,7 @@ type SyncActions = {
   fetchNote?: (id: string) => Promise<{
     id: string;
     title: string | null;
-    contentJson: any;
+    contentJson: unknown;
     tags: string | string[] | null;
     folderId: string | null;
     updatedAt: Date | string | number | null;
@@ -66,7 +77,7 @@ class LocalManager {
 
   async saveNote(payload: NotePayload) {
     const title = (payload.title ?? "").trim() || "未命名笔记";
-    const contentJson = payload.contentJson ?? {};
+    const contentJson = toContentJson(payload.contentJson);
     const tags = payload.tags ?? [];
     const folderId = payload.folderId ?? null;
     const now = payload.updatedAt ?? Date.now();
@@ -86,7 +97,7 @@ class LocalManager {
       isCollaborative: payload.isCollaborative,
       version: payload.version,
       summary: payload.summary,
-      aiMeta: payload.aiMeta,
+      aiMeta: payload.aiMeta as AiMeta | undefined,
     };
     await noteStorage.save(record);
     return record;
@@ -126,24 +137,22 @@ class LocalManager {
     serverNotes: Array<{
       id: string;
       title: string | null;
-      contentJson: any;
+      contentJson: unknown;
       tags: string | string[] | null;
       folderId: string | null;
       updatedAt: Date | string | number | null;
       isCollaborative: boolean | null;
       version?: number | null;
       summary?: string | null;
-      aiMeta?: any;
+      aiMeta?: AiMeta | null;
     }>,
   ) {
     let pulled = 0;
     for (const note of serverNotes) {
       try {
         const local = await noteStorage.get(note.id);
-        const serverUpdatedAt = note.updatedAt
-          ? new Date(note.updatedAt as any).getTime()
-          : Date.now();
-        const serverContent = (note as any).contentJson ?? {};
+        const serverUpdatedAt = toTimestamp(note.updatedAt);
+        const serverContent = toContentJson(note.contentJson);
         const serverTitle = note.title ?? "未命名笔记";
         const serverTags = parseStoredTags(note.tags ?? []);
         const serverFolder = note.folderId ?? null;
@@ -151,7 +160,10 @@ class LocalManager {
           typeof note.version === "number" ? note.version : undefined;
         const serverSummary =
           typeof note.summary === "string" ? note.summary : null;
-        const serverAiMeta = (note as any).aiMeta;
+        const serverAiMeta =
+          note.aiMeta && typeof note.aiMeta === "object"
+            ? (note.aiMeta as AiMeta)
+            : undefined;
         if (!local) {
           await noteStorage.save({
             id: note.id,
@@ -256,8 +268,8 @@ class LocalManager {
             await this.markSynced(record.id, {
               updatedAt: Date.now(),
               version:
-                typeof (updated as any).version === "number"
-                  ? (updated as any).version
+                typeof (updated as { version?: unknown }).version === "number"
+                  ? (updated as { version: number }).version
                   : record.version,
             });
           } else {
@@ -270,7 +282,7 @@ class LocalManager {
         if (
           err instanceof Error &&
           (err.message?.includes("NOT_FOUND") ||
-            (err as any).data?.code === "NOT_FOUND")
+            (err as { data?: { code?: string } }).data?.code === "NOT_FOUND")
         ) {
           try {
             const serverNote = await actions.fetchNote?.(record.id);

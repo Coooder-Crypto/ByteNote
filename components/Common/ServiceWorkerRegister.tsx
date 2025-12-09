@@ -7,7 +7,9 @@ export default function ServiceWorkerRegister() {
     if (process.env.NODE_ENV !== "production") return;
     if (typeof window === "undefined") return;
     // next-pwa exposes a global workbox helper when register: false
-    const wb = (window as unknown as { workbox?: { register: () => Promise<void> } }).workbox;
+    const wb = (
+      window as unknown as { workbox?: { register: () => Promise<void> } }
+    ).workbox;
     if (wb?.register) {
       wb.register().catch((err) => console.warn("SW register failed", err));
       return;

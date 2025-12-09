@@ -1,7 +1,8 @@
 "use client";
 
-import { getDB, STORE_NOTES } from "./db";
 import type { LocalNoteRecord } from "@/types";
+
+import { getDB, STORE_NOTES } from "./db";
 
 export const noteStorage = {
   async save(note: LocalNoteRecord) {

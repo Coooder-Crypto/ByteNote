@@ -18,10 +18,6 @@ type EditorHeaderProps = {
   onSave: () => void;
   onManageCollaborators: () => void;
   onToggleCollab?: () => void;
-  onAiSummarize?: () => void;
-  summarizing?: boolean;
-  aiDisabled?: boolean;
-  aiDisabledReason?: string;
 };
 
 export default function EditorHeader({
@@ -39,10 +35,6 @@ export default function EditorHeader({
   onSave,
   onManageCollaborators,
   onToggleCollab,
-  onAiSummarize,
-  summarizing,
-  aiDisabled,
-  aiDisabledReason,
 }: EditorHeaderProps) {
   const connected =
     collabStatus === "connected" || (collabEnabled && collabStatus === "idle");
