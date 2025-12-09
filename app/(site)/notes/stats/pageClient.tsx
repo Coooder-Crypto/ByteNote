@@ -119,6 +119,37 @@ function AIReport({
   loading: boolean;
   content?: string;
 }) {
+  const renderMarkdownLite = (text: string) => {
+    const blocks = text.split(/\n{2,}/).filter(Boolean);
+    if (blocks.length === 0) return null;
+    return blocks.map((block, idx) => {
+      const html = block
+        // bold
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        // lists
+        .replace(/^- (.+)$/gm, "<li>$1</li>");
+
+      if (html.includes("<li>")) {
+        const items = html.replace(/^(?!<li>).*$/gm, "").trim();
+        return (
+          <ul
+            key={idx}
+            className="list-disc pl-4 text-sm leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: items }}
+          />
+        );
+      }
+
+      return (
+        <p
+          key={idx}
+          className="text-sm leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      );
+    });
+  };
+
   return (
     <Card className="bg-card/60 border-border/60">
       <CardHeader className="flex items-center justify-between gap-3 space-y-0">
@@ -143,9 +174,7 @@ function AIReport({
         {loading ? (
           <p className="text-muted-foreground text-sm">AI 正在分析...</p>
         ) : content ? (
-          <div className="text-sm leading-relaxed whitespace-pre-wrap">
-            {content}
-          </div>
+          <div className="space-y-2">{renderMarkdownLite(content)}</div>
         ) : (
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <AlertCircle className="size-4" />
