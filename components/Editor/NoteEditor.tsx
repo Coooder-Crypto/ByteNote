@@ -60,13 +60,10 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     return DEFAULT_VALUE;
   }, [note.contentJson]);
 
-  const valueKey = useMemo(() => {
-    try {
-      return `${noteId}-${note.version}-${JSON.stringify(value).length}`;
-    } catch {
-      return `${noteId}-${note.version}-na`;
-    }
-  }, [noteId, note.version, value]);
+  const valueKey = useMemo(
+    () => `${noteId}-${note.version}`,
+    [noteId, note.version],
+  );
 
   const charCount = useMemo(() => toPlainText(value).length, [value]);
 
@@ -164,7 +161,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   );
 
   return (
-    <div className="bg-background flex h-full flex-col">
+    <div className="bg-background flex h-full min-h-screen flex-col overflow-hidden">
       <EditorHeader
         isCollaborative={note.isCollaborative}
         collabEnabled={collabEnabled}

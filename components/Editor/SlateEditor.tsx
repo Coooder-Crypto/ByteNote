@@ -74,6 +74,8 @@ export default function SlateEditor({
     () => (normalizedProp.length > 0 ? normalizedProp : DEFAULT_VALUE),
     [normalizedProp],
   );
+  const safeInitialValue =
+    displayValue.length > 0 ? displayValue : DEFAULT_VALUE;
   const collabInitialValue = DEFAULT_VALUE;
   const collabReady = Boolean(sharedType && sharedType.length > 0);
 
@@ -88,7 +90,7 @@ export default function SlateEditor({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem("bn-editor-width");
-    setWide(saved === "wide");
+    setTimeout(() => setWide(saved === "wide"), 0);
   }, []);
 
   const toggleWidth = () => {
@@ -139,7 +141,7 @@ export default function SlateEditor({
   }, [isBlockActive, isMarkActive, toggleBlock, toggleMark]);
 
   return (
-    <div className="mt-3 space-y-3">
+    <div className="mt-3 flex h-[calc(100vh-96px)] flex-col gap-3 overflow-hidden">
       <div className="flex items-center justify-between gap-2">
         <SlateToolbar visible={!readOnly} actions={toolbarActions} />
 
@@ -154,8 +156,8 @@ export default function SlateEditor({
         </button>
       </div>
 
-      <div className={contentWidthClass}>
-        <div className="border-border/60 bg-card/40 space-y-4 rounded-2xl border p-4">
+      <div className={`${contentWidthClass} flex-1 overflow-hidden`}>
+        <div className="border-border/60 bg-card/40 flex h-full flex-col space-y-4 overflow-hidden rounded-2xl border p-4">
           <div className="space-y-2">
             {readOnly ? (
               <h2 className="text-foreground text-3xl font-bold">
@@ -215,14 +217,39 @@ export default function SlateEditor({
             </div>
           </div>
 
-          <div className="border-border/60 bg-card/60 rounded-2xl border p-3">
-            {sharedType ? (
-              collabReady ? (
+          <div className="border-border/60 bg-card/60 flex flex-1 overflow-hidden rounded-2xl border p-3">
+            <div className="w-full flex-1 overflow-y-auto rounded-xl">
+              {sharedType ? (
+                collabReady ? (
+                  <Slate
+                    key={`collab-${valueKey}`}
+                    editor={editor}
+                    initialValue={collabInitialValue}
+                    onChange={() => {}}
+                  >
+                    <Editable
+                      readOnly={readOnly}
+                      renderElement={renderElement}
+                      renderLeaf={renderLeaf}
+                      onKeyDown={handleKeyDown}
+                      placeholder={placeholder}
+                      className="prose prose-sm text-foreground min-h-[80vh] max-w-none bg-transparent p-2 leading-relaxed focus:outline-none"
+                    />
+                  </Slate>
+                ) : (
+                  <div className="text-muted-foreground text-sm">
+                    协作连接中...
+                  </div>
+                )
+              ) : (
                 <Slate
-                  key={`collab-${valueKey}`}
+                  key={`local-${valueKey}`}
                   editor={editor}
-                  initialValue={collabInitialValue}
-                  onChange={() => {}}
+                  initialValue={safeInitialValue}
+                  onChange={(val) => {
+                    const normalized = normalizeDescendants(val);
+                    onChange(normalized);
+                  }}
                 >
                   <Editable
                     readOnly={readOnly}
@@ -230,34 +257,11 @@ export default function SlateEditor({
                     renderLeaf={renderLeaf}
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
-                    className="prose prose-sm text-foreground min-h-[260px] max-w-none rounded-lg bg-transparent p-2 leading-relaxed focus:outline-none"
+                    className="prose prose-sm text-foreground min-h-[80vh] max-w-none bg-transparent p-2 leading-relaxed focus:outline-none"
                   />
                 </Slate>
-              ) : (
-                <div className="text-muted-foreground text-sm">
-                  协作连接中...
-                </div>
-              )
-            ) : (
-              <Slate
-                key={`local-${valueKey}`}
-                editor={editor}
-                initialValue={displayValue}
-                onChange={(val) => {
-                  const normalized = normalizeDescendants(val);
-                  onChange(normalized);
-                }}
-              >
-                <Editable
-                  readOnly={readOnly}
-                  renderElement={renderElement}
-                  renderLeaf={renderLeaf}
-                  onKeyDown={handleKeyDown}
-                  placeholder={placeholder}
-                  className="prose prose-sm text-foreground min-h-[260px] max-w-none rounded-lg bg-transparent p-2 leading-relaxed focus:outline-none"
-                />
-              </Slate>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
