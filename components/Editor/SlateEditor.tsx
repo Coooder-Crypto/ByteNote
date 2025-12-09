@@ -10,6 +10,7 @@ import { type SharedType, withYjs } from "slate-yjs";
 
 import { NoteTags } from "@/components/Common";
 import { TagInput } from "@/components/TagInput";
+import { BLOCK_CONFIGS, MARK_KEYS } from "@/lib/constants/editor";
 
 import { DEFAULT_VALUE, normalizeDescendants } from "./slate/normalize";
 import { renderElement, renderLeaf } from "./slate/renderers";
@@ -102,57 +103,46 @@ export default function SlateEditor({
 
   const contentWidthClass = wide ? "w-full" : "mx-auto w-full max-w-4xl";
 
+  const toolbarActions = useMemo(() => {
+    const marks = MARK_KEYS.reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]: {
+          active: isMarkActive(key),
+          onClick: () => toggleMark(key),
+        },
+      }),
+      {} as Record<
+        (typeof MARK_KEYS)[number],
+        { active: boolean; onClick: () => void }
+      >,
+    );
+
+    const blocks = BLOCK_CONFIGS.reduce(
+      (acc, item) => ({
+        ...acc,
+        [item.key]: {
+          active: isBlockActive(item.type),
+          onClick: () => toggleBlock(item.type),
+        },
+      }),
+      {} as Record<
+        (typeof BLOCK_CONFIGS)[number]["key"],
+        { active: boolean; onClick: () => void }
+      >,
+    );
+
+    return { ...marks, ...blocks };
+  }, [isBlockActive, isMarkActive, toggleBlock, toggleMark]);
+
   return (
-    <div className="space-y-3">
+    <div className="mt-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <SlateToolbar
-          visible={!readOnly}
-          actions={{
-            bold: {
-              active: isMarkActive("bold"),
-              onClick: () => toggleMark("bold"),
-            },
-            italic: {
-              active: isMarkActive("italic"),
-              onClick: () => toggleMark("italic"),
-            },
-            underline: {
-              active: isMarkActive("underline"),
-              onClick: () => toggleMark("underline"),
-            },
-            code: {
-              active: isMarkActive("code"),
-              onClick: () => toggleMark("code"),
-            },
-            h1: {
-              active: isBlockActive("heading-one"),
-              onClick: () => toggleBlock("heading-one"),
-            },
-            h2: {
-              active: isBlockActive("heading-two"),
-              onClick: () => toggleBlock("heading-two"),
-            },
-            bullet: {
-              active: isBlockActive("bulleted-list"),
-              onClick: () => toggleBlock("bulleted-list"),
-            },
-            ordered: {
-              active: isBlockActive("numbered-list"),
-              onClick: () => toggleBlock("numbered-list"),
-            },
-            quote: {
-              active: isBlockActive("block-quote"),
-              onClick: () => toggleBlock("block-quote"),
-            },
-            codeBlock: {
-              active: isBlockActive("code-block"),
-              onClick: () => toggleBlock("code-block"),
-            },
-          }}
-        />
+        <SlateToolbar visible={!readOnly} actions={toolbarActions as any} />
+
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground hover:bg-muted/60 inline-flex h-9 items-center gap-2 rounded-lg border border-transparent px-3 text-xs transition"
+          className="bg-card/80 border-border/60 text-foreground hover:border-primary inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-70"
           onClick={toggleWidth}
           aria-label="切换编辑区域宽度"
         >

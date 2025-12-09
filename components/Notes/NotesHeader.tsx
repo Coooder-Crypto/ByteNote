@@ -114,14 +114,14 @@ export default function NotesHeader({
         </div>
 
         {!createDisabled && (
-          <Button
+          <button
             onClick={onCreate}
-            className="bg-primary shadow-primary/30 hover:bg-primary/90 flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 font-bold text-white shadow-lg transition-all active:scale-95"
+            className="bg-card/80 border-border/60 text-foreground hover:border-primary flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors"
             title="New Note"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             <span className="hidden sm:inline">Create</span>
-          </Button>
+          </button>
         )}
       </div>
 

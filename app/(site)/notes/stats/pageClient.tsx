@@ -11,7 +11,13 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui";
 import { trpc } from "@/lib/trpc/client";
 
 function StatCard({
@@ -28,7 +34,7 @@ function StatCard({
   return (
     <Card className="bg-card/60 border-border/60">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-muted-foreground text-sm font-medium">
           {title}
         </CardTitle>
         {icon}
@@ -50,20 +56,22 @@ function TopTags({
 }) {
   if (!tags || tags.length === 0)
     return (
-      <p className="text-muted-foreground text-sm">暂无标签数据，先写几篇笔记吧。</p>
+      <p className="text-muted-foreground text-sm">
+        暂无标签数据，先写几篇笔记吧。
+      </p>
     );
   const max = Math.max(...tags.map((t) => t.count), 1);
   return (
     <div className="space-y-2">
       {tags.map((t) => (
         <div key={t.tag} className="space-y-1">
-          <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+          <div className="text-muted-foreground flex items-center justify-between text-xs font-medium">
             <span className="text-foreground font-semibold">#{t.tag}</span>
             <span>x{t.count}</span>
           </div>
-          <div className="h-2 rounded-full bg-muted">
+          <div className="bg-muted h-2 rounded-full">
             <div
-              className="h-2 rounded-full bg-primary"
+              className="bg-primary h-2 rounded-full"
               style={{ width: `${(t.count / max) * 100}%` }}
             />
           </div>
@@ -88,11 +96,11 @@ function ActivityList({
   const max = Math.max(...data.map((a) => a.count), 1);
   return (
     <div className="space-y-3">
-      <div className="flex items-end gap-2 rounded-xl bg-muted/40 p-3">
+      <div className="bg-muted/40 flex items-end gap-2 rounded-xl p-3">
         {data.map((a) => (
           <div key={a.date} className="flex-1">
             <div
-              className="rounded-t-md bg-primary/80"
+              className="bg-primary/80 rounded-t-md"
               style={{
                 height: `${(a.count / max) * 80 + 6}px`,
                 minHeight: "6px",
@@ -102,7 +110,7 @@ function ActivityList({
           </div>
         ))}
       </div>
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="text-muted-foreground flex items-center justify-between text-xs">
         <span>{new Date(data[0].date).toLocaleDateString()}</span>
         <span>{new Date(data[data.length - 1].date).toLocaleDateString()}</span>
       </div>
@@ -119,6 +127,37 @@ function AIReport({
   loading: boolean;
   content?: string;
 }) {
+  const renderMarkdownLite = (text: string) => {
+    const blocks = text.split(/\n{2,}/).filter(Boolean);
+    if (blocks.length === 0) return null;
+    return blocks.map((block, idx) => {
+      const html = block
+        // bold
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        // lists
+        .replace(/^- (.+)$/gm, "<li>$1</li>");
+
+      if (html.includes("<li>")) {
+        const items = html.replace(/^(?!<li>).*$/gm, "").trim();
+        return (
+          <ul
+            key={idx}
+            className="list-disc pl-4 text-sm leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: items }}
+          />
+        );
+      }
+
+      return (
+        <p
+          key={idx}
+          className="text-sm leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      );
+    });
+  };
+
   return (
     <Card className="bg-card/60 border-border/60">
       <CardHeader className="flex items-center justify-between gap-3 space-y-0">
@@ -143,9 +182,7 @@ function AIReport({
         {loading ? (
           <p className="text-muted-foreground text-sm">AI 正在分析...</p>
         ) : content ? (
-          <div className="text-sm leading-relaxed whitespace-pre-wrap">
-            {content}
-          </div>
+          <div className="space-y-2">{renderMarkdownLite(content)}</div>
         ) : (
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <AlertCircle className="size-4" />
@@ -199,19 +236,19 @@ export default function StatsPageClient() {
         <StatCard
           title="协作笔记"
           value={data?.collaborativeCount ?? "--"}
-          icon={<Users className="text-blue-500 size-4" />}
+          icon={<Users className="size-4 text-blue-500" />}
           description={`${data?.collaboratorCount ?? 0} 位协作者`}
         />
         <StatCard
           title="活跃标签"
           value={data?.topTags?.length ?? 0}
-          icon={<Activity className="text-emerald-500 size-4" />}
+          icon={<Activity className="size-4 text-emerald-500" />}
           description="Top 标签数量"
         />
         <StatCard
           title="统计窗口"
           value={`${data?.windowDays ?? 30} 天`}
-          icon={<Clock className="text-amber-500 size-4" />}
+          icon={<Clock className="size-4 text-amber-500" />}
           description="固定窗口"
         />
       </div>

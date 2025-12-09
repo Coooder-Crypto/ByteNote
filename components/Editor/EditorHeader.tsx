@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Save, Wand2, Wifi, WifiOff } from "lucide-react";
+import { ArrowLeft, Save, Wifi, WifiOff } from "lucide-react";
 import Image from "next/image";
 
 type EditorHeaderProps = {
@@ -48,22 +48,22 @@ export default function EditorHeader({
     collabStatus === "connected" || (collabEnabled && collabStatus === "idle");
 
   return (
-    <div className="flex w-full flex-col border border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-xs text-slate-500 dark:text-slate-300">
+    <div className="border-border/70 bg-card/60 flex w-full flex-col rounded-lg border">
+      <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-xs">
         <div className="flex flex-wrap items-center gap-3 overflow-hidden">
           {onBack && (
             <>
               <button
                 onClick={onBack}
-                className="rounded-full p-1 text-slate-500 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
+                className="text-muted-foreground hover:bg-muted/60 rounded-full p-1 transition-colors"
                 title="Back to List"
               >
                 <ArrowLeft size={16} />
               </button>
-              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
+              <div className="bg-border/80 h-4 w-px" />
             </>
           )}
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+          <div className="text-foreground/80 flex items-center gap-2">
             <span className="text-[10px] font-semibold tracking-wider uppercase">
               {folderLabel}
             </span>
@@ -77,7 +77,7 @@ export default function EditorHeader({
                 {connected ? "Connected" : "Offline"}
               </button>
             ) : (
-              <span className="text-slate-400">Local Draft</span>
+              <span className="text-muted-foreground">Local Draft</span>
             )}
             {isTrashed && (
               <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">
@@ -87,7 +87,7 @@ export default function EditorHeader({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-slate-400">{charCount} chars</span>
+          <span className="text-muted-foreground">{charCount} chars</span>
           <div className="flex -space-x-4" onClick={onManageCollaborators}>
             {currentUser && (
               <AvatarChip
@@ -110,23 +110,11 @@ export default function EditorHeader({
 
           {canEdit && (
             <div className="flex items-center gap-2">
-              {onAiSummarize && (
-                <button
-                  type="button"
-                  className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white inline-flex h-8 items-center gap-1 rounded-lg border border-border/60 bg-white px-2.5 text-[11px] font-semibold transition hover:border-primary-300 dark:border-slate-700 dark:bg-slate-800"
-                  onClick={onAiSummarize}
-                  disabled={aiDisabled || summarizing || isTrashed}
-                  title={aiDisabledReason ?? "生成摘要"}
-                >
-                  <Wand2 className="size-3.5" />
-                  {summarizing ? "摘要中..." : "AI 摘要"}
-                </button>
-              )}
-            <button
-              type="button"
-              className="bg-primary hover:bg-primary/90 inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-70"
-              onClick={onSave}
-              disabled={isTrashed || saving}
+              <button
+                type="button"
+                className="bg-card/80 border-border/60 text-foreground hover:border-primary inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={onSave}
+                disabled={isTrashed || saving}
               >
                 <Save className="size-4" />
                 {saving ? "保存中..." : "保存"}

@@ -65,12 +65,12 @@ export default function SideHeader({
       </Link>
       <div className="flex items-center gap-2">
         <Link href="/notes" title="进入笔记">
-          <button className="rounded-full border border-slate-200 bg-white p-1.5 text-slate-400 hover:text-primary md:hidden">
+          <button className="rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:hidden">
             <LayoutDashboard className="size-4" />
           </button>
         </Link>
         <Link href="/auth" title="GitHub 登录">
-          <button className="rounded-full border border-slate-200 bg-white p-1.5 text-slate-400 hover:text-primary md:hidden">
+          <button className="rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:hidden">
             <Github className="size-4" />
           </button>
         </Link>
@@ -82,7 +82,7 @@ export default function SideHeader({
         </button>
         <button
           onClick={onToggleCollapse}
-          className="hidden rounded-full border border-slate-200 bg-white p-1.5 text-slate-400 transition hover:text-primary md:inline"
+          className="hidden rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:inline"
           title={collapsed ? "展开" : "收起"}
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
