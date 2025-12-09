@@ -35,10 +35,6 @@ export async function getDB() {
           }
         };
         req.onsuccess = () => {
-          console.log("[indexedDB] open success", {
-            name: DB_NAME,
-            version: DB_VERSION,
-          });
           resolve(req.result);
         };
       };

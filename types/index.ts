@@ -1,6 +1,8 @@
 export type {
   AccessInput,
   AccessResult,
+  AnyRequest,
+  AuthToken,
   BnFolder,
   BnNav,
   BnNote,

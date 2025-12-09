@@ -1,3 +1,5 @@
+import { NextRequest } from "next/server";
+
 import type { AiMeta, ContentJson } from "./editor";
 
 export type BnFolder = {
@@ -122,3 +124,16 @@ export type LocalNoteRecord = {
   summary?: string | null;
   aiMeta?: AiMeta;
 };
+
+export type AuthToken =
+  | ({
+      id?: string | null;
+      email?: string | null;
+      name?: string | null;
+      picture?: string | null;
+      avatarUrl?: string | null;
+      sub?: string | null;
+    } & Record<string, unknown>)
+  | null;
+
+export type AnyRequest = Request | NextRequest;

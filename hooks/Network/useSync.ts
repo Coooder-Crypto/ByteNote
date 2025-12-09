@@ -35,29 +35,20 @@ export default function useSync() {
     refetchOnReconnect: false,
   });
 
-  // 稳定的 refetch 引用
   const refetchNotes = useMemo(
     () => noteListQuery.refetch,
     [noteListQuery.refetch],
   );
 
-  // 稳定的 flush 引用，避免依赖抖动
   const triggerFlushRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     triggerFlushRef.current = async () => {
-      console.log("[useSync] trigger called", {
-        render: renderRef.current,
-        canUse,
-        loggedIn,
-        syncing: syncingRef.current,
-      });
       if (syncingRef.current || !loggedIn || !canUse) return;
       syncingRef.current = true;
       try {
         const dirty = await localManager.listDirty();
         const hasDirty = dirty.length > 0;
-        console.log("[useSync] flush start", { dirty: dirty.length });
 
         if (hasDirty) {
           setStats((prev) => ({
@@ -80,9 +71,7 @@ export default function useSync() {
           const serverNotes = await refetchNotes()
             .then((res) => (Array.isArray(res.data) ? res.data : []))
             .catch(() => []);
-          console.log("[useSync] refetch notes", {
-            serverNotes: Array.isArray(serverNotes) ? serverNotes.length : 0,
-          });
+
           if (serverNotes.length > 0) {
             await localManager.mergeFromServer(serverNotes);
           }
@@ -123,13 +112,7 @@ export default function useSync() {
 
   useEffect(() => {
     renderRef.current += 1;
-    console.log("[useSync] render", {
-      render: renderRef.current,
-      canUse,
-      loggedIn,
-      online,
-      flushChanged: false,
-    });
+
     if (!canUse || !loggedIn) return;
     void triggerFlushRef.current();
   }, [canUse, loggedIn, online]);

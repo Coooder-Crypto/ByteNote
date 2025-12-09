@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Descendant } from "slate";
 import type { SharedType } from "slate-yjs";
-import { toSharedType, toSlateDoc } from "slate-yjs";
+import { toSharedType } from "slate-yjs";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
-import { toPlainText } from "@/components/Editor/slate/normalize";
 import { DEFAULT_VALUE } from "@/lib/constants/editor";
 
 type useSocketParams = {
@@ -55,20 +54,16 @@ export default function useSocket({
       !!wsUrl && (wsUrl.startsWith("ws://") || wsUrl.startsWith("wss://"));
     if (!enabled || !validWs) return;
     setTimeout(
-      () =>
-        setStatus((prev) => (prev === "connecting" ? prev : "connecting")),
+      () => setStatus((prev) => (prev === "connecting" ? prev : "connecting")),
       0,
     );
   }, [enabled, wsUrl]);
 
   useEffect(() => {
-    console.log("[collab] effect", { noteId, enabled, wsUrl });
     let statusListener:
-      | ((
-          event: {
-            status: "connecting" | "connected" | "disconnected";
-          },
-        ) => void)
+      | ((event: {
+          status: "connecting" | "connected" | "disconnected";
+        }) => void)
       | null = null;
 
     const cleanup = () => {
@@ -103,7 +98,6 @@ export default function useSocket({
 
     cleanup();
 
-    console.log("[collab] connecting", { noteId, wsUrl });
     const doc = new Y.Doc();
     const shared = doc.getArray("content") as SharedType;
     const meta = doc.getMap("meta");
@@ -152,17 +146,7 @@ export default function useSocket({
         shared.delete(0, shared.length);
         toSharedType(shared, seed);
       });
-      try {
-        const after = toSlateDoc(shared);
-        console.log("[collab] apply seed on sync", {
-          noteId,
-          wsUrl,
-          length: Array.isArray(after) ? after.length : "n/a",
-          text: toPlainText(after),
-        });
-      } catch {
-        // ignore logging errors
-      }
+
       seededRef.current = true;
     };
 
@@ -181,7 +165,7 @@ export default function useSocket({
           : event.status === "connecting"
             ? "connecting"
             : ("error" as const);
-      console.log("[collab] status", { noteId, wsUrl, status: next });
+
       setStatus(next);
     };
     provider.on("status", statusListener);
