@@ -12,6 +12,9 @@ export const metadata: Metadata = {
     default: "Byte Note",
     template: "%s · Byte Note",
   },
+  icons: {
+    icon: "/favicon.svg",
+  },
   description:
     "Byte Note 是字节训练营前端课程的项目笔记平台，集成 Next.js + tRPC + Prisma，支持 Markdown 笔记管理。",
   openGraph: {
