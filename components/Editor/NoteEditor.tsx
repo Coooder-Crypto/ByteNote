@@ -1,17 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import type { Descendant } from "slate";
 import { toSharedType } from "slate-yjs";
-import { toast } from "sonner";
 import type { Doc } from "yjs";
 
-import {
-  CollaboratorDialog,
-  EditorHeader,
-  SlateEditor,
-} from "@/components/editor";
+import { EditorHeader } from "@/components/editor";
 import { toPlainText } from "@/components/editor/slate/normalize";
 import {
   useEditor,
@@ -23,6 +19,16 @@ import { DEFAULT_VALUE } from "@/lib/constants/editor";
 import { trpc } from "@/lib/trpc/client";
 import type { AiMeta, EditorContent } from "@/types/editor";
 
+const SlateEditor = dynamic(() => import("./SlateEditor"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const CollaboratorDialog = dynamic(() => import("./CollaboratorDialog"), {
+  ssr: false,
+  loading: () => null,
+});
+
 export default function NoteEditor({ noteId }: { noteId: string }) {
   const [collabOpen, setCollabOpen] = useState(false);
   const [collabEnabled, setCollabEnabled] = useState(false);
@@ -31,7 +37,6 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const { user } = useUserStore();
   const { online } = useNetworkStatus();
   const { setWsUrl, setWsPending } = useNoteActions({});
-  const utils = trpc.useUtils();
   const {
     note,
     saving,
@@ -113,41 +118,11 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     [applyServerUpdate, note.contentJson, note.summary, syncSharedContent],
   );
 
-  const aiSummarize = trpc.note.aiSummarize.useMutation({
-    onSuccess: (data) => {
-      handleAiResult({
-        contentJson: Array.isArray(data?.contentJson)
-          ? (data.contentJson as Descendant[])
-          : null,
-        summary: typeof data?.summary === "string" ? data.summary : null,
-        aiMeta:
-          data?.aiMeta && typeof data.aiMeta === "object"
-            ? (data.aiMeta as AiMeta)
-            : undefined,
-        version: typeof data?.version === "number" ? data.version : undefined,
-      });
-      void utils.note.detail.invalidate({ id: noteId });
-      void utils.note.list.invalidate();
-      toast.success("已生成摘要");
-    },
-    onError: (err) => {
-      toast.error(err?.message ?? "生成摘要失败");
-    },
-  });
-
-  const triggerSummary = useCallback(() => {
-    if (!canEdit || isTrashed) return;
-    if (!online) {
-      toast.error("当前离线，无法使用 AI");
-      return;
-    }
-    aiSummarize.mutate({ id: noteId });
-  }, [aiSummarize, canEdit, isTrashed, noteId, online]);
-
   const collaboratorsQuery = trpc.collaborator.list.useQuery(
     { noteId },
     { enabled: note.isCollaborative },
   );
+  const canUseAi = canEdit && !isTrashed && online;
 
   const collaboratorAvatars = useMemo(
     () =>
@@ -199,6 +174,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
       {collabEnabled ? (
         sharedType ? (
           <SlateEditor
+            noteId={noteId}
             valueKey={`collab-${noteId}`}
             value={value}
             onChange={(val) => handleContentChange(val as Descendant[])}
@@ -209,8 +185,9 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
             onTagsChange={handleTagsChange}
             tagPlaceholder="添加标签"
             summary={note.summary ?? ""}
-            summarizing={aiSummarize.isPending}
-            onGenerateSummary={triggerSummary}
+            canUseAi={canUseAi}
+            aiDisabled={!canUseAi}
+            onAiResult={handleAiResult}
             readOnly={!canEdit || isTrashed}
             placeholder="Start writing..."
             sharedType={sharedType}
@@ -220,6 +197,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         )
       ) : (
         <SlateEditor
+          noteId={noteId}
           valueKey={`local-${valueKey}`}
           value={value}
           onChange={(val) => handleContentChange(val as Descendant[])}
@@ -230,8 +208,9 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
           onTagsChange={handleTagsChange}
           tagPlaceholder="添加标签"
           summary={note.summary ?? ""}
-          summarizing={aiSummarize.isPending}
-          onGenerateSummary={triggerSummary}
+          canUseAi={canUseAi}
+          aiDisabled={!canUseAi}
+          onAiResult={handleAiResult}
           readOnly={!canEdit || isTrashed}
           placeholder="Start writing..."
           sharedType={null}

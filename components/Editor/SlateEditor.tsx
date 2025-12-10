@@ -1,6 +1,7 @@
 "use client";
 
 import { StretchHorizontal } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { Descendant } from "slate";
 import { createEditor, Editor } from "slate";
@@ -8,19 +9,50 @@ import { withHistory } from "slate-history";
 import { Editable, Slate, withReact } from "slate-react";
 import { type SharedType, withYjs } from "slate-yjs";
 
-import { NoteTags, TagInput } from "@/components/common";
 import { useShortcuts } from "@/hooks";
 import {
   BLOCK_CONFIGS,
   DEFAULT_VALUE,
   MARK_KEYS,
 } from "@/lib/constants/editor";
+import type { AiMeta } from "@/types/editor";
 
 import { normalizeDescendants } from "./slate/normalize";
 import { renderElement, renderLeaf } from "./slate/renderers";
-import { SlateToolbar, ToolbarActions } from "./slate/Toolbar";
+import type { ToolbarActions } from "./slate/Toolbar";
+
+const SlateToolbar = dynamic(
+  () => import("./slate/Toolbar").then((m) => m.SlateToolbar),
+  { ssr: false, loading: () => null },
+);
+
+const TagInput = dynamic(() => import("@/components/common/TagInput"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const NoteTags = dynamic(() => import("@/components/common/NoteTags"), {
+  loading: () => null,
+});
+
+const AiSummaryPanel = dynamic(() => import("./ai/SummaryPanel"), {
+  ssr: false,
+  loading: () => (
+    <div className="border-border/60 bg-card/40 rounded-xl border p-3 text-xs text-muted-foreground">
+      AI 摘要加载中...
+    </div>
+  ),
+});
+
+type AiResultPayload = {
+  contentJson?: Descendant[] | null;
+  summary?: string | null;
+  aiMeta?: AiMeta;
+  version?: number | null;
+};
 
 type SlateEditorProps = {
+  noteId: string;
   valueKey: string;
   value: Descendant[];
   onChange: (val: Descendant[]) => void;
@@ -34,11 +66,13 @@ type SlateEditorProps = {
   placeholder?: string;
   sharedType?: SharedType | null;
   summary?: string | null;
-  summarizing?: boolean;
-  onGenerateSummary?: () => void;
+  canUseAi?: boolean;
+  aiDisabled?: boolean;
+  onAiResult?: (payload?: AiResultPayload | null) => void;
 };
 
 export default function SlateEditor({
+  noteId,
   valueKey,
   value,
   onChange,
@@ -52,8 +86,9 @@ export default function SlateEditor({
   placeholder = "开始输入…",
   sharedType,
   summary,
-  summarizing,
-  onGenerateSummary,
+  canUseAi = true,
+  aiDisabled = false,
+  onAiResult,
 }: SlateEditorProps) {
   const [wide, setWide] = useState(false);
   const baseEditor = useMemo(() => withReact(createEditor()), []);
@@ -185,37 +220,14 @@ export default function SlateEditor({
           </div>
 
           {/* Summary block */}
-          <div className="border-border/60 bg-card/40 rounded-xl border p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                  AI 摘要
-                </span>
-                {summarizing && (
-                  <span className="text-primary text-[11px]">生成中...</span>
-                )}
-              </div>
-              {onGenerateSummary && (
-                <button
-                  type="button"
-                  className="text-primary hover:text-primary/80 rounded-md px-2 py-1 text-xs font-medium transition disabled:opacity-50"
-                  onClick={onGenerateSummary}
-                  disabled={readOnly || summarizing}
-                >
-                  {summary ? "重新生成" : "生成摘要"}
-                </button>
-              )}
-            </div>
-            <div className="text-muted-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
-              {summary && summary.trim().length > 0 ? (
-                summary
-              ) : (
-                <span className="text-muted-foreground/80 italic">
-                  暂无摘要，点击生成试试
-                </span>
-              )}
-            </div>
-          </div>
+          <AiSummaryPanel
+            noteId={noteId}
+            summary={summary}
+            readOnly={readOnly}
+            disabled={aiDisabled}
+            canUseAi={canUseAi}
+            onResult={onAiResult}
+          />
 
           <div className="border-border/60 bg-card/60 flex flex-1 overflow-hidden rounded-2xl border p-3">
             <div className="w-full flex-1 overflow-y-auto rounded-xl">

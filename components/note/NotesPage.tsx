@@ -1,10 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { NotesBoard } from "@/components/note";
 
-import { NoteEditor } from "../editor";
+const NoteEditor = dynamic(() => import("../editor/NoteEditor"), {
+  loading: () => null,
+});
 
 export default function NotesPage() {
   const router = useRouter();
