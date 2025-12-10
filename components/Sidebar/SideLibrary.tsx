@@ -1,4 +1,4 @@
-import type { BnNav } from "@/types/entities";
+import type { BnNav } from "@/types";
 
 import { LibraryItem } from "./LibraryItem";
 
@@ -6,12 +6,14 @@ type SideLibraryProps = {
   items: BnNav[];
   currentPath: string;
   onNavigate?: () => void;
+  collapsed?: boolean;
 };
 
 export default function SideLibrary({
   items,
   currentPath,
   onNavigate,
+  collapsed = false,
 }: SideLibraryProps) {
   const normalize = (path: string) =>
     path.startsWith("/") ? path : `/${path}`;
@@ -31,9 +33,6 @@ export default function SideLibrary({
 
   return (
     <div>
-      <p className="text-muted-foreground mb-2 px-2 text-[11px] font-semibold tracking-[0.2em] uppercase">
-        库
-      </p>
       <div className="space-y-1">
         {items.map((item) => (
           <LibraryItem
@@ -41,6 +40,7 @@ export default function SideLibrary({
             item={item}
             active={isActive(item.path)}
             onNavigate={onNavigate}
+            collapsed={collapsed}
           />
         ))}
       </div>

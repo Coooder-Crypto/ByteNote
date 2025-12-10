@@ -49,23 +49,24 @@ model Account {
 }
 
 model Note {
-  id          String   @id @default(uuid())
-  title       String
-  content     String   @db.Text
-  markdown    String   @db.Text
-  isFavorite  Boolean  @default(false)
+  id             String   @id @default(uuid())
+  title          String
+  contentJson    Json
+  collabWsUrl    String?
+  isFavorite     Boolean  @default(false)
   isCollaborative Boolean @default(false)
-  summary     String?  @db.Text
-  tags        String   @default("[]")
-  deletedAt   DateTime?
-  version     Int      @default(1)
+  summary        String?  @db.Text
+  aiMeta         Json?
+  tags           String   @default("[]")
+  deletedAt      DateTime?
+  version        Int      @default(1)
   collaborators NoteCollaborator[]
-  folder      Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  folderId    String?
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  folder         Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folderId       String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([userId, createdAt])
   @@index([isFavorite])

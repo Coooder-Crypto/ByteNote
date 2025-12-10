@@ -1,24 +1,33 @@
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
-import type { BnNav } from "@/types/entities";
+import type { BnNav } from "@/types";
 
 type LibraryItemProps = {
   item: BnNav;
   active: boolean;
   onNavigate?: () => void;
+  collapsed?: boolean;
 };
 
-export function LibraryItem({ item, active, onNavigate }: LibraryItemProps) {
+export function LibraryItem({
+  item,
+  active,
+  onNavigate,
+  collapsed = false,
+}: LibraryItemProps) {
+  const activeClasses =
+    "bg-primary/10 text-primary border border-primary/30 shadow-sm";
+  const inactiveClasses =
+    "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent";
+
   return (
     <Link
       href={item.path}
       onClick={onNavigate}
       className={cn(
         "group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-all",
-        active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+        active ? activeClasses : inactiveClasses,
       )}
     >
       <div className="flex items-center gap-3">
@@ -28,7 +37,7 @@ export function LibraryItem({ item, active, onNavigate }: LibraryItemProps) {
             active ? "text-primary" : "text-muted-foreground",
           )}
         />
-        {item.label}
+        {!collapsed && item.label}
       </div>
     </Link>
   );

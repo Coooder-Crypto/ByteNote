@@ -18,17 +18,19 @@ import {
   SelectValue,
 } from "@/components/ui";
 import { useFolderActions, useNoteActions } from "@/hooks";
-import { NOTE_TAGS } from "@/lib/tags";
+import { DEFAULT_VALUE } from "@/lib/constants/editor";
+import { NOTE_TAGS } from "@/lib/constants/tags";
+import { localManager } from "@/lib/manager/LocalManager";
+import { ContentJson } from "@/types";
 
-import { TagInput } from "../TagInput";
-
-const DEFAULT_MARKDOWN = "# 新笔记\n\n这里是初始内容。";
+import { TagInput } from "../Common";
 
 type CreateNoteDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (noteId: string) => void;
   onUnauthorized?: () => void;
+  onCreatedLocal?: (noteId: string) => void;
 };
 
 export default function CreateNoteDialog({
@@ -36,9 +38,11 @@ export default function CreateNoteDialog({
   onOpenChange,
   onCreated,
   onUnauthorized,
+  onCreatedLocal,
 }: CreateNoteDialogProps) {
   const { folders, isLoading: foldersLoading } = useFolderActions(open);
   const { createNote, createPending } = useNoteActions({});
+  type CreateNotePayload = Parameters<typeof createNote>[0];
 
   const [title, setTitle] = useState("全新笔记");
   const [tags, setTags] = useState<string[]>([]);
@@ -54,30 +58,67 @@ export default function CreateNoteDialog({
     setIsCollaborative(false);
   }, []);
 
+  const createLocal = useCallback(
+    async (payload: {
+      title: string;
+      contentJson: ContentJson;
+      tags: string[];
+      folderId?: string;
+      isCollaborative: boolean;
+    }) => {
+      const localId = await localManager.createLocal({
+        title: payload.title,
+        contentJson: payload.contentJson,
+        tags: payload.tags,
+        folderId: payload.folderId ?? null,
+        isCollaborative: payload.isCollaborative,
+      });
+      if (onCreatedLocal) {
+        onCreatedLocal(localId);
+      } else {
+        onCreated(localId);
+      }
+      resetForm();
+      onOpenChange(false);
+    },
+    [onCreated, onCreatedLocal, onOpenChange, resetForm],
+  );
+
   const handleCreate = () => {
     if (!title.trim() || createPending) return;
-    createNote(
-      {
-        title: title.trim(),
-        markdown: DEFAULT_MARKDOWN,
-        tags,
-        folderId: folderId ?? undefined,
-        isCollaborative,
+    const tagList = [...tags];
+    const localPayload = {
+      title: title.trim(),
+      contentJson: DEFAULT_VALUE,
+      tags: tagList,
+      folderId: folderId ?? undefined,
+      isCollaborative,
+    };
+    const serverPayload: CreateNotePayload = {
+      ...localPayload,
+      folderId: folderId ?? undefined,
+    };
+    const isOnline = typeof navigator === "undefined" || navigator.onLine;
+    if (!isOnline) {
+      void createLocal(localPayload);
+      return;
+    }
+    createNote(serverPayload, {
+      onSuccess: (note) => {
+        onCreated(note.id);
+        resetForm();
+        onOpenChange(false);
       },
-      {
-        onSuccess: (note) => {
-          onCreated(note.id);
-          resetForm();
+      onError: (error) => {
+        if (error?.data?.code === "UNAUTHORIZED") {
+          onUnauthorized?.();
           onOpenChange(false);
-        },
-        onError: (error) => {
-          if (error.data?.code === "UNAUTHORIZED") {
-            onUnauthorized?.();
-            onOpenChange(false);
-          }
-        },
+          return;
+        }
+        // 网络异常等错误时，回退为本地创建
+        createLocal(localPayload);
       },
-    );
+    });
   };
 
   return (

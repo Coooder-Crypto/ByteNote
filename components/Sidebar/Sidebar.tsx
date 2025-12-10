@@ -1,9 +1,9 @@
 "use client";
 
-import { Layout } from "lucide-react";
-import { useState } from "react";
+import { LayoutDashboard, Star, Trash2, Users } from "lucide-react";
+import { useMemo, useState } from "react";
 
-import { useSidebarData } from "@/hooks";
+import { useSidebar } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 import CreateFolderDialog from "./CreateFolderDialog";
@@ -14,6 +14,7 @@ import SideLibrary from "./SideLibrary";
 
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const {
     navItems,
@@ -28,7 +29,12 @@ export default function Sidebar() {
     handleFolderSelect,
     handleLoginRedirect,
     submitCreateFolder,
-  } = useSidebarData();
+  } = useSidebar();
+
+  const activeFolderId = useMemo(
+    () => new URLSearchParams(currentPath.split("?")[1] ?? "").get("folderId"),
+    [currentPath],
+  );
 
   const handleFolderSelectClose = (folderId: string | null) => {
     handleFolderSelect(folderId);
@@ -38,11 +44,11 @@ export default function Sidebar() {
   return (
     <>
       <button
-        className="bg-card fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-full shadow-lg shadow-slate-900/5 md:hidden"
+        className="bg-card fixed top-4 left-4 z-50 flex h-10 w-8 items-center justify-center rounded-full shadow-lg shadow-slate-900/5 md:hidden"
         onClick={() => setMobileOpen((prev) => !prev)}
         aria-label="Toggle sidebar"
       >
-        <Layout className="text-foreground size-5" />
+        <LayoutDashboard className="text-foreground size-5" />
       </button>
       <div
         className={cn(
@@ -53,39 +59,71 @@ export default function Sidebar() {
         )}
         onClick={() => setMobileOpen(false)}
       />
+
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 md:static md:min-h-svh md:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
       >
-        <aside className="border-border/60 bg-card/80 flex h-full w-50 flex-col border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] md:h-svh">
-          <SideHeader />
-          <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
+        <div
+          className={cn(
+            "border-border/60 bg-card/80 flex h-full flex-col overflow-hidden border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] transition-[width] duration-300 ease-in-out will-change-[width] md:h-svh",
+            collapsed ? "w-20" : "w-72",
+            mobileOpen ? "w-72" : "",
+          )}
+        >
+          <SideHeader
+            collapsed={collapsed}
+            onToggleCollapse={() => setCollapsed((v) => !v)}
+            onCloseMobile={() => setMobileOpen(false)}
+          />
+
+          <div className="flex-1 overflow-y-auto px-4 py-3">
             <SideLibrary
-              items={navItems}
+              items={navItems.map((item) => {
+                if (item.label === "协作笔记") {
+                  return { ...item, icon: Users };
+                }
+                if (item.label.includes("收藏")) {
+                  return { ...item, icon: Star };
+                }
+                if (item.label.includes("回收站")) {
+                  return { ...item, icon: Trash2 };
+                }
+                return { ...item, icon: LayoutDashboard };
+              })}
               currentPath={currentPath}
+              collapsed={collapsed}
               onNavigate={() => setMobileOpen(false)}
             />
-            <SideFolders
-              folders={foldersQuery.data?.folders ?? []}
-              activeFolderId={new URLSearchParams(
-                currentPath.split("?")[1] ?? "",
-              ).get("folderId")}
-              onSelectFolder={handleFolderSelectClose}
-              onCreateFolder={() => setFolderDialogOpen(true)}
-              loading={foldersQuery.isLoading || createFolderPending}
-            />
-          </nav>
+
+            <div className="mt-4">
+              <SideFolders
+                folders={foldersQuery.data?.folders ?? []}
+                activeFolderId={activeFolderId}
+                onSelectFolder={handleFolderSelectClose}
+                onCreateFolder={() => setFolderDialogOpen(true)}
+                loading={foldersQuery.isLoading || createFolderPending}
+                collapsed={collapsed}
+              />
+            </div>
+          </div>
+
           <SideFooter
-            onLogin={handleLoginRedirect}
+            collapsed={collapsed}
+            currentPath={currentPath}
+            onLogin={() => {
+              handleLoginRedirect();
+              setMobileOpen(false);
+            }}
             onLogout={() => {
               handleLogout();
               setMobileOpen(false);
             }}
             onProfileUpdated={() => foldersQuery.refetch()}
           />
-        </aside>
+        </div>
       </aside>
 
       <CreateFolderDialog

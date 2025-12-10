@@ -2,24 +2,24 @@
 
 import type { NextRequest } from "next/server";
 
-type AnyRequest = Request | NextRequest;
+import type { AnyRequest, AuthToken, BnUser } from "@/types";
 
-export type AuthToken = {
-  id?: string | null;
-  email?: string | null;
-  name?: string | null;
-  picture?: string | null;
-  avatarUrl?: string | null;
-} | null;
+const resolveAuthSecret = () =>
+  process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+let warnedMissingSecret = false;
 
-/**
- * Unified helper to read JWT token (NextAuth) with consistent secret + logging.
- */
 export async function getAuthToken(req: AnyRequest): Promise<AuthToken> {
   try {
+    const secret = resolveAuthSecret();
+    if (!secret && !warnedMissingSecret) {
+      console.warn("[auth] NEXTAUTH_SECRET/AUTH_SECRET is not set");
+      warnedMissingSecret = true;
+    }
     const mod = await import("next-auth/jwt");
-    // next-auth + bundler 可能将 getToken 放在 default 导出
-    type GetTokenFn = (args: { req: NextRequest; secret?: string }) => Promise<unknown>;
+    type GetTokenFn = (args: {
+      req: NextRequest;
+      secret?: string;
+    }) => Promise<unknown>;
     const getToken =
       (mod as { getToken?: GetTokenFn }).getToken ??
       (mod as { default?: { getToken?: GetTokenFn } }).default?.getToken;
@@ -28,11 +28,28 @@ export async function getAuthToken(req: AnyRequest): Promise<AuthToken> {
     }
     const token = await getToken({
       req: req as unknown as NextRequest,
-      secret: process.env.NEXTAUTH_SECRET,
+      secret,
     });
     return token as AuthToken;
   } catch (error) {
     console.error("[auth] getAuthToken failed", error);
     return null;
   }
+}
+
+export async function normalizeAuthToken(
+  token: AuthToken,
+): Promise<BnUser | null> {
+  if (!token) return null;
+  const id = token.id ?? (token as { sub?: string | null })?.sub ?? null;
+  if (!id) return null;
+  return {
+    id,
+    email: token.email ?? null,
+    name: token.name ?? null,
+    avatarUrl:
+      token.avatarUrl ??
+      (token as { picture?: string | null })?.picture ??
+      null,
+  };
 }

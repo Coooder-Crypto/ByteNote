@@ -1,26 +1,36 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import type { Session } from "next-auth";
+import type { NextAuthOptions, Session, User } from "next-auth";
 import type { AdapterUser } from "next-auth/adapters";
-import NextAuth from "next-auth/next";
+import type { JWT } from "next-auth/jwt";
 import GithubProvider from "next-auth/providers/github";
 
 import { prisma } from "@/lib/prisma";
 
-type NextAuthOptions = Parameters<typeof NextAuth>[0];
+const authSecret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
 
-export const authOptions: any = {
-  adapter: PrismaAdapter(prisma) as any,
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
+
   providers: [
     GithubProvider({
       clientId: process.env.GITHUB_CLIENT_ID ?? "",
       clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
+      httpOptions: {
+        timeout: 10000,
+      },
     }),
   ],
   session: {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }: { token: any; user?: any | null }) {
+    async jwt({
+      token,
+      user,
+    }: {
+      token: JWT;
+      user?: User | AdapterUser | null;
+    }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
@@ -32,7 +42,17 @@ export const authOptions: any = {
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: any }) {
+    async session({
+      session,
+      token,
+    }: {
+      session: Session;
+      token: JWT & {
+        id?: string;
+        avatarUrl?: string | null;
+        picture?: string | null;
+      };
+    }) {
       if (session.user) {
         (session.user as Session["user"] & { id?: string }).id =
           (token.id as string) ?? "";
@@ -47,7 +67,7 @@ export const authOptions: any = {
     },
   },
   events: {
-    async createUser({ user }: { user: AdapterUser }) {
+    async createUser({ user }: { user: User }) {
       if (user.image) {
         await prisma.user.update({
           where: { id: user.id },
@@ -55,7 +75,7 @@ export const authOptions: any = {
         });
       }
     },
-    async signIn({ user }: { user: any }) {
+    async signIn({ user }: { user: User | AdapterUser }) {
       const existingAvatar =
         (user.avatarUrl as string | null | undefined) ?? null;
       if (existingAvatar || !user.image) {
@@ -67,5 +87,5 @@ export const authOptions: any = {
       });
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: authSecret,
 };

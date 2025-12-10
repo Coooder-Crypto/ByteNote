@@ -2,20 +2,113 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { pusherServer } from "@/lib/pusher/server";
+import {
+  buildEnhancePrompt,
+  buildSummaryPrompt,
+  callDeepseekChat,
+} from "@/lib/ai/deepseek";
 import { protectedProcedure, router } from "@/server/api/trpc";
 
 const noteInput = z.object({
   title: z.string().min(1).max(120),
-  markdown: z.string().min(1),
+  contentJson: z.any(),
   tags: z.array(z.string()).optional(),
   summary: z.string().optional(),
+  collabWsUrl: z.string().url().optional().nullable(),
   folderId: z.string().uuid().optional().nullable(),
   version: z.number().optional(),
   isCollaborative: z.boolean().optional(),
 });
 
+const safeParseTags = (raw: any): string[] => {
+  if (Array.isArray(raw)) return raw.filter((t) => typeof t === "string");
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed))
+        return parsed.filter((t) => typeof t === "string");
+    } catch {
+      // fallback to single tag
+      return raw ? [raw] : [];
+    }
+  }
+  return [];
+};
+
+const toPlainText = (node: any): string => {
+  if (!node) return "";
+  if (typeof node === "string") return node;
+  if (typeof node.text === "string") return node.text;
+  if (Array.isArray(node)) return node.map((n) => toPlainText(n)).join("");
+  if (Array.isArray(node.children))
+    return node.children.map((n: any) => toPlainText(n)).join("");
+  if (Array.isArray(node.content))
+    return node.content.map((n: any) => toPlainText(n)).join("");
+  if (typeof node === "object")
+    return Object.values(node)
+      .map((v) => toPlainText(v))
+      .join("");
+  return "";
+};
+
+const textToParagraphs = (text: string) => {
+  const cleanLine = (line: string) =>
+    line
+      .replace(/^\s*#+\s+/, "") // headings
+      .replace(/^\s*[-*+]\s+/, "") // bullet
+      .replace(/^\s*\d+[\.\)]\s+/, "") // ordered
+      .trim()
+      .replace(/\s+/g, " ");
+
+  const blocks = text
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  if (blocks.length === 0) {
+    return [
+      {
+        type: "paragraph",
+        children: [{ text: "" }],
+      },
+    ];
+  }
+
+  return blocks.map((block) => ({
+    type: "paragraph",
+    children: [{ text: cleanLine(block) }],
+  }));
+};
+
+const mergeAiMeta = (current: any, patch: Record<string, any>) => {
+  const base =
+    current && typeof current === "object"
+      ? (current as Record<string, any>)
+      : {};
+  return { ...base, ...patch };
+};
+
 export const noteRouter = router({
+  setCollabWsUrl: protectedProcedure
+    .input(
+      z.object({
+        noteId: z.string().uuid(),
+        collabWsUrl: z.string().min(1).url().optional().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const note = await ctx.prisma.note.findFirst({
+        where: { id: input.noteId, userId: ctx.session!.user.id },
+        select: { id: true },
+      });
+      if (!note) throw new TRPCError({ code: "FORBIDDEN" });
+      const updated = await ctx.prisma.note.update({
+        where: { id: input.noteId },
+        data: { collabWsUrl: input.collabWsUrl ?? null },
+        select: { id: true, collabWsUrl: true },
+      });
+      return updated;
+    }),
   list: protectedProcedure
     .input(
       z
@@ -58,33 +151,15 @@ export const noteRouter = router({
       }
 
       const searchTerm = input?.search?.trim();
-
       if (searchTerm) {
         if (!Array.isArray(where.AND)) {
           where.AND = where.AND ? [where.AND] : [];
         }
-
         where.AND.push({
-          OR: [
-            {
-              title: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
-            },
-            {
-              content: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
-            },
-            {
-              markdown: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
-            },
-          ],
+          title: {
+            contains: searchTerm,
+            mode: "insensitive",
+          },
         });
       }
 
@@ -97,8 +172,9 @@ export const noteRouter = router({
           summary: true,
           createdAt: true,
           updatedAt: true,
-          markdown: true,
-          content: true,
+          contentJson: true,
+          collabWsUrl: true,
+          aiMeta: true,
           isFavorite: true,
           isCollaborative: true,
           deletedAt: true,
@@ -133,8 +209,10 @@ export const noteRouter = router({
         select: {
           id: true,
           title: true,
-          markdown: true,
+          contentJson: true,
+          collabWsUrl: true,
           summary: true,
+          aiMeta: true,
           tags: true,
           folderId: true,
           userId: true,
@@ -158,9 +236,10 @@ export const noteRouter = router({
       const note = await ctx.prisma.note.create({
         data: {
           title: input.title,
-          markdown: input.markdown,
-          content: input.markdown,
+          contentJson: input.contentJson ?? {},
+          collabWsUrl: input.collabWsUrl ?? null,
           summary: input.summary ?? "",
+          aiMeta: {},
           isFavorite: false,
           isCollaborative: input.isCollaborative ?? false,
           tags: JSON.stringify(input.tags ?? []),
@@ -207,12 +286,14 @@ export const noteRouter = router({
           },
           data: {
             title: rest.title,
-            markdown: rest.markdown,
-            content: rest.markdown,
-            summary: rest.summary ?? "",
+            contentJson: rest.contentJson ?? {},
+            ...(typeof rest.summary === "string"
+              ? { summary: rest.summary }
+              : {}),
             tags: JSON.stringify(rest.tags ?? []),
             folderId: rest.folderId ?? null,
             isCollaborative: rest.isCollaborative ?? false,
+            collabWsUrl: rest.collabWsUrl ?? null,
             version: { increment: 1 },
           },
         });
@@ -240,8 +321,10 @@ export const noteRouter = router({
           select: {
             id: true,
             title: true,
-            markdown: true,
-            content: true,
+            contentJson: true,
+            collabWsUrl: true,
+            summary: true,
+            aiMeta: true,
             tags: true,
             folderId: true,
             version: true,
@@ -256,25 +339,167 @@ export const noteRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      try {
-        if (pusherServer && result.isCollaborative) {
-          await pusherServer.trigger(
-            `presence-note-${id}`,
-            "server-note-saved",
-            {
-              noteId: id,
-              title: result.title,
-              markdown: result.markdown,
-              updatedAt: result.updatedAt,
-              version: result.version,
-            },
-          );
-        }
-      } catch (error) {
-        console.warn("[pusher] broadcast note update failed", error);
+      return result;
+    }),
+  aiSummarize: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const note = await ctx.prisma.note.findFirst({
+        where: {
+          id: input.id,
+          deletedAt: null,
+          OR: [
+            { userId: ctx.session!.user.id },
+            { collaborators: { some: { userId: ctx.session!.user.id } } },
+          ],
+        },
+        select: {
+          id: true,
+          title: true,
+          contentJson: true,
+          summary: true,
+          aiMeta: true,
+          tags: true,
+          version: true,
+          collabWsUrl: true,
+          isCollaborative: true,
+        },
+      });
+
+      if (!note) {
+        throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      return result;
+      const text = toPlainText(note.contentJson);
+      if (!text.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "笔记内容为空，无法生成摘要",
+        });
+      }
+
+      const tags = safeParseTags(note.tags);
+      const ai = await callDeepseekChat(
+        buildSummaryPrompt({ title: note.title, text, tags }),
+        { temperature: 0.4, maxTokens: 180 },
+      );
+
+      const aiMeta = mergeAiMeta(note.aiMeta, {
+        summary: {
+          model: ai.model,
+          updatedAt: new Date().toISOString(),
+          usage: ai.usage,
+        },
+      });
+
+      const updated = await ctx.prisma.note.update({
+        where: { id: note.id },
+        data: {
+          summary: ai.content,
+          aiMeta,
+          version: { increment: 1 },
+        },
+        select: {
+          id: true,
+          title: true,
+          contentJson: true,
+          summary: true,
+          aiMeta: true,
+          tags: true,
+          version: true,
+          updatedAt: true,
+          createdAt: true,
+          isCollaborative: true,
+          collabWsUrl: true,
+        },
+      });
+
+      return updated;
+    }),
+  aiEnhance: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        mode: z.enum(["append", "replace"]).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const note = await ctx.prisma.note.findFirst({
+        where: {
+          id: input.id,
+          deletedAt: null,
+          OR: [
+            { userId: ctx.session!.user.id },
+            { collaborators: { some: { userId: ctx.session!.user.id } } },
+          ],
+        },
+        select: {
+          id: true,
+          title: true,
+          contentJson: true,
+          tags: true,
+          aiMeta: true,
+          version: true,
+          collabWsUrl: true,
+          isCollaborative: true,
+        },
+      });
+
+      if (!note) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      const baseContent =
+        Array.isArray(note.contentJson) && note.contentJson.length > 0
+          ? (note.contentJson as any[])
+          : [{ type: "paragraph", children: [{ text: "" }] }];
+      const text = toPlainText(baseContent);
+
+      const tags = safeParseTags(note.tags);
+      const ai = await callDeepseekChat(
+        buildEnhancePrompt({
+          title: note.title,
+          text,
+          tags,
+        }),
+        { temperature: 0.3, maxTokens: 220 },
+      );
+
+      const additions = textToParagraphs(ai.content);
+      const nextContent =
+        input.mode === "replace" ? additions : [...baseContent, ...additions];
+
+      const aiMeta = mergeAiMeta(note.aiMeta, {
+        enhance: {
+          model: ai.model,
+          updatedAt: new Date().toISOString(),
+          usage: ai.usage,
+        },
+      });
+
+      const updated = await ctx.prisma.note.update({
+        where: { id: note.id },
+        data: {
+          contentJson: nextContent,
+          aiMeta,
+          version: { increment: 1 },
+        },
+        select: {
+          id: true,
+          title: true,
+          contentJson: true,
+          summary: true,
+          aiMeta: true,
+          tags: true,
+          version: true,
+          updatedAt: true,
+          createdAt: true,
+          isCollaborative: true,
+          collabWsUrl: true,
+        },
+      });
+
+      return updated;
     }),
   remove: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))

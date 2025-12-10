@@ -1,3 +1,4 @@
-export { default as CollaborativeEditor } from "./CollaborativeEditor";
 export { default as CollaboratorDialog } from "./CollaboratorDialog";
-export { default as EditorSection } from "./EditorSection";
+export { default as EditorHeader } from "./EditorHeader";
+export { default as NoteEditor } from "./NoteEditor";
+export { default as SlateEditor } from "./SlateEditor";

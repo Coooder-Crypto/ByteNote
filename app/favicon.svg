@@ -1,0 +1,44 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- File shape -->
+  <path
+    d="M6 3C4.89543 3 4 3.89543 4 5V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V9L14 3H6Z"
+    fill="#e0e7ff" 
+    stroke="#6366f1"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+
+  <!-- Folded corner -->
+  <path
+    d="M14 3V9H20"
+    fill="#c7d2fe"
+    stroke="#6366f1"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+
+  <!-- Eyes -->
+  <circle cx="9.5" cy="13.5" r="1.5" fill="#1e293b" />
+  <circle cx="14.5" cy="13.5" r="1.5" fill="#1e293b" />
+
+  <!-- Mouth -->
+  <path
+    d="M10.5 16.5C10.5 16.5 11.5 17.5 13.5 16.5"
+    stroke="#1e293b"
+    stroke-width="1.5"
+    stroke-linecap="round"
+  />
+
+  <!-- Cheeks -->
+  <circle cx="8" cy="14.5" r="1.5" fill="#fbcfe8" />
+  <circle cx="16" cy="14.5" r="1.5" fill="#fbcfe8" />
+
+  <!-- Spark icon -->
+  <path
+    d="M19 8L22 6L21 11L23 12"
+    stroke="#fbbf24"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

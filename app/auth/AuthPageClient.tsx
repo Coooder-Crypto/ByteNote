@@ -4,14 +4,44 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui";
+import { useUserStore } from "@/hooks";
 
 export default function AuthPageClient() {
   const { data: session, status } = useSession();
+  const { user, setUser, clear } = useUserStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = searchParams?.get("callbackUrl") ?? "/";
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.id) {
+      const nextUser = {
+        id: session.user.id,
+        name: session.user.name ?? session.user.email ?? null,
+        email: session.user.email ?? null,
+        avatarUrl: session.user.avatarUrl ?? null,
+      };
+      if (
+        !user ||
+        user.id !== nextUser.id ||
+        user.name !== nextUser.name ||
+        user.email !== nextUser.email ||
+        user.avatarUrl !== nextUser.avatarUrl
+      ) {
+        setUser(nextUser);
+      }
+    }
+    if (status === "unauthenticated") {
+      clear();
+    }
+  }, [clear, session, setUser, status, user]);
 
   useEffect(() => {
     if (status === "authenticated" && session) {
@@ -29,11 +59,15 @@ export default function AuthPageClient() {
           {session ? (
             <>
               <p className="text-muted-foreground text-sm">
-                当前账号：{session.user?.email ?? session.user?.name ?? "未命名"}
+                当前账号：
+                {session.user?.email ?? session.user?.name ?? "未命名"}
               </p>
               <Button
                 className="w-full"
-                onClick={() => signOut({ callbackUrl })}
+                onClick={() => {
+                  clear();
+                  void signOut({ callbackUrl });
+                }}
               >
                 退出登录
               </Button>
