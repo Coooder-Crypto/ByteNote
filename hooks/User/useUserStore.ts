@@ -10,10 +10,12 @@ type UserState = {
   clear: () => void;
 };
 
-const useUserStore = create<UserState>((set) => ({
+const store = create<UserState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
   clear: () => set({ user: null }),
 }));
 
-export default useUserStore;
+export default function useUserStore() {
+  return store();
+}

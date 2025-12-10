@@ -18,8 +18,7 @@ export const parseStoredTags = (
 ): string[] => {
   if (Array.isArray(value)) {
     return value.filter(
-      (tag): tag is string =>
-        typeof tag === "string" && tag.trim().length > 0,
+      (tag): tag is string => typeof tag === "string" && tag.trim().length > 0,
     );
   }
 

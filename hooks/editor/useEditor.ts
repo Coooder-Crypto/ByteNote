@@ -209,7 +209,7 @@ export default function useEditor(
   const handleContentChange = useCallback(
     (contentJson: Descendant[]) => {
       if (!hydrated) return;
-      if (sharedType) return; // 协同模式由 Yjs 驱动，不再手动 setNote
+      if (sharedType) return;
       const next = manager.updateContentAndNote(contentJson);
       setNote(next);
     },
@@ -308,8 +308,7 @@ export default function useEditor(
       } catch (err: unknown) {
         const code = getErrorCode(err);
         const needRetry =
-          !retryingRef.current &&
-          (code === "NOT_FOUND" || code === "CONFLICT");
+          !retryingRef.current && (code === "NOT_FOUND" || code === "CONFLICT");
         if (needRetry) {
           retryingRef.current = true;
           const latest = await fetchNote(noteId);
@@ -343,7 +342,6 @@ export default function useEditor(
   );
 
   const handleSave = useCallback(async () => {
-    // 确保协作模式下使用最新的协作 version
     if (typeof collab.metaVersion === "number") {
       manager.updateVersion(collab.metaVersion);
     }

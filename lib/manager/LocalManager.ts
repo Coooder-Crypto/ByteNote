@@ -238,7 +238,7 @@ class LocalManager {
         const contentJson = record.contentJson ?? {};
         const tags = record.tags ?? [];
         const safeRecord = { ...record, title, contentJson, tags };
-        // 更新本地为安全值，避免重复发送空数据
+
         await noteStorage.save({ ...safeRecord, syncStatus: "dirty" });
 
         if (isLocalId(record.id)) {
@@ -278,7 +278,6 @@ class LocalManager {
           lastSyncedId = record.id;
         }
       } catch (err) {
-        // 版本冲突/不存在时，拉取服务器数据覆盖本地，避免无限重试
         if (
           err instanceof Error &&
           (err.message?.includes("NOT_FOUND") ||
@@ -289,7 +288,6 @@ class LocalManager {
             if (serverNote) {
               await this.mergeFromServer([serverNote]);
             } else {
-              // 服务器不存在，放弃这条记录，防止死循环
               await noteStorage.remove(record.id);
             }
           } catch {

@@ -77,8 +77,7 @@ export async function callDeepseekChat(
   }
 
   const data = (await res.json()) as any;
-  const content: string =
-    data?.choices?.[0]?.message?.content?.trim?.() ?? "";
+  const content: string = data?.choices?.[0]?.message?.content?.trim?.() ?? "";
   return {
     content,
     model,

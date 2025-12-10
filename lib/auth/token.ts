@@ -2,28 +2,12 @@
 
 import type { NextRequest } from "next/server";
 
-import type { BnUser } from "@/types";
-
-type AnyRequest = Request | NextRequest;
-
-export type AuthToken =
-  | ({
-      id?: string | null;
-      email?: string | null;
-      name?: string | null;
-      picture?: string | null;
-      avatarUrl?: string | null;
-      sub?: string | null;
-    } & Record<string, unknown>)
-  | null;
+import type { AnyRequest, AuthToken, BnUser } from "@/types";
 
 const resolveAuthSecret = () =>
   process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
 let warnedMissingSecret = false;
 
-/**
- * Unified helper to read JWT token (NextAuth) with consistent secret + logging.
- */
 export async function getAuthToken(req: AnyRequest): Promise<AuthToken> {
   try {
     const secret = resolveAuthSecret();
@@ -32,7 +16,6 @@ export async function getAuthToken(req: AnyRequest): Promise<AuthToken> {
       warnedMissingSecret = true;
     }
     const mod = await import("next-auth/jwt");
-    // next-auth + bundler 可能将 getToken 放在 default 导出
     type GetTokenFn = (args: {
       req: NextRequest;
       secret?: string;
@@ -58,7 +41,7 @@ export async function normalizeAuthToken(
   token: AuthToken,
 ): Promise<BnUser | null> {
   if (!token) return null;
-  const id = (token.id ?? (token as { sub?: string | null })?.sub) ?? null;
+  const id = token.id ?? (token as { sub?: string | null })?.sub ?? null;
   if (!id) return null;
   return {
     id,
