@@ -1,11 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/note";
+import { NoteList, NotesHeader } from "@/components/note";
 import { useNetworkStatus, useNoteList } from "@/hooks";
 import { trpc } from "@/lib/trpc/client";
+
+const CreateNoteDialog = dynamic(() => import("./CreateNoteDialog"), {
+  loading: () => null,
+});
 
 type NoteBoardProps = {
   onSelectNote: (id: string | null) => void;
@@ -119,13 +124,15 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
         }}
       />
 
-      <CreateNoteDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onUnauthorized={() => router.push(authUrl)}
-        onCreated={(id) => setSelectedNote(id)}
-        onCreatedLocal={(id) => setSelectedNote(id)}
-      />
+      {createOpen ? (
+        <CreateNoteDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onUnauthorized={() => router.push(authUrl)}
+          onCreated={(id) => setSelectedNote(id)}
+          onCreatedLocal={(id) => setSelectedNote(id)}
+        />
+      ) : null}
     </>
   );
 }

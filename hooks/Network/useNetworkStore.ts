@@ -74,7 +74,13 @@ export default function useNetworkStatus() {
       setStatus(false, false);
       return;
     }
-    startNetworkMonitor(setStatus);
+    const start = () => startNetworkMonitor(setStatus);
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      (window as typeof window & { requestIdleCallback?: IdleRequestCallback })
+        .requestIdleCallback?.(() => start());
+    } else {
+      setTimeout(start, 0);
+    }
     return () => {
       // keep monitor running globally; no cleanup on unmount to avoid losing listeners
     };
