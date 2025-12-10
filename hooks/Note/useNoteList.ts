@@ -7,7 +7,7 @@ import { parseStoredTags } from "@/lib/constants/tags";
 import { localManager } from "@/lib/manager/LocalManager";
 import type { BnNote, LocalNoteRecord } from "@/types";
 
-import { useNetworkStatus } from "../Network";
+import { useNetworkStatus } from "../network";
 import useNoteActions from "./useNoteActions";
 
 type NoteListParams = {

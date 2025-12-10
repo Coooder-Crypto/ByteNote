@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { NotesPage } from "@/components/Notes";
+import { NotesPage } from "@/components/note";
 
 export default function Notes() {
   return (

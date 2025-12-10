@@ -23,7 +23,7 @@ import { NOTE_TAGS } from "@/lib/constants/tags";
 import { localManager } from "@/lib/manager/LocalManager";
 import { ContentJson } from "@/types";
 
-import { TagInput } from "../Common";
+import { TagInput } from "../common";
 
 type CreateNoteDialogProps = {
   open: boolean;

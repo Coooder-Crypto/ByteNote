@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { callDeepseekChat } from "@/lib/ai/deepseek";
-import { toPlainText } from "@/components/Editor/slate/normalize";
+import { toPlainText } from "@/components/editor/slate/normalize";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const startOfDay = (date: Date) =>
@@ -28,10 +28,7 @@ export const statsRouter = router({
       // notes owned or collaborated
       const notes = await ctx.prisma.note.findMany({
         where: {
-          OR: [
-            { userId },
-            { collaborators: { some: { userId } } },
-          ],
+          OR: [{ userId }, { collaborators: { some: { userId } } }],
           deletedAt: null,
           updatedAt: { gte: since },
         },
@@ -85,7 +82,9 @@ export const statsRouter = router({
       });
       const activitySeries = Array.from(activity.entries())
         .map(([date, count]) => ({ date, count }))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        );
 
       return {
         noteCount,
@@ -109,10 +108,7 @@ export const statsRouter = router({
 
       const notes = await ctx.prisma.note.findMany({
         where: {
-          OR: [
-            { userId },
-            { collaborators: { some: { userId } } },
-          ],
+          OR: [{ userId }, { collaborators: { some: { userId } } }],
           deletedAt: null,
           updatedAt: { gte: since },
         },

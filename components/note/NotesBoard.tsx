@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
+import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/note";
 import { useNetworkStatus, useNoteList } from "@/hooks";
 import { trpc } from "@/lib/trpc/client";
 

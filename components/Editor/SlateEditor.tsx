@@ -8,7 +8,7 @@ import { withHistory } from "slate-history";
 import { Editable, Slate, withReact } from "slate-react";
 import { type SharedType, withYjs } from "slate-yjs";
 
-import { NoteTags, TagInput } from "@/components/Common";
+import { NoteTags, TagInput } from "@/components/common";
 import { useShortcuts } from "@/hooks";
 import {
   BLOCK_CONFIGS,
@@ -18,7 +18,7 @@ import {
 
 import { normalizeDescendants } from "./slate/normalize";
 import { renderElement, renderLeaf } from "./slate/renderers";
-import { SlateToolbar, type ToolbarActions } from "./slate/Toolbar";
+import { SlateToolbar, ToolbarActions } from "./slate/Toolbar";
 
 type SlateEditorProps = {
   valueKey: string;

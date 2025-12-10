@@ -6,8 +6,8 @@ import { useCallback, useMemo, useState } from "react";
 
 import { NAV_ITEMS } from "@/lib/constants/nav";
 
-import useFolderActions from "../Note/useFolderActions";
-import useUserActions from "../User/useUserActions";
+import useFolderActions from "../note/useFolderActions";
+import useUserActions from "../user/useUserActions";
 
 export default function useSidebar() {
   const pathname = usePathname();

@@ -11,8 +11,8 @@ import {
   CollaboratorDialog,
   EditorHeader,
   SlateEditor,
-} from "@/components/Editor";
-import { toPlainText } from "@/components/Editor/slate/normalize";
+} from "@/components/editor";
+import { toPlainText } from "@/components/editor/slate/normalize";
 import {
   useEditor,
   useNetworkStatus,

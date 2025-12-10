@@ -7,7 +7,7 @@ import { ReactNode, useState } from "react";
 import { Toaster } from "sonner";
 import superjson from "superjson";
 
-import { ThemeProvider } from "@/components/Common";
+import { ThemeProvider } from "@/components/common";
 import { trpc } from "@/lib/trpc/client";
 
 export function Providers({ children }: { children: ReactNode }) {

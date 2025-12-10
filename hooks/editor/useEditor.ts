@@ -13,8 +13,8 @@ import { localManager } from "@/lib/manager/LocalManager";
 import { isLocalId } from "@/lib/utils/offline/ids";
 import { type AiMeta, type EditorNote } from "@/types";
 
-import { useNetworkStatus, useSocket } from "../Network";
-import { useNoteActions } from "../Note";
+import { useNetworkStatus, useSocket } from "../network";
+import { useNoteActions } from "../note";
 
 export default function useEditor(
   noteId: string,
