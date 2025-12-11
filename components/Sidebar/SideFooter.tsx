@@ -2,7 +2,6 @@
 
 import { BarChart3, Moon, Sun } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui";
@@ -40,7 +39,6 @@ export default function SideFooter({
         width={40}
         height={40}
         className="h-full w-full object-cover"
-        unoptimized
       />
     ) : (
       <div className="bg-primary/10 text-primary flex h-full w-full items-center justify-center text-sm font-semibold">
@@ -114,7 +112,7 @@ export default function SideFooter({
               </div>
               <div className="flex-1 overflow-hidden">
                 <p
-                  className={`text-foreground whitespace-nowrap text-sm font-medium transition-[max-width,opacity] duration-200 ease-in-out ${collapsed ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100"}`}
+                  className={`text-foreground text-sm font-medium whitespace-nowrap transition-[max-width,opacity] duration-200 ease-in-out ${collapsed ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100"}`}
                 >
                   {user.name ?? "未命名"}
                 </p>

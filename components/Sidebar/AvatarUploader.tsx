@@ -66,8 +66,6 @@ export default function AvatarUploader({
             fill
             sizes="112px"
             className="object-cover"
-            //TODO: nextjs/image
-            unoptimized
           />
         ) : (
           <div className="text-muted-foreground flex h-full w-full items-center justify-center text-sm">
