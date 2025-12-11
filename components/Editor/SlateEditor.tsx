@@ -57,6 +57,7 @@ type SlateEditorProps = {
   editor: Editor;
   handleKeyDown: (event: React.KeyboardEvent) => void;
   wide: boolean;
+  loading?: boolean;
 };
 
 export default function SlateEditor({
@@ -79,6 +80,7 @@ export default function SlateEditor({
   editor,
   handleKeyDown,
   wide,
+  loading = false,
 }: SlateEditorProps) {
   const contentWidthClass = wide ? "w-full" : "mx-auto w-full max-w-4xl";
 
@@ -106,13 +108,19 @@ export default function SlateEditor({
         const normalized = normalizeDescendants(val);
         onChange(normalized);
       };
+  const showSkeleton = loading || (isCollab && !collabReady);
 
   return (
     <div
       className={`${contentWidthClass} flex min-h-full flex-1 flex-col space-y-4 p-4 pb-6`}
     >
       <div className="flex flex-col gap-4">
-        {readOnly ? (
+        {showSkeleton ? (
+          <div className="space-y-3 py-2">
+            <div className="bg-muted-foreground/20 h-7 w-48 animate-pulse rounded" />
+            <div className="bg-muted-foreground/15 h-6 w-full animate-pulse rounded" />
+          </div>
+        ) : readOnly ? (
           <h2 className="text-foreground py-4 text-3xl font-bold">
             {title || "笔记"}
           </h2>
@@ -125,29 +133,47 @@ export default function SlateEditor({
             disabled={readOnly}
           />
         )}
-        {readOnly ? (
-          <NoteTags tags={tags} />
-        ) : (
-          <TagInput
-            value={tags}
-            onChange={onTagsChange}
-            placeholder={tagPlaceholder}
-            className="border-border/60 bg-card/40 w-full rounded-xl border"
-          />
-        )}
+        {!showSkeleton &&
+          (readOnly ? (
+            <NoteTags tags={tags} />
+          ) : (
+            <TagInput
+              value={tags}
+              onChange={onTagsChange}
+              placeholder={tagPlaceholder}
+              className="border-border/60 bg-card/40 w-full rounded-xl border"
+            />
+          ))}
       </div>
 
-      <AiSummaryPanel
-        noteId={noteId}
-        summary={summary}
-        readOnly={readOnly}
-        disabled={!canUseAi}
-        canUseAi={canUseAi}
-        onResult={onAiResult}
-      />
+      {showSkeleton ? (
+        <div className="border-border/60 bg-card/40 rounded-xl border p-3">
+          <div className="flex items-center justify-between">
+            <div className="bg-muted-foreground/20 h-4 w-20 animate-pulse rounded" />
+            <div className="bg-muted-foreground/20 h-8 w-16 animate-pulse rounded" />
+          </div>
+          <div className="mt-3 space-y-2">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={`ai-skel-${idx}`}
+                className="bg-muted-foreground/15 h-3 w-full animate-pulse rounded"
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <AiSummaryPanel
+          noteId={noteId}
+          summary={summary}
+          readOnly={readOnly}
+          disabled={!canUseAi}
+          canUseAi={canUseAi}
+          onResult={onAiResult}
+        />
+      )}
 
       <div className="min-h-full w-full flex-1 rounded-xl">
-        {isCollab && !collabReady ? (
+        {showSkeleton ? (
           <div className="text-muted-foreground space-y-3 text-sm">
             <div className="bg-muted-foreground/20 h-6 w-32 animate-pulse rounded" />
             <div className="space-y-2">

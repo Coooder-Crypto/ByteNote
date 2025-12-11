@@ -295,30 +295,27 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">
-          {collabEnabled && !sharedType ? (
-            <div className="text-muted-foreground text-sm">协作连接中...</div>
-          ) : (
-            <SlateEditor
-              noteId={noteId}
-              valueKey={editorValueKey}
-              value={value}
-              onChange={handleEditorChange}
-              title={note.title}
-              onTitleChange={handleTitleChange}
-              titlePlaceholder={titlePlaceholder}
-              tags={note.tags}
-              onTagsChange={handleTagsChange}
-              summary={note.summary}
-              canUseAi={canUseAi}
-              onAiResult={handleAiResult}
-              readOnly={isReadOnly}
-              placeholder={editorPlaceholder}
-              sharedType={editorSharedType}
-              editor={editor}
-              handleKeyDown={handleKeyDown}
-              wide={wide}
-            />
-          )}
+          <SlateEditor
+            noteId={noteId}
+            valueKey={editorValueKey}
+            value={value}
+            onChange={handleEditorChange}
+            title={note.title}
+            onTitleChange={handleTitleChange}
+            titlePlaceholder={titlePlaceholder}
+            tags={note.tags}
+            onTagsChange={handleTagsChange}
+            summary={note.summary}
+            canUseAi={canUseAi}
+            onAiResult={handleAiResult}
+            readOnly={isReadOnly}
+            placeholder={editorPlaceholder}
+            sharedType={collabEnabled ? sharedType : null}
+            editor={editor}
+            handleKeyDown={handleKeyDown}
+            wide={wide}
+            loading={collabEnabled && !sharedType}
+          />
         </div>
       </div>
 

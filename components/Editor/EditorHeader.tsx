@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Eye,
   EyeOff,
+  Loader2,
   Save,
   StretchHorizontal,
   Trash2,
@@ -12,6 +13,8 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+
+import { Button } from "@/components/ui";
 
 import type { ToolbarActions } from "./slate/Toolbar";
 
@@ -79,13 +82,15 @@ export default function EditorHeader({
         <div className="flex flex-wrap items-center gap-3 overflow-hidden">
           {onBack && (
             <>
-              <button
+              <Button
                 onClick={onBack}
-                className="text-muted-foreground hover:bg-muted/60 rounded-full p-1.5 transition-colors"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground"
                 title="Back to List"
               >
                 <ArrowLeft size={16} />
-              </button>
+              </Button>
               <div className="bg-border/80 h-4 w-px" />
             </>
           )}
@@ -95,13 +100,15 @@ export default function EditorHeader({
             </span>
             <span>•</span>
             {isCollaborative && onToggleCollab ? (
-              <button
+              <Button
                 onClick={onToggleCollab}
-                className={`flex items-center gap-1 ${connected ? "text-emerald-600" : "text-rose-500"}`}
+                variant="ghost"
+                size="sm"
+                className={`px-2 py-1 text-[11px] ${connected ? "text-emerald-600" : "text-rose-500"}`}
               >
                 {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
                 {connected ? "Connected" : "Offline"}
-              </button>
+              </Button>
             ) : (
               <span className="text-muted-foreground">Local Draft</span>
             )}
@@ -117,9 +124,8 @@ export default function EditorHeader({
             {charCount} chars
           </span>
           <div
-            className="flex -space-x-4"
+            className="ml-auto flex -space-x-4"
             onClick={onManageCollaborators}
-            style={{ minWidth: 96, minHeight: 32 }}
           >
             {currentUser && (
               <AvatarChip
@@ -158,9 +164,11 @@ export default function EditorHeader({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {onTogglePreview && (
-                <button
+                <Button
                   type="button"
-                  className="bg-card/70 border-border/60 text-foreground hover:border-primary inline-flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  variant="outline"
+                  size="icon-sm"
+                  className="border-border/60"
                   onClick={onTogglePreview}
                   aria-pressed={previewMode}
                   title={previewMode ? "退出预览" : "预览"}
@@ -170,43 +178,52 @@ export default function EditorHeader({
                   ) : (
                     <Eye className="size-4" />
                   )}
-                </button>
+                </Button>
               )}
 
               {canEdit && (
-                <button
+                <Button
                   type="button"
-                  className="bg-card/80 border-border/60 text-foreground hover:border-primary inline-flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  variant="outline"
+                  size="icon-sm"
+                  className="border-border/60"
                   onClick={onSave}
                   disabled={isTrashed || saving}
                   title="保存"
                 >
-                  <Save className="size-4" />
-                </button>
+                  {saving ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Save className="size-4" />
+                  )}
+                </Button>
               )}
 
               {onRequestDelete && (
-                <button
+                <Button
                   type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  variant="destructive"
+                  size="icon-sm"
                   onClick={onRequestDelete}
                   disabled={deleting}
                   title="删除"
                 >
                   <Trash2 className="size-4" />
-                </button>
+                </Button>
               )}
 
               {onToggleWidth && (
-                <button
+                <Button
                   type="button"
-                  className="bg-card/70 border-border/60 text-foreground hover:border-primary inline-flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  variant="outline"
+                  size="icon-sm"
+                  className="border-border/60"
                   onClick={onToggleWidth}
                   aria-label="切换编辑区域宽度"
                   title="切换宽度"
                 >
                   <StretchHorizontal className="size-4" />
-                </button>
+                </Button>
               )}
             </div>
           </div>
