@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Descendant, Editor } from "slate";
-import { createEditor } from "slate";
+import { createEditor, Editor, Element as SlateElement, Range, Transforms, Path } from "slate";
 import { withHistory } from "slate-history";
 import { withReact } from "slate-react";
 import { toSharedType, withYjs } from "slate-yjs";
@@ -165,12 +165,75 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   );
 
   const editor: Editor = useMemo(() => {
+    const withCustomDelete = (ed: Editor) => {
+      const { deleteBackward } = ed;
+      ed.deleteBackward = (unit) => {
+        const { selection } = ed;
+        if (selection && Range.isCollapsed(selection)) {
+          const codeEntry = Editor.above(ed, {
+            match: (n) =>
+              SlateElement.isElement(n) &&
+              (n as { type?: string }).type === "code-block",
+          });
+          if (codeEntry) {
+            const [, path] = codeEntry;
+            const text = Editor.string(ed, path);
+            const isEmpty = text.trim().length === 0;
+            const atStart = Editor.isStart(ed, selection.anchor, path);
+            const anchorOffset = selection.anchor.offset;
+            const prevChar = anchorOffset > 0 ? text[anchorOffset - 1] : "";
+            const paragraph: any = {
+              type: "paragraph",
+              children: [{ text: "" }],
+            };
+
+            if (isEmpty) {
+              event.preventDefault();
+              Transforms.setNodes(
+                ed,
+                { type: "paragraph" } as Partial<CustomElement>,
+                { at: path },
+              );
+              const node = Editor.node(ed, path)[0] as any;
+              if (!node.children || node.children.length === 0) {
+                Transforms.insertNodes(ed, { text: "" }, { at: path.concat(0) });
+              }
+              Transforms.select(ed, Editor.start(ed, path));
+              return;
+            }
+
+            if (prevChar === "\n") {
+              event.preventDefault();
+              const range = {
+                anchor: { path: selection.anchor.path, offset: anchorOffset - 1 },
+                focus: selection.anchor,
+              };
+              Transforms.delete(ed, { at: range as any });
+              const insertPath = Path.next(path);
+              Transforms.insertNodes(ed, paragraph, { at: insertPath });
+              Transforms.select(ed, Editor.start(ed, insertPath));
+              return;
+            }
+
+            if (atStart) {
+              event.preventDefault();
+              Transforms.insertNodes(ed, paragraph, { at: path });
+              Transforms.select(ed, Editor.start(ed, path));
+              return;
+            }
+          }
+        }
+        deleteBackward(unit);
+      };
+      return ed;
+    };
+
     if (sharedType) {
       const ed = withYjs(withReact(createEditor()), sharedType);
       (ed as Editor & { __collab?: boolean }).__collab = true;
-      return withHistory(ed);
+      return withHistory(withCustomDelete(ed));
     }
-    return withHistory(withReact(createEditor()));
+    return withHistory(withCustomDelete(withReact(createEditor())));
   }, [sharedType, valueKey]);
 
   const {
@@ -237,7 +300,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const editorValueKey = collabEnabled
     ? `collab-${noteId}`
     : `local-${valueKey}`;
-  const editorSharedType = collabEnabled ? sharedType : null;
+
   const handleEditorChange = useCallback(
     (val: Descendant[]) => handleContentChange(val as Descendant[]),
     [handleContentChange],
@@ -316,18 +379,17 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
             title={note.title}
             onTitleChange={handleTitleChange}
             titlePlaceholder={titlePlaceholder}
-            tags={note.tags}
-            onTagsChange={handleTagsChange}
-            summary={note.summary}
-            canUseAi={canUseAi}
-            onAiResult={handleAiResult}
-            readOnly={isReadOnly}
-            placeholder={editorPlaceholder}
-            sharedType={collabEnabled ? sharedType : null}
-            editor={editor}
-            handleKeyDown={handleKeyDown}
-            wide={wide}
-            loading={collabEnabled && !sharedType}
+          tags={note.tags}
+          onTagsChange={handleTagsChange}
+          summary={note.summary}
+          canUseAi={canUseAi}
+          onAiResult={handleAiResult}
+          readOnly={isReadOnly}
+          sharedType={collabEnabled ? sharedType : null}
+          editor={editor}
+          handleKeyDown={handleKeyDown}
+          wide={wide}
+          loading={collabEnabled && !sharedType}
           />
         </div>
       </div>

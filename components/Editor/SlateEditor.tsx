@@ -3,9 +3,9 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef } from "react";
 import type { Descendant } from "slate";
-import { Editable, Slate, ReactEditor } from "slate-react";
-import { type SharedType } from "slate-yjs";
 import { Editor, Transforms } from "slate";
+import { Editable, ReactEditor, Slate } from "slate-react";
+import { type SharedType } from "slate-yjs";
 
 import { Skeleton } from "@/components/ui";
 import { DEFAULT_VALUE } from "@/lib/constants/editor";
@@ -42,12 +42,9 @@ type SlateEditorProps = {
   onChange: (val: Descendant[]) => void;
   title: string;
   onTitleChange: (title: string) => void;
-  titlePlaceholder?: string;
   tags: string[];
   onTagsChange: (tags: string[]) => void;
-  tagPlaceholder?: string;
   readOnly?: boolean;
-  placeholder?: string;
   sharedType?: SharedType | null;
   summary?: string | null;
   canUseAi?: boolean;
@@ -65,12 +62,9 @@ export default function SlateEditor({
   onChange,
   title,
   onTitleChange,
-  titlePlaceholder = "Untitled note",
   tags,
   onTagsChange,
-  tagPlaceholder = "添加标签",
   readOnly = false,
-  placeholder = "开始输入…",
   sharedType,
   summary,
   canUseAi = true,
@@ -146,7 +140,7 @@ export default function SlateEditor({
             <input
               className="text-foreground placeholder:text-muted-foreground/60 w-full bg-transparent text-3xl font-bold tracking-tight focus:outline-none"
               value={title}
-              placeholder={titlePlaceholder}
+              placeholder={"输入标题"}
               onChange={(e) => onTitleChange(e.target.value)}
               disabled={readOnly}
               aria-label="笔记标题"
@@ -157,7 +151,7 @@ export default function SlateEditor({
           <TagInput
             value={tags}
             onChange={onTagsChange}
-            placeholder={tagPlaceholder}
+            placeholder={"输入标签"}
             className="border-border/60 bg-card/40 w-full rounded-xl border"
             aria-label="标签输入"
             disabled={readOnly}
@@ -210,8 +204,7 @@ export default function SlateEditor({
               renderElement={renderElement}
               renderLeaf={renderLeaf}
               onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              className="prose prose-sm text-foreground min-h-[80vh] max-w-none bg-transparent p-2 leading-relaxed focus:outline-none"
+              className="prose prose-sm prose-p:my-0 prose-p:first:mt-0 prose-p:last:mb-0 text-foreground min-h-[80vh] max-w-none bg-transparent p-2 leading-relaxed focus:outline-none"
             />
           </Slate>
         )}
