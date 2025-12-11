@@ -32,16 +32,17 @@ export default function useNoteList({
   searchQuery = "",
 }: NoteListParams) {
   const { canUseNetwork } = useNetworkStatus();
-  const { useNoteListQuery } = useNoteActions({});
+  const { useNoteListInfinite } = useNoteActions({});
   const { status } = useSession();
   const loggedIn = status === "authenticated";
   const queryEnabled = enabled && canUseNetwork() && loggedIn;
-  const query = useNoteListQuery(
+  const query = useNoteListInfinite(
     {
       filter,
       folderId,
       search: search || undefined,
       collaborativeOnly: collaborativeOnly || undefined,
+      limit: 20,
     },
     {
       enabled: queryEnabled,
@@ -129,8 +130,9 @@ export default function useNoteList({
       };
     };
 
-    if (queryEnabled && Array.isArray(query.data)) {
-      return query.data.map((note) => {
+    if (queryEnabled && Array.isArray(query.data?.pages)) {
+      const remoteNotes = query.data.pages.flatMap((page) => page.items ?? []);
+      return remoteNotes.map((note) => {
         const contentJson = (note as any).contentJson as any;
         const text = extractText(contentJson);
         return {
@@ -186,5 +188,11 @@ export default function useNoteList({
     notes,
     filteredNotes,
     availableTags,
+    hasMore: queryEnabled
+      ? Boolean(query.data?.pages?.[query.data.pages.length - 1]?.nextCursor)
+      : false,
+    loadMore: queryEnabled ? () => query.fetchNextPage?.() : undefined,
+    loadingMore: queryEnabled ? query.isFetchingNextPage : false,
+    loading: queryEnabled ? query.isLoading : !localLoadedOnce && localRefreshing,
   };
 }

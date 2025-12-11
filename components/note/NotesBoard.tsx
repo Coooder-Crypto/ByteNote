@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { NoteList, NotesHeader } from "@/components/note";
 import { Button } from "@/components/ui";
@@ -69,25 +69,12 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
     filteredNotes,
     availableTags,
     refetch: refetchServer,
+    hasMore,
+    loadMore,
+    loadingMore,
+    isLoading,
   } = notesQuery;
   const { online } = useNetworkStatus();
-  const [page, setPage] = useState(1);
-  const pageSize = 12;
-
-  useEffect(() => {
-    setPage(1);
-  }, [filter, folderId, searchQuery, selectedTags, sortKey]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredNotes.length / pageSize));
-  const pageNotes = useMemo(
-    () =>
-      filteredNotes.slice(
-        (page - 1) * pageSize,
-        Math.min(filteredNotes.length, page * pageSize),
-      ),
-    [filteredNotes, page, pageSize],
-  );
-
   const handleRefresh = () => {
     void refetchServer?.();
     // 本地缓存刷新由 hook 内 requestIdleCallback 启动，服务器数据 refetch 即可
@@ -140,9 +127,9 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
       </div>
 
       <NoteList
-        notes={pageNotes}
+        notes={filteredNotes}
         sortKey={sortKey}
-        emptyMessage={notesQuery.isLoading ? "加载中..." : "暂无符合条件的笔记"}
+        emptyMessage={isLoading ? "加载中..." : "暂无符合条件的笔记"}
         onSelect={(id) => {
           if (!online) {
             setSelectedNote(id);
@@ -150,37 +137,15 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
             setSelectedNote(id);
           }
         }}
+        onEndReached={() => {
+          if (hasMore && !loadingMore) {
+            void loadMore?.();
+          }
+        }}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        loading={isLoading}
       />
-
-      {filteredNotes.length > 0 && (
-        <div className="text-muted-foreground mt-6 flex items-center justify-between text-sm">
-          <span>
-            共 {filteredNotes.length} 条，页 {page}/{totalPages}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              aria-label="上一页"
-            >
-              上一页
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              aria-label="下一页"
-            >
-              下一页
-            </Button>
-          </div>
-        </div>
-      )}
 
       {createOpen ? (
         <CreateNoteDialog

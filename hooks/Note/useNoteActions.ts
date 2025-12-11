@@ -159,6 +159,15 @@ export default function useNoteActions<
     options?: Parameters<(typeof trpc.note.list)["useQuery"]>[1],
   ) => trpc.note.list.useQuery(input, options);
 
+  const useNoteListInfinite = (
+    input: NoteListInput,
+    options?: Parameters<(typeof trpc.note.list)["useInfiniteQuery"]>[1],
+  ) =>
+    trpc.note.list.useInfiniteQuery(input, {
+      getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+      ...options,
+    });
+
   const setWsUrl = (payload: { noteId: string; collabWsUrl: string }) =>
     setWsMutation.mutate(payload);
 
@@ -191,6 +200,7 @@ export default function useNoteActions<
     setFolderPending: setFolderMutation.isPending,
     setFolderError: setFolderMutation.error,
     useNoteListQuery,
+    useNoteListInfinite,
     setWsUrl,
     setWsPending: setWsMutation.isPending,
     setWsError: setWsMutation.error,

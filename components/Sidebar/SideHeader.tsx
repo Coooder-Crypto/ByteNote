@@ -1,14 +1,3 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-  Github,
-  LayoutDashboard,
-  X,
-} from "lucide-react";
-import Link from "next/link";
-
-import { Button } from "@/components/ui";
-
 type SideHeaderProps = {
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -79,7 +68,7 @@ export default function SideHeader({
           onToggleCollapse();
           onCloseMobile?.();
         }}
-        className="flex items-center gap-3 rounded-lg px-2 py-1 hover:opacity-90 transition"
+        className="flex items-center gap-3 rounded-lg px-2 py-1 transition hover:opacity-90"
         aria-label="切换侧栏"
       >
         <ByteNoteLogo className="h-8 w-8 shrink-0" />
@@ -89,26 +78,6 @@ export default function SideHeader({
           ByteNote
         </span>
       </button>
-      <div className="flex items-center gap-2">
-        <Link href="/notes" title="进入笔记">
-          <Button variant="ghost" size="icon-sm" className="md:hidden">
-            <LayoutDashboard className="size-4" />
-          </Button>
-        </Link>
-        <Link href="/auth" title="GitHub 登录">
-          <Button variant="ghost" size="icon-sm" className="md:hidden">
-            <Github className="size-4" />
-          </Button>
-        </Link>
-        <Button
-          onClick={onCloseMobile}
-          variant="ghost"
-          size="icon-sm"
-          className="md:hidden"
-        >
-          <X className="size-5" />
-        </Button>
-      </div>
     </div>
   );
 }

@@ -117,6 +117,8 @@ export const noteRouter = router({
           filter: z.enum(["all", "favorite", "trash", "collab"]).optional(),
           folderId: z.string().uuid().optional(),
           collaborativeOnly: z.boolean().optional(),
+          cursor: z.number().int().min(0).optional(),
+          limit: z.number().int().min(5).max(50).optional(),
         })
         .optional(),
     )
@@ -163,9 +165,14 @@ export const noteRouter = router({
         });
       }
 
-      return ctx.prisma.note.findMany({
+      const limit = input?.limit ?? 20;
+      const cursor = input?.cursor ?? 0;
+
+      const items = await ctx.prisma.note.findMany({
         where,
         orderBy: { updatedAt: "desc" },
+        take: limit + 1,
+        skip: cursor,
         select: {
           id: true,
           title: true,
@@ -194,6 +201,15 @@ export const noteRouter = router({
           },
         },
       });
+
+      const hasMore = items.length > limit;
+      const sliced = hasMore ? items.slice(0, limit) : items;
+      const nextCursor = hasMore ? cursor + limit : null;
+
+      return {
+        items: sliced,
+        nextCursor,
+      };
     }),
   detail: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))

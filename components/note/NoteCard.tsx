@@ -52,9 +52,9 @@ function NoteCardComponent({
           handleSelect();
         }
       }}
-      className="bg-card border-border/60 hover:border-primary/50 group relative flex h-64 cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
+      className="bg-card border-border/60 hover:border-primary/50 group relative flex h-56 cursor-pointer flex-col overflow-hidden rounded-2xl border p-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
     >
-      <div className="mb-3 flex items-start justify-between">
+      <div className="mb-2 flex items-start justify-between">
         <div className="min-w-0 flex-1 pr-3">
           <h3 className="text-foreground truncate text-lg font-bold">
             {note.title || (
@@ -75,13 +75,13 @@ function NoteCardComponent({
         </div>
       </div>
 
-      <p className="text-muted-foreground line-clamp-5 flex-1 text-sm leading-relaxed font-medium">
+      <p className="text-muted-foreground line-clamp-4 flex-1 text-sm leading-relaxed font-medium">
         {summary || (
           <span className="italic opacity-50">Empty note content...</span>
         )}
       </p>
 
-      <div className="border-border/50 mt-4 flex items-center justify-between border-t pt-3">
+      <div className="border-border/50 mt-3 flex items-center justify-between border-t pt-3">
         <div className="flex items-center gap-2 overflow-hidden">
           {note.isCollaborative && (
             <div
