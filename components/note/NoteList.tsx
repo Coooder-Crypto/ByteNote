@@ -4,6 +4,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { memo, useMemo, useRef } from "react";
 
 import type { BnNote } from "@/types";
+import { Skeleton } from "@/components/ui";
 
 import NoteCard from "./NoteCard";
 
@@ -82,12 +83,12 @@ function NoteListComponent({
               className="absolute top-0 left-0 w-full px-[2px] sm:px-1"
               style={{ transform: `translateY(${idx * 280}px)` }}
             >
-              <div className="border-border/60 bg-muted/50 animate-pulse rounded-2xl border p-5">
-                <div className="bg-muted-foreground/20 mb-4 h-5 w-2/3 rounded" />
-                <div className="bg-muted-foreground/15 mb-2 h-3 w-full rounded" />
-                <div className="bg-muted-foreground/15 mb-2 h-3 w-11/12 rounded" />
-                <div className="bg-muted-foreground/15 mb-2 h-3 w-10/12 rounded" />
-                <div className="bg-muted-foreground/20 mt-4 h-4 w-24 rounded" />
+              <div className="border-border/60 bg-muted/50 rounded-2xl border p-5">
+                <Skeleton className="mb-4 h-5 w-2/3" />
+                <Skeleton className="mb-2 h-3 w-full" />
+                <Skeleton className="mb-2 h-3 w-11/12" />
+                <Skeleton className="mb-2 h-3 w-10/12" />
+                <Skeleton className="mt-4 h-4 w-24" />
               </div>
             </div>
           ))}

@@ -30,3 +30,4 @@ export {
   SelectValue,
 } from "./select";
 export { Avatar, AvatarFallback, AvatarImage } from "./avatar";
+export { Skeleton } from "./skeleton";

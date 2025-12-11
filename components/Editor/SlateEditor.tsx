@@ -6,6 +6,7 @@ import type { Descendant, Editor } from "slate";
 import { Editable, Slate } from "slate-react";
 import { type SharedType } from "slate-yjs";
 
+import { Skeleton } from "@/components/ui";
 import { DEFAULT_VALUE } from "@/lib/constants/editor";
 import type { AiMeta } from "@/types/editor";
 
@@ -117,8 +118,8 @@ export default function SlateEditor({
       <div className="flex flex-col gap-4">
         {showSkeleton ? (
           <div className="space-y-3 py-2">
-            <div className="bg-muted-foreground/20 h-7 w-48 animate-pulse rounded" />
-            <div className="bg-muted-foreground/15 h-6 w-full animate-pulse rounded" />
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-6 w-full" />
           </div>
         ) : readOnly ? (
           <h2 className="text-foreground py-4 text-3xl font-bold">
@@ -151,15 +152,12 @@ export default function SlateEditor({
       {showSkeleton ? (
         <div className="border-border/60 bg-card/40 rounded-xl border p-3">
           <div className="flex items-center justify-between">
-            <div className="bg-muted-foreground/20 h-4 w-20 animate-pulse rounded" />
-            <div className="bg-muted-foreground/20 h-8 w-16 animate-pulse rounded" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-8 w-16" />
           </div>
           <div className="mt-3 space-y-2">
             {Array.from({ length: 3 }).map((_, idx) => (
-              <div
-                key={`ai-skel-${idx}`}
-                className="bg-muted-foreground/15 h-3 w-full animate-pulse rounded"
-              />
+              <Skeleton key={`ai-skel-${idx}`} className="h-3 w-full" />
             ))}
           </div>
         </div>
@@ -177,13 +175,10 @@ export default function SlateEditor({
       <div className="min-h-full w-full flex-1 rounded-xl">
         {showSkeleton ? (
           <div className="text-muted-foreground space-y-3 text-sm">
-            <div className="bg-muted-foreground/20 h-6 w-32 animate-pulse rounded" />
+            <Skeleton className="h-6 w-32" />
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, idx) => (
-                <div
-                  key={`collab-skel-${idx}`}
-                  className="bg-muted-foreground/15 h-4 w-full animate-pulse rounded"
-                />
+                <Skeleton key={`collab-skel-${idx}`} className="h-4 w-full" />
               ))}
             </div>
           </div>
