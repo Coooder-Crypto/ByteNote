@@ -1,10 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
-import type { Descendant, Editor } from "slate";
-import { Editable, Slate } from "slate-react";
+import { useEffect, useMemo, useRef } from "react";
+import type { Descendant } from "slate";
+import { Editable, Slate, ReactEditor } from "slate-react";
 import { type SharedType } from "slate-yjs";
+import { Editor, Transforms } from "slate";
 
 import { Skeleton } from "@/components/ui";
 import { DEFAULT_VALUE } from "@/lib/constants/editor";
@@ -15,10 +16,6 @@ import { renderElement, renderLeaf } from "./slate/renderers";
 
 const TagInput = dynamic(() => import("@/components/common/TagInput"), {
   ssr: false,
-  loading: () => null,
-});
-
-const NoteTags = dynamic(() => import("@/components/common/NoteTags"), {
   loading: () => null,
 });
 
@@ -110,6 +107,25 @@ export default function SlateEditor({
         onChange(normalized);
       };
   const showSkeleton = loading || (isCollab && !collabReady);
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    focusedRef.current = false;
+  }, [noteId, valueKey]);
+
+  useEffect(() => {
+    if (showSkeleton || readOnly || focusedRef.current) return;
+    focusedRef.current = true;
+    setTimeout(() => {
+      try {
+        const end = Editor.end(editor, []);
+        Transforms.select(editor, end);
+        ReactEditor.focus(editor);
+      } catch {
+        // ignore focus errors
+      }
+    }, 0);
+  }, [editor, showSkeleton, readOnly, valueKey]);
 
   return (
     <div
@@ -126,27 +142,27 @@ export default function SlateEditor({
             {title || "笔记"}
           </h2>
         ) : (
-          <input
-            className="text-foreground placeholder:text-muted-foreground/60 w-full bg-transparent text-3xl font-bold tracking-tight focus:outline-none"
-            value={title}
-            placeholder={titlePlaceholder}
-            onChange={(e) => onTitleChange(e.target.value)}
+          <div className="py-4">
+            <input
+              className="text-foreground placeholder:text-muted-foreground/60 w-full bg-transparent text-3xl font-bold tracking-tight focus:outline-none"
+              value={title}
+              placeholder={titlePlaceholder}
+              onChange={(e) => onTitleChange(e.target.value)}
+              disabled={readOnly}
+              aria-label="笔记标题"
+            />
+          </div>
+        )}
+        {!showSkeleton && (
+          <TagInput
+            value={tags}
+            onChange={onTagsChange}
+            placeholder={tagPlaceholder}
+            className="border-border/60 bg-card/40 w-full rounded-xl border"
+            aria-label="标签输入"
             disabled={readOnly}
-            aria-label="笔记标题"
           />
         )}
-        {!showSkeleton &&
-          (readOnly ? (
-            <NoteTags tags={tags} />
-          ) : (
-            <TagInput
-              value={tags}
-              onChange={onTagsChange}
-              placeholder={tagPlaceholder}
-              className="border-border/60 bg-card/40 w-full rounded-xl border"
-              aria-label="标签输入"
-            />
-          ))}
       </div>
 
       {showSkeleton ? (
