@@ -1,9 +1,9 @@
-import { Plus } from "lucide-react";
+import { Folder, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui";
 import type { BnFolder } from "@/types";
 
-import FolderItem from "./FolderItem";
+import NavItem from "./NavItem";
 
 type SideFoldersProps = {
   folders: BnFolder[];
@@ -38,11 +38,14 @@ export default function SideFolders({
       </div>
       <div className="mt-1 space-y-1">
         {folders.map((folder) => (
-          <FolderItem
+          <NavItem
             key={folder.id}
-            folder={folder}
+            href="#"
+            label={folder.name}
+            icon={Folder}
             active={activeFolderId === folder.id}
             collapsed={collapsed}
+            className={collapsed ? "justify-center" : undefined}
             onClick={() => onSelectFolder(folder.id)}
           />
         ))}

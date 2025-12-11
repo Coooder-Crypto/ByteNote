@@ -72,8 +72,8 @@ export default function Sidebar() {
         <div
           className={cn(
             "border-border/60 bg-card/80 flex h-full flex-col overflow-hidden border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] transition-[width] duration-300 ease-in-out will-change-[width] md:h-svh",
-            collapsed ? "w-20" : "w-72",
-            mobileOpen ? "w-72" : "",
+            collapsed ? "w-20" : "w-60",
+            mobileOpen ? "w-60" : "",
           )}
         >
           <SideHeader

@@ -73,22 +73,30 @@ export default function SideHeader({
 }: SideHeaderProps) {
   return (
     <div className="flex h-16 items-center justify-between px-4">
-      <Link
-        href="/"
-        className="flex items-center gap-3 hover:opacity-90"
-        onClick={onCloseMobile}
+      <button
+        type="button"
+        onClick={() => {
+          onToggleCollapse();
+          onCloseMobile?.();
+        }}
+        className="flex items-center gap-3 rounded-lg px-2 py-1 hover:opacity-90 transition"
+        aria-label="切换侧栏"
       >
-        <ByteNoteLogo className="h-8 w-8" />
-        {!collapsed && <span className="text-lg font-bold">ByteNote</span>}
-      </Link>
+        <ByteNoteLogo className="h-8 w-8 shrink-0" />
+        <span
+          className={`text-lg font-bold whitespace-nowrap transition-[max-width,opacity] duration-200 ease-in-out ${collapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`}
+        >
+          ByteNote
+        </span>
+      </button>
       <div className="flex items-center gap-2">
         <Link href="/notes" title="进入笔记">
-          <Button variant="outline" size="icon-sm" className="md:hidden">
+          <Button variant="ghost" size="icon-sm" className="md:hidden">
             <LayoutDashboard className="size-4" />
           </Button>
         </Link>
         <Link href="/auth" title="GitHub 登录">
-          <Button variant="outline" size="icon-sm" className="md:hidden">
+          <Button variant="ghost" size="icon-sm" className="md:hidden">
             <Github className="size-4" />
           </Button>
         </Link>
@@ -99,15 +107,6 @@ export default function SideHeader({
           className="md:hidden"
         >
           <X className="size-5" />
-        </Button>
-        <Button
-          onClick={onToggleCollapse}
-          variant="outline"
-          size="icon-sm"
-          title={collapsed ? "展开" : "收起"}
-          className="hidden md:inline"
-        >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </Button>
       </div>
     </div>
