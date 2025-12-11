@@ -3,6 +3,7 @@
 import { LayoutDashboard, Star, Trash2, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Button } from "@/components/ui";
 import { useSidebar } from "@/hooks";
 import { cn } from "@/lib/utils";
 
@@ -43,13 +44,15 @@ export default function Sidebar() {
 
   return (
     <>
-      <button
-        className="bg-card fixed top-4 left-4 z-50 flex h-10 w-8 items-center justify-center rounded-full shadow-lg shadow-slate-900/5 md:hidden"
+      <Button
+        variant="outline"
+        size="icon"
+        className="bg-card fixed top-4 left-4 z-50 h-10 w-10 items-center justify-center rounded-full shadow-lg shadow-slate-900/5 md:hidden"
         onClick={() => setMobileOpen((prev) => !prev)}
         aria-label="Toggle sidebar"
       >
         <LayoutDashboard className="text-foreground size-5" />
-      </button>
+      </Button>
       <div
         className={cn(
           "fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity md:hidden",

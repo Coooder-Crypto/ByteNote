@@ -1,5 +1,6 @@
 import { Folder } from "lucide-react";
 
+import { Button } from "@/components/ui";
 import type { BnFolder } from "@/types";
 
 type FolderItemProps = {
@@ -16,11 +17,13 @@ export default function FolderItem({
   onClick,
 }: FolderItemProps) {
   return (
-    <button
+    <Button
       onClick={onClick}
-      className="group text-muted-foreground hover:bg-muted/60 hover:text-foreground flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition"
+      variant="ghost"
+      size="sm"
+      className="group w-full justify-between px-3 py-2 text-left text-sm"
       aria-pressed={active}
-      >
+    >
       <div className="flex items-center gap-3">
         <Folder
           size={16}
@@ -33,6 +36,6 @@ export default function FolderItem({
         )}
       </div>
       {!collapsed && <span className="text-[10px]">{folder.noteCount}</span>}
-    </button>
+    </Button>
   );
 }

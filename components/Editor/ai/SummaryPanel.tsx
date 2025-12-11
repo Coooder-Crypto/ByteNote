@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { Descendant } from "slate";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui";
 import { trpc } from "@/lib/trpc/client";
 import type { AiMeta } from "@/types/editor";
 
@@ -79,14 +80,16 @@ export default function AiSummaryPanel({
             <span className="text-primary text-[11px]">生成中...</span>
           )}
         </div>
-        <button
+        <Button
           type="button"
-          className="text-primary hover:text-primary/80 rounded-md px-2 py-1 text-xs font-medium transition disabled:opacity-50"
+          variant="ghost"
+          size="sm"
+          className="px-2 py-1 text-xs"
           onClick={handleClick}
           disabled={readOnly || disabled || aiSummarize.isPending}
         >
           {buttonText}
-        </button>
+        </Button>
       </div>
       <div className="text-muted-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
         {summary && summary.trim().length > 0 ? (

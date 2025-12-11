@@ -3,6 +3,7 @@
 import { type KeyboardEvent, useState } from "react";
 
 import {
+  Button,
   Select,
   SelectContent,
   SelectItem,
@@ -69,14 +70,16 @@ export default function TagInput({
             className="bg-muted/70 text-foreground/80 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm"
           >
             {getTagLabel(tag)}
-            <button
+            <Button
               type="button"
-              className="text-muted-foreground hover:text-foreground"
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground h-5 w-5 p-0"
               onClick={() => removeTag(tag)}
               aria-label={`移除 ${tag}`}
             >
               ×
-            </button>
+            </Button>
           </span>
         ))}
         <input

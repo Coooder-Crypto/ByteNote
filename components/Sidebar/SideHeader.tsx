@@ -1,5 +1,13 @@
-import { ChevronLeft, ChevronRight, Github, LayoutDashboard, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Github,
+  LayoutDashboard,
+  X,
+} from "lucide-react";
 import Link from "next/link";
+
+import { Button } from "@/components/ui";
 
 type SideHeaderProps = {
   collapsed: boolean;
@@ -27,8 +35,18 @@ function ByteNoteLogo({ className = "h-8 w-8" }: { className?: string }) {
         strokeWidth="2"
         strokeLinejoin="round"
       />
-      <circle cx="9.5" cy="13.5" r="1.5" className="fill-slate-800 dark:fill-slate-100" />
-      <circle cx="14.5" cy="13.5" r="1.5" className="fill-slate-800 dark:fill-slate-100" />
+      <circle
+        cx="9.5"
+        cy="13.5"
+        r="1.5"
+        className="fill-slate-800 dark:fill-slate-100"
+      />
+      <circle
+        cx="14.5"
+        cy="13.5"
+        r="1.5"
+        className="fill-slate-800 dark:fill-slate-100"
+      />
       <path
         d="M10.5 16.5C10.5 16.5 11.5 17.5 13.5 16.5"
         className="stroke-slate-800 dark:stroke-slate-100"
@@ -65,28 +83,32 @@ export default function SideHeader({
       </Link>
       <div className="flex items-center gap-2">
         <Link href="/notes" title="进入笔记">
-          <button className="rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:hidden">
+          <Button variant="outline" size="icon-sm" className="md:hidden">
             <LayoutDashboard className="size-4" />
-          </button>
+          </Button>
         </Link>
         <Link href="/auth" title="GitHub 登录">
-          <button className="rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:hidden">
+          <Button variant="outline" size="icon-sm" className="md:hidden">
             <Github className="size-4" />
-          </button>
+          </Button>
         </Link>
-        <button
+        <Button
           onClick={onCloseMobile}
-          className="rounded-lg p-1.5 text-slate-500 hover:bg-muted md:hidden"
+          variant="ghost"
+          size="icon-sm"
+          className="md:hidden"
         >
           <X className="size-5" />
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={onToggleCollapse}
-          className="hidden rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:inline"
+          variant="outline"
+          size="icon-sm"
           title={collapsed ? "展开" : "收起"}
+          className="hidden md:inline"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
+        </Button>
       </div>
     </div>
   );

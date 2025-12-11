@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 
+import { Button } from "@/components/ui";
 import { useAvatarUpload } from "@/hooks";
 import { cn } from "@/lib/utils";
 
@@ -50,11 +51,13 @@ export default function AvatarUploader({
         className="hidden"
         onChange={onFileChange}
       />
-      <button
+      <Button
         type="button"
         onClick={handleClick}
         disabled={isUploading}
-        className="border-border/60 bg-muted/50 relative h-28 w-28 overflow-hidden rounded-full border"
+        variant="outline"
+        size="icon-lg"
+        className="border-border/60 bg-muted/50 relative h-28 w-28 overflow-hidden rounded-full border p-0"
       >
         {preview ? (
           <Image
@@ -74,7 +77,7 @@ export default function AvatarUploader({
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs text-white opacity-0 transition-opacity hover:opacity-100">
           {isUploading ? "上传中..." : "点击更换"}
         </div>
-      </button>
+      </Button>
       <p className="text-muted-foreground text-xs">
         支持 JPG / PNG / WEBP，点击头像上传
       </p>

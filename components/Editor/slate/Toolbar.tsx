@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 
+import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type ToolbarButtonProps = {
@@ -27,21 +28,23 @@ function ToolbarButton({
   onClick,
 }: ToolbarButtonProps) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon-sm"
       onMouseDown={(e) => {
         e.preventDefault();
         onClick();
       }}
       className={cn(
-        "text-muted-foreground hover:bg-muted/70 flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-[11px] transition",
+        "text-muted-foreground hover:bg-muted/70 h-8 min-w-8 px-2 text-[11px]",
         active && "bg-primary/10 text-primary",
       )}
       title={label}
       aria-label={label}
     >
       <Icon className="size-3.5" />
-    </button>
+    </Button>
   );
 }
 

@@ -12,13 +12,6 @@ import type { Doc } from "yjs";
 
 import EditorHeader from "@/components/editor/EditorHeader";
 import { toPlainText } from "@/components/editor/slate/normalize";
-import {
-  useEditor,
-  useNetworkStatus,
-  useNoteActions,
-  useShortcuts,
-  useUserStore,
-} from "@/hooks";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,6 +21,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  useEditor,
+  useNetworkStatus,
+  useNoteActions,
+  useShortcuts,
+  useUserStore,
+} from "@/hooks";
 import {
   BLOCK_CONFIGS,
   DEFAULT_VALUE,
