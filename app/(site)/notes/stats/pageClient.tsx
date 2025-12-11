@@ -310,10 +310,11 @@ export default function StatsPageClient() {
             </div>
             <Button
               variant="outline"
-              size="sm"
+              size="icon-sm"
               onClick={() => overview.refetch()}
-            >
-              刷新
+              aria-label="刷新"
+              >
+              <RefreshCcw className="size-4" />
             </Button>
           </div>
 

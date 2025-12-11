@@ -7,6 +7,7 @@ import {
   FolderOpen,
   Menu,
   Plus,
+  RefreshCcw,
   Search,
   Star,
   Trash2,
@@ -124,11 +125,11 @@ export default function NotesHeader({
             <Button
               onClick={onRefresh}
               variant="outline"
-              size="sm"
+              size="icon-sm"
               title="刷新"
               aria-label="刷新列表"
             >
-              刷新
+              <RefreshCcw className="size-4" />
             </Button>
           )}
           {!createDisabled && (
