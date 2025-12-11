@@ -43,6 +43,7 @@ export default function SideLibrary({
             active={isActive(item.path)}
             collapsed={collapsed}
             className={collapsed ? "justify-center" : undefined}
+            onClick={onNavigate}
           />
         ))}
       </div>

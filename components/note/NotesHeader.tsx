@@ -97,22 +97,17 @@ export default function NotesHeader({
   return (
     <div className="flex flex-col gap-4">
       <div className="mb-2 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 overflow-hidden">
+        <div className="flex items-center gap-2 overflow-hidden">
           <Button
             onClick={onToggleMobileMenu}
             variant="ghost"
-            size="icon"
-            className={cn(
-              "-ml-2 lg:hidden",
-              onToggleMobileMenu
-                ? "opacity-100"
-                : "pointer-events-none opacity-0",
-            )}
+            size="icon-sm"
+            className="hidden"
             aria-label="打开/关闭侧边栏"
           >
             <Menu size={20} />
           </Button>
-          <div className="flex items-center gap-3 truncate">
+          <div className="flex items-center gap-2 truncate">
             <Icon className={cn("shrink-0", filterMeta.tone)} size={28} />
             <span className="text-foreground truncate text-2xl font-bold capitalize">
               {filterMeta.title}
@@ -148,8 +143,8 @@ export default function NotesHeader({
         </div>
       </div>
 
-      <div className="mb-2 flex flex-col gap-3 sm:flex-row">
-        <div className="group relative flex-1">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="group relative flex-1 min-w-[220px]">
           <Search
             className="group-focus-within:text-primary absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 transition-colors"
             size={20}
@@ -171,7 +166,7 @@ export default function NotesHeader({
             }}
             variant="outline"
             size="sm"
-            className="whitespace-nowrap"
+            className="h-[44px] whitespace-nowrap px-3"
           >
             <ArrowUpDown size={16} />
             <span className="hidden sm:inline">

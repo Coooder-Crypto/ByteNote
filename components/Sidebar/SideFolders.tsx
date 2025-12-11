@@ -46,7 +46,10 @@ export default function SideFolders({
             active={activeFolderId === folder.id}
             collapsed={collapsed}
             className={collapsed ? "justify-center" : undefined}
-            onClick={() => onSelectFolder(folder.id)}
+            onClick={() => {
+              onSelectFolder(folder.id);
+              onNavigate?.();
+            }}
           />
         ))}
       </div>

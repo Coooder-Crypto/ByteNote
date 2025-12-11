@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  MoreHorizontal,
   Save,
   Star,
   StretchHorizontal,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useState } from "react";
 
 import { Button } from "@/components/ui";
 
@@ -80,6 +82,7 @@ export default function EditorHeader({
 }: EditorHeaderProps) {
   const connected =
     collabStatus === "connected" || (collabEnabled && collabStatus === "idle");
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
   return (
     <div className="bg-card/80 flex w-full flex-col shadow-sm">
@@ -170,92 +173,196 @@ export default function EditorHeader({
               )}
             </div>
             <div className="flex items-center gap-2">
-              {canEdit && (
+              <div className="hidden sm:flex items-center gap-2">
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant={isFavorite ? "outline" : "ghost"}
+                    size="icon-sm"
+                    className={
+                      isFavorite
+                        ? "border-amber-200 bg-amber-50 text-amber-600"
+                        : "border-border/60"
+                    }
+                    onClick={onToggleFavorite}
+                    aria-pressed={isFavorite}
+                    title={isFavorite ? "取消收藏" : "收藏"}
+                    aria-label={isFavorite ? "取消收藏" : "收藏"}
+                  >
+                    <Star
+                      className={`size-4 ${isFavorite ? "fill-amber-400" : ""}`}
+                    />
+                  </Button>
+                )}
+
+                {onTogglePreview && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-border/60"
+                    onClick={onTogglePreview}
+                    aria-pressed={previewMode}
+                    title={previewMode ? "退出预览" : "预览"}
+                    aria-label={previewMode ? "退出预览" : "预览"}
+                  >
+                    {previewMode ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </Button>
+                )}
+
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-border/60"
+                    onClick={onSave}
+                    disabled={isTrashed || saving}
+                    title="保存"
+                    aria-label="保存"
+                  >
+                    {saving ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Save className="size-4" />
+                    )}
+                  </Button>
+                )}
+
+                {onToggleWidth && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-border/60"
+                    onClick={onToggleWidth}
+                    aria-label="切换编辑区域宽度"
+                    title="切换宽度"
+                  >
+                    <StretchHorizontal className="size-4" />
+                  </Button>
+                )}
+
+                {onRequestDelete && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon-sm"
+                    onClick={onRequestDelete}
+                    disabled={deleting}
+                    title="删除"
+                    aria-label="删除"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+              </div>
+
+              <div className="relative sm:hidden">
                 <Button
                   type="button"
-                  variant={isFavorite ? "outline" : "ghost"}
+                  variant="outline"
                   size="icon-sm"
-                  className={
-                    isFavorite
-                      ? "border-amber-200 bg-amber-50 text-amber-600"
-                      : "border-border/60"
+                  className="border-border/60"
+                  onClick={() =>
+                    setMobileActionsOpen((prev) => !prev)
                   }
-                  onClick={onToggleFavorite}
-                  aria-pressed={isFavorite}
-                  title={isFavorite ? "取消收藏" : "收藏"}
-                  aria-label={isFavorite ? "取消收藏" : "收藏"}
+                  aria-expanded={mobileActionsOpen}
+                  aria-label="更多操作"
                 >
-                  <Star
-                    className={`size-4 ${isFavorite ? "fill-amber-400" : ""}`}
-                  />
+                  <MoreHorizontal className="size-4" />
                 </Button>
-              )}
 
-              {onTogglePreview && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  className="border-border/60"
-                  onClick={onTogglePreview}
-                  aria-pressed={previewMode}
-                  title={previewMode ? "退出预览" : "预览"}
-                  aria-label={previewMode ? "退出预览" : "预览"}
-                >
-                  {previewMode ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
-                </Button>
-              )}
+                {mobileActionsOpen && (
+                  <div className="bg-card border-border/60 absolute right-0 z-30 mt-2 w-40 space-y-1 rounded-xl border p-2 shadow-xl">
+                    {canEdit && onToggleFavorite && (
+                      <Button
+                        type="button"
+                        variant={isFavorite ? "secondary" : "ghost"}
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          onToggleFavorite();
+                          setMobileActionsOpen(false);
+                        }}
+                        aria-pressed={isFavorite}
+                      >
+                        <Star
+                          className={`size-4 ${isFavorite ? "fill-amber-400" : ""}`}
+                        />
+                        <span className="ml-2">
+                          {isFavorite ? "取消收藏" : "收藏"}
+                        </span>
+                      </Button>
+                    )}
 
-              {canEdit && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  className="border-border/60"
-                  onClick={onSave}
-                  disabled={isTrashed || saving}
-                  title="保存"
-                  aria-label="保存"
-                >
-                  {saving ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Save className="size-4" />
-                  )}
-                </Button>
-              )}
+                    {onTogglePreview && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          onTogglePreview();
+                          setMobileActionsOpen(false);
+                        }}
+                        aria-pressed={previewMode}
+                      >
+                        {previewMode ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                        <span className="ml-2">
+                          {previewMode ? "退出预览" : "预览"}
+                        </span>
+                      </Button>
+                    )}
 
-              {onToggleWidth && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  className="border-border/60"
-                  onClick={onToggleWidth}
-                  aria-label="切换编辑区域宽度"
-                  title="切换宽度"
-                >
-                  <StretchHorizontal className="size-4" />
-                </Button>
-              )}
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          onSave();
+                          setMobileActionsOpen(false);
+                        }}
+                        disabled={isTrashed || saving}
+                      >
+                        {saving ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Save className="size-4" />
+                        )}
+                        <span className="ml-2">保存</span>
+                      </Button>
+                    )}
 
-              {onRequestDelete && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon-sm"
-                  onClick={onRequestDelete}
-                  disabled={deleting}
-                  title="删除"
-                  aria-label="删除"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              )}
+                    {onRequestDelete && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          onRequestDelete();
+                          setMobileActionsOpen(false);
+                        }}
+                        disabled={deleting}
+                      >
+                        <Trash2 className="size-4" />
+                        <span className="ml-2">删除</span>
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

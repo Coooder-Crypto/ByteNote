@@ -70,14 +70,14 @@ export function SlateToolbar({ visible, actions, disabled }: ToolbarProps) {
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-1",
+        "grid grid-cols-5 gap-1 sm:flex sm:flex-wrap sm:items-center",
         disabled && "pointer-events-none opacity-60",
       )}
       aria-disabled={disabled}
     >
       <ToolbarButton icon={Heading1} label="Heading 1" {...actions.h1} />
       <ToolbarButton icon={Heading2} label="Heading 2" {...actions.h2} />
-      <div className="bg-border/70 mx-1 h-4 w-px" />
+      <div className="bg-border/70 mx-1 hidden h-4 w-px sm:block" />
       <ToolbarButton icon={Bold} label="Bold" {...actions.bold} />
       <ToolbarButton icon={Italic} label="Italic" {...actions.italic} />
       <ToolbarButton
@@ -86,7 +86,7 @@ export function SlateToolbar({ visible, actions, disabled }: ToolbarProps) {
         {...actions.underline}
       />
       <ToolbarButton icon={Braces} label="Code" {...actions.code} />
-      <div className="bg-border/70 mx-1 h-4 w-px" />
+      <div className="bg-border/70 mx-1 hidden h-4 w-px sm:block" />
       <ToolbarButton icon={List} label="Bulleted list" {...actions.bullet} />
       <ToolbarButton
         icon={ListOrdered}
