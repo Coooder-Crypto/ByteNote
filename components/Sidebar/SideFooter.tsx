@@ -38,6 +38,8 @@ export default function SideFooter({
         alt="avatar"
         width={40}
         height={40}
+        //TODO: nextjs/image --- IGNORE ---
+        unoptimized
         className="h-full w-full object-cover"
       />
     ) : (

@@ -65,6 +65,8 @@ export default function AvatarUploader({
             alt="avatar"
             fill
             sizes="112px"
+            //TODO: nextjs/image --- IGNORE ---
+            unoptimized
             className="object-cover"
           />
         ) : (
