@@ -164,6 +164,7 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
               size="sm"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
+              aria-label="上一页"
             >
               上一页
             </Button>
@@ -173,6 +174,7 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
               size="sm"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
+              aria-label="下一页"
             >
               下一页
             </Button>

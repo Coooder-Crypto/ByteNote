@@ -131,6 +131,7 @@ export default function SlateEditor({
             placeholder={titlePlaceholder}
             onChange={(e) => onTitleChange(e.target.value)}
             disabled={readOnly}
+            aria-label="笔记标题"
           />
         )}
         {!showSkeleton &&
@@ -142,6 +143,7 @@ export default function SlateEditor({
               onChange={onTagsChange}
               placeholder={tagPlaceholder}
               className="border-border/60 bg-card/40 w-full rounded-xl border"
+              aria-label="标签输入"
             />
           ))}
       </div>

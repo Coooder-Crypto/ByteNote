@@ -106,6 +106,7 @@ export default function CollaboratorDialog({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="输入协作者邮箱或姓名"
+                  aria-label="协作者邮箱或姓名"
                 />
                 <Button
                   onClick={handleSearch}
@@ -155,12 +156,13 @@ export default function CollaboratorDialog({
                   关闭后恢复为个人笔记，协作连接会被断开。
                 </p>
               </div>
-              <input
-                type="checkbox"
-                className="accent-primary h-5 w-9 cursor-pointer"
-                checked={isCollaborative}
-                onChange={(e) => onToggleCollaborative?.(e.target.checked)}
-              />
+             <input
+               type="checkbox"
+               className="accent-primary h-5 w-9 cursor-pointer"
+               checked={isCollaborative}
+               onChange={(e) => onToggleCollaborative?.(e.target.checked)}
+               aria-label="开启协作模式"
+             />
             </div>
 
             {isCollaborative && (
@@ -177,6 +179,7 @@ export default function CollaboratorDialog({
                       onChange={(e) => setWsInput(e.target.value)}
                       placeholder="例如 ws://localhost:1234"
                       disabled={wsUpdating}
+                      aria-label="协作服务地址"
                     />
                     <Button
                       variant="outline"

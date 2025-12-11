@@ -88,6 +88,7 @@ export default function EditorHeader({
                 size="icon-sm"
                 className="text-muted-foreground"
                 title="Back to List"
+                aria-label="返回列表"
               >
                 <ArrowLeft size={16} />
               </Button>
@@ -105,6 +106,7 @@ export default function EditorHeader({
                 variant="ghost"
                 size="sm"
                 className={`px-2 py-1 text-[11px] ${connected ? "text-emerald-600" : "text-rose-500"}`}
+                aria-label={connected ? "协作已连接" : "协作未连接"}
               >
                 {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
                 {connected ? "Connected" : "Offline"}
@@ -172,6 +174,7 @@ export default function EditorHeader({
                   onClick={onTogglePreview}
                   aria-pressed={previewMode}
                   title={previewMode ? "退出预览" : "预览"}
+                  aria-label={previewMode ? "退出预览" : "预览"}
                 >
                   {previewMode ? (
                     <EyeOff className="size-4" />
@@ -190,6 +193,7 @@ export default function EditorHeader({
                   onClick={onSave}
                   disabled={isTrashed || saving}
                   title="保存"
+                  aria-label="保存"
                 >
                   {saving ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -207,6 +211,7 @@ export default function EditorHeader({
                   onClick={onRequestDelete}
                   disabled={deleting}
                   title="删除"
+                  aria-label="删除"
                 >
                   <Trash2 className="size-4" />
                 </Button>

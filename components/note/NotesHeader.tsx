@@ -107,7 +107,7 @@ export default function NotesHeader({
                 ? "opacity-100"
                 : "pointer-events-none opacity-0",
             )}
-            aria-label="Toggle sidebar"
+            aria-label="打开/关闭侧边栏"
           >
             <Menu size={20} />
           </Button>
@@ -125,7 +125,8 @@ export default function NotesHeader({
               onClick={onRefresh}
               variant="outline"
               size="sm"
-              title="Refresh"
+              title="刷新"
+              aria-label="刷新列表"
             >
               刷新
             </Button>
@@ -136,7 +137,8 @@ export default function NotesHeader({
               variant="outline"
               size="sm"
               className="shrink-0"
-              title="New Note"
+              title="新建笔记"
+              aria-label="新建笔记"
             >
               <Plus size={16} />
               <span className="hidden sm:inline">Create</span>
@@ -156,6 +158,7 @@ export default function NotesHeader({
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search titles and content..."
             className="bg-muted/70 focus:ring-primary text-foreground placeholder:text-muted-foreground h-[44px] w-full rounded-xl border-none py-2.5 pr-4 pl-10 text-base shadow-inner transition-all focus:ring-2 focus:outline-none"
+            aria-label="搜索笔记"
           />
         </div>
 

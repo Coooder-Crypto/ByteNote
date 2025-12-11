@@ -89,6 +89,7 @@ export default function TagInput({
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           placeholder={value.length === 0 ? placeholder : undefined}
+          aria-label={placeholder ?? "添加标签"}
         />
       </div>
 
