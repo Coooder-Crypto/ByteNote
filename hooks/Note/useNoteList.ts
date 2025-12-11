@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { parseStoredTags } from "@/lib/constants/tags";
 import { localManager } from "@/lib/manager/LocalManager";
@@ -51,21 +51,45 @@ export default function useNoteList({
     },
   );
   const [localNotes, setLocalNotes] = useState<LocalNoteRecord[]>([]);
+  const [localRefreshing, setLocalRefreshing] = useState(false);
+  const [localLoadedOnce, setLocalLoadedOnce] = useState(false);
+
+  const refreshLocal = useCallback(async () => {
+    if (localRefreshing) return;
+    setLocalRefreshing(true);
+    try {
+      const cached = await localManager.listAll();
+      setLocalNotes(cached);
+    } finally {
+      setLocalRefreshing(false);
+    }
+  }, [localRefreshing]);
 
   useEffect(() => {
     let cancelled = false;
-    const loadLocal = async () => {
-      const cached = await localManager.listAll();
+
+    if (!cancelled && !localLoadedOnce) {
+      void (async () => {
+        await refreshLocal();
+        setLocalLoadedOnce(true);
+      })();
+    }
+
+    const load = () => {
       if (cancelled) return;
-      setLocalNotes(cached);
+      void refreshLocal();
     };
-    void loadLocal();
-    const tick = window.setInterval(() => void loadLocal(), 5000);
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      (
+        window as typeof window & { requestIdleCallback?: IdleRequestCallback }
+      ).requestIdleCallback?.(() => load());
+    } else {
+      setTimeout(load, 0);
+    }
     return () => {
       cancelled = true;
-      window.clearInterval(tick);
     };
-  }, []);
+  }, [localLoadedOnce, refreshLocal]);
 
   const notes: BnNote[] = useMemo(() => {
     const extractText = (contentJson: any): string => {

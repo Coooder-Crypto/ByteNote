@@ -99,13 +99,15 @@ export default function SideFooter({
                 onUpdated={onProfileUpdated}
                 onLogout={onLogout}
                 trigger={
-                  <button
+                  <Button
                     type="button"
-                    className="border-border/60 focus-visible:ring-ring flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 shrink-0 overflow-hidden rounded-full"
                     aria-label="打开设置"
                   >
                     {avatar}
-                  </button>
+                  </Button>
                 }
               />
             </div>
