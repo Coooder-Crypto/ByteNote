@@ -47,6 +47,7 @@ function ToolbarButton({
 
 type ToolbarProps = {
   visible: boolean;
+  disabled?: boolean;
   actions: {
     bold: { active: boolean; onClick: () => void };
     italic: { active: boolean; onClick: () => void };
@@ -61,10 +62,16 @@ type ToolbarProps = {
   };
 };
 
-export function SlateToolbar({ visible, actions }: ToolbarProps) {
+export function SlateToolbar({ visible, actions, disabled }: ToolbarProps) {
   if (!visible) return null;
   return (
-    <div className="border-border/70 bg-muted/40 flex flex-wrap items-center gap-1 rounded-lg border px-2 py-1.5">
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-1",
+        disabled && "pointer-events-none opacity-60",
+      )}
+      aria-disabled={disabled}
+    >
       <ToolbarButton icon={Heading1} label="Heading 1" {...actions.h1} />
       <ToolbarButton icon={Heading2} label="Heading 2" {...actions.h2} />
       <div className="bg-border/70 mx-1 h-4 w-px" />
