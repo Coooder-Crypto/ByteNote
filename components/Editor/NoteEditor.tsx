@@ -55,7 +55,13 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const searchParams = useSearchParams();
   const { user } = useUserStore();
   const { online } = useNetworkStatus();
-  const { setWsUrl, setWsPending, deleteNote, deletePending } = useNoteActions({
+  const {
+    setWsUrl,
+    setWsPending,
+    deleteNote,
+    deletePending,
+    toggleFavorite: toggleFavoriteMutation,
+  } = useNoteActions({
     noteId,
   });
   const {
@@ -238,6 +244,11 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   );
 
   const togglePreview = () => setPreviewMode((prev) => !prev);
+  const toggleFavorite = () => {
+    const next = !note.isFavorite;
+    applyServerUpdate({ isFavorite: next });
+    toggleFavoriteMutation(next);
+  };
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const handleConfirmDelete = () => {
@@ -253,6 +264,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     canEdit,
     charCount,
     saving,
+    isFavorite: note.isFavorite,
     folderLabel: "Notes",
     currentUser: {
       name: user?.name ?? user?.email ?? "我",
@@ -279,6 +291,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     },
     toolbarActions,
     wide,
+    onToggleFavorite: canEdit && !isTrashed ? toggleFavorite : undefined,
     onToggleWidth: toggleWidth,
     previewMode,
     onTogglePreview: canEdit && !isTrashed ? togglePreview : undefined,

@@ -6,6 +6,7 @@ import {
   EyeOff,
   Loader2,
   Save,
+  Star,
   StretchHorizontal,
   Trash2,
   Wifi,
@@ -44,6 +45,8 @@ type EditorHeaderProps = {
   toolbarActions?: ToolbarActions;
   wide?: boolean;
   onToggleWidth?: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
   previewMode?: boolean;
   onTogglePreview?: () => void;
   onRequestDelete?: () => void;
@@ -68,6 +71,8 @@ export default function EditorHeader({
   toolbarActions,
   wide = false,
   onToggleWidth,
+  isFavorite = false,
+  onToggleFavorite,
   previewMode = false,
   onTogglePreview,
   onRequestDelete,
@@ -164,7 +169,28 @@ export default function EditorHeader({
                 />
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              {canEdit && (
+                <Button
+                  type="button"
+                  variant={isFavorite ? "outline" : "ghost"}
+                  size="icon-sm"
+                  className={
+                    isFavorite
+                      ? "border-amber-200 bg-amber-50 text-amber-600"
+                      : "border-border/60"
+                  }
+                  onClick={onToggleFavorite}
+                  aria-pressed={isFavorite}
+                  title={isFavorite ? "取消收藏" : "收藏"}
+                  aria-label={isFavorite ? "取消收藏" : "收藏"}
+                >
+                  <Star
+                    className={`size-4 ${isFavorite ? "fill-amber-400" : ""}`}
+                  />
+                </Button>
+              )}
+
               {onTogglePreview && (
                 <Button
                   type="button"
@@ -203,20 +229,6 @@ export default function EditorHeader({
                 </Button>
               )}
 
-              {onRequestDelete && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon-sm"
-                  onClick={onRequestDelete}
-                  disabled={deleting}
-                  title="删除"
-                  aria-label="删除"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              )}
-
               {onToggleWidth && (
                 <Button
                   type="button"
@@ -228,6 +240,20 @@ export default function EditorHeader({
                   title="切换宽度"
                 >
                   <StretchHorizontal className="size-4" />
+                </Button>
+              )}
+
+              {onRequestDelete && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon-sm"
+                  onClick={onRequestDelete}
+                  disabled={deleting}
+                  title="删除"
+                  aria-label="删除"
+                >
+                  <Trash2 className="size-4" />
                 </Button>
               )}
             </div>
