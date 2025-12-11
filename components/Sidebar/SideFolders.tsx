@@ -12,6 +12,7 @@ type SideFoldersProps = {
   onSelectFolder: (id: string | null) => void;
   onCreateFolder?: () => void;
   collapsed?: boolean;
+  onNavigate?: () => void;
 };
 
 export default function SideFolders({
@@ -21,6 +22,7 @@ export default function SideFolders({
   onSelectFolder,
   onCreateFolder,
   collapsed = false,
+  onNavigate,
 }: SideFoldersProps) {
   return (
     <div>

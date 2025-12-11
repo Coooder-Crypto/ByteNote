@@ -160,13 +160,9 @@ export default function useNoteActions<
   ) => trpc.note.list.useQuery(input, options);
 
   const useNoteListInfinite = (
-    input: NoteListInput,
+    input: NoteListInput | undefined,
     options?: Parameters<(typeof trpc.note.list)["useInfiniteQuery"]>[1],
-  ) =>
-    trpc.note.list.useInfiniteQuery(input, {
-      getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
-      ...options,
-    });
+  ) => trpc.note.list.useInfiniteQuery(input ?? {}, options);
 
   const setWsUrl = (payload: { noteId: string; collabWsUrl: string }) =>
     setWsMutation.mutate(payload);

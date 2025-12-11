@@ -45,6 +45,7 @@ export default function useNoteList({
       limit: 20,
     },
     {
+      getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
       enabled: queryEnabled,
       staleTime: 60000,
       refetchOnWindowFocus: false,
@@ -130,8 +131,9 @@ export default function useNoteList({
       };
     };
 
-    if (queryEnabled && Array.isArray(query.data?.pages)) {
-      const remoteNotes = query.data.pages.flatMap((page) => page.items ?? []);
+    const pages = (query.data as any)?.pages;
+    if (queryEnabled && Array.isArray(pages)) {
+      const remoteNotes = pages.flatMap((page: any) => page?.items ?? []);
       return remoteNotes.map((note) => {
         const contentJson = (note as any).contentJson as any;
         const text = extractText(contentJson);
@@ -189,7 +191,11 @@ export default function useNoteList({
     filteredNotes,
     availableTags,
     hasMore: queryEnabled
-      ? Boolean(query.data?.pages?.[query.data.pages.length - 1]?.nextCursor)
+      ? Boolean(
+          (query.data as any)?.pages?.[
+            ((query.data as any)?.pages?.length ?? 0) - 1
+          ]?.nextCursor,
+        )
       : false,
     loadMore: queryEnabled ? () => query.fetchNextPage?.() : undefined,
     loadingMore: queryEnabled ? query.isFetchingNextPage : false,
