@@ -30,7 +30,7 @@ export default function NotesPage() {
     <section
       className={
         isEditor
-          ? "flex min-h-0 w-full flex-1 flex-col px-4 pb-12 md:px-6"
+          ? "flex min-h-0 w-full flex-1 flex-col pb-12"
           : "mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-12"
       }
     >
