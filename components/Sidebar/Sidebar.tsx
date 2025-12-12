@@ -3,6 +3,7 @@
 import { LayoutDashboard, Star, Trash2, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Button } from "@/components/ui";
 import { useSidebar } from "@/hooks";
 import { cn } from "@/lib/utils";
 
@@ -43,13 +44,15 @@ export default function Sidebar() {
 
   return (
     <>
-      <button
-        className="bg-card fixed top-4 left-4 z-50 flex h-10 w-8 items-center justify-center rounded-full shadow-lg shadow-slate-900/5 md:hidden"
+      <Button
+        variant="outline"
+        size="icon"
+        className="bg-card fixed bottom-4 right-4 z-50 h-12 w-12 items-center justify-center rounded-full shadow-lg shadow-slate-900/5 md:hidden"
         onClick={() => setMobileOpen((prev) => !prev)}
         aria-label="Toggle sidebar"
       >
-        <LayoutDashboard className="text-foreground size-5" />
-      </button>
+        <LayoutDashboard className="text-foreground size-6" />
+      </Button>
       <div
         className={cn(
           "fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity md:hidden",
@@ -62,15 +65,15 @@ export default function Sidebar() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 md:static md:min-h-svh md:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          "fixed inset-y-0 right-0 left-auto z-50 md:static md:left-0 md:right-auto md:min-h-svh md:translate-x-0",
+          mobileOpen ? "translate-x-0" : "translate-x-full md:translate-x-0",
         )}
       >
         <div
           className={cn(
-            "border-border/60 bg-card/80 flex h-full flex-col overflow-hidden border-r shadow-[8px_0_24px_rgba(15,23,42,0.04)] transition-[width] duration-300 ease-in-out will-change-[width] md:h-svh",
-            collapsed ? "w-20" : "w-72",
-            mobileOpen ? "w-72" : "",
+            "border-border/60 bg-card/80 flex h-full flex-col overflow-hidden border-l md:border-r shadow-[-8px_0_24px_rgba(15,23,42,0.04)] md:shadow-[8px_0_24px_rgba(15,23,42,0.04)] transition-[width] duration-300 ease-in-out will-change-[width] md:h-svh",
+            collapsed ? "w-20" : "w-60",
+            mobileOpen ? "w-60" : "",
           )}
         >
           <SideHeader
@@ -106,6 +109,7 @@ export default function Sidebar() {
                 onCreateFolder={() => setFolderDialogOpen(true)}
                 loading={foldersQuery.isLoading || createFolderPending}
                 collapsed={collapsed}
+                onNavigate={() => setMobileOpen(false)}
               />
             </div>
           </div>

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 
+import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type ToolbarButtonProps = {
@@ -27,26 +28,29 @@ function ToolbarButton({
   onClick,
 }: ToolbarButtonProps) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon-sm"
       onMouseDown={(e) => {
         e.preventDefault();
         onClick();
       }}
       className={cn(
-        "text-muted-foreground hover:bg-muted/70 flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-[11px] transition",
+        "text-muted-foreground hover:bg-muted/70 h-8 min-w-8 px-2 text-[11px]",
         active && "bg-primary/10 text-primary",
       )}
       title={label}
       aria-label={label}
     >
       <Icon className="size-3.5" />
-    </button>
+    </Button>
   );
 }
 
 type ToolbarProps = {
   visible: boolean;
+  disabled?: boolean;
   actions: {
     bold: { active: boolean; onClick: () => void };
     italic: { active: boolean; onClick: () => void };
@@ -61,13 +65,19 @@ type ToolbarProps = {
   };
 };
 
-export function SlateToolbar({ visible, actions }: ToolbarProps) {
+export function SlateToolbar({ visible, actions, disabled }: ToolbarProps) {
   if (!visible) return null;
   return (
-    <div className="border-border/70 bg-muted/40 flex flex-wrap items-center gap-1 rounded-lg border px-2 py-1.5">
+    <div
+      className={cn(
+        "grid grid-cols-5 gap-1 sm:flex sm:flex-wrap sm:items-center",
+        disabled && "pointer-events-none opacity-60",
+      )}
+      aria-disabled={disabled}
+    >
       <ToolbarButton icon={Heading1} label="Heading 1" {...actions.h1} />
       <ToolbarButton icon={Heading2} label="Heading 2" {...actions.h2} />
-      <div className="bg-border/70 mx-1 h-4 w-px" />
+      <div className="bg-border/70 mx-1 hidden h-4 w-px sm:block" />
       <ToolbarButton icon={Bold} label="Bold" {...actions.bold} />
       <ToolbarButton icon={Italic} label="Italic" {...actions.italic} />
       <ToolbarButton
@@ -76,7 +86,7 @@ export function SlateToolbar({ visible, actions }: ToolbarProps) {
         {...actions.underline}
       />
       <ToolbarButton icon={Braces} label="Code" {...actions.code} />
-      <div className="bg-border/70 mx-1 h-4 w-px" />
+      <div className="bg-border/70 mx-1 hidden h-4 w-px sm:block" />
       <ToolbarButton icon={List} label="Bulleted list" {...actions.bullet} />
       <ToolbarButton
         icon={ListOrdered}

@@ -23,7 +23,7 @@ import { NOTE_TAGS } from "@/lib/constants/tags";
 import { localManager } from "@/lib/manager/LocalManager";
 import { ContentJson } from "@/types";
 
-import { TagInput } from "../Common";
+import { TagInput } from "../common";
 
 type CreateNoteDialogProps = {
   open: boolean;
@@ -138,6 +138,7 @@ export default function CreateNoteDialog({
               onChange={(event) => setTitle(event.target.value)}
               placeholder="输入标题"
               autoFocus
+              aria-label="笔记标题"
             />
           </div>
           <div className="space-y-2">
@@ -147,6 +148,7 @@ export default function CreateNoteDialog({
               onChange={setTags}
               suggestions={suggestedTags}
               placeholder="输入或选择标签"
+              aria-label="笔记标签"
             />
           </div>
           <div className="space-y-2">
@@ -157,6 +159,7 @@ export default function CreateNoteDialog({
                 setFolderId(value === "none" ? null : value)
               }
               disabled={foldersLoading}
+              aria-label="选择分组"
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="选择分组" />
@@ -177,6 +180,7 @@ export default function CreateNoteDialog({
               type="checkbox"
               checked={isCollaborative}
               onChange={(e) => setIsCollaborative(e.target.checked)}
+              aria-label="创建为协作笔记"
             />
             <label
               htmlFor="create-collab"

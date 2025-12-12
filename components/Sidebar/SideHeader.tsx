@@ -1,6 +1,3 @@
-import { ChevronLeft, ChevronRight, Github, LayoutDashboard, X } from "lucide-react";
-import Link from "next/link";
-
 type SideHeaderProps = {
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -27,8 +24,18 @@ function ByteNoteLogo({ className = "h-8 w-8" }: { className?: string }) {
         strokeWidth="2"
         strokeLinejoin="round"
       />
-      <circle cx="9.5" cy="13.5" r="1.5" className="fill-slate-800 dark:fill-slate-100" />
-      <circle cx="14.5" cy="13.5" r="1.5" className="fill-slate-800 dark:fill-slate-100" />
+      <circle
+        cx="9.5"
+        cy="13.5"
+        r="1.5"
+        className="fill-slate-800 dark:fill-slate-100"
+      />
+      <circle
+        cx="14.5"
+        cy="13.5"
+        r="1.5"
+        className="fill-slate-800 dark:fill-slate-100"
+      />
       <path
         d="M10.5 16.5C10.5 16.5 11.5 17.5 13.5 16.5"
         className="stroke-slate-800 dark:stroke-slate-100"
@@ -53,41 +60,30 @@ export default function SideHeader({
   onToggleCollapse,
   onCloseMobile,
 }: SideHeaderProps) {
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      return;
+    }
+    onToggleCollapse();
+    onCloseMobile?.();
+  };
+
   return (
     <div className="flex h-16 items-center justify-between px-4">
-      <Link
-        href="/"
-        className="flex items-center gap-3 hover:opacity-90"
-        onClick={onCloseMobile}
+      <button
+        type="button"
+        onClick={handleClick}
+        className="flex items-center gap-3 rounded-lg px-2 py-1 transition hover:opacity-90 pointer-events-none md:pointer-events-auto"
+        aria-label="切换侧栏"
+        aria-disabled
       >
-        <ByteNoteLogo className="h-8 w-8" />
-        {!collapsed && <span className="text-lg font-bold">ByteNote</span>}
-      </Link>
-      <div className="flex items-center gap-2">
-        <Link href="/notes" title="进入笔记">
-          <button className="rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:hidden">
-            <LayoutDashboard className="size-4" />
-          </button>
-        </Link>
-        <Link href="/auth" title="GitHub 登录">
-          <button className="rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:hidden">
-            <Github className="size-4" />
-          </button>
-        </Link>
-        <button
-          onClick={onCloseMobile}
-          className="rounded-lg p-1.5 text-slate-500 hover:bg-muted md:hidden"
+        <ByteNoteLogo className="h-8 w-8 shrink-0" />
+        <span
+          className={`text-lg font-bold whitespace-nowrap transition-[max-width,opacity] duration-200 ease-in-out ${collapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`}
         >
-          <X className="size-5" />
-        </button>
-        <button
-          onClick={onToggleCollapse}
-          className="hidden rounded-full border border-border/60 bg-card/60 p-1.5 text-muted-foreground transition hover:text-primary md:inline"
-          title={collapsed ? "展开" : "收起"}
-        >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
-      </div>
+          ByteNote
+        </span>
+      </button>
     </div>
   );
 }

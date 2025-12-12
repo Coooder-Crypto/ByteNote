@@ -157,6 +157,17 @@ export default function useShortcuts(editor: Editor) {
       if (handleMarkdownShortcut(editor, event)) return;
 
       if (event.key === "Enter" && !event.shiftKey) {
+        const codeEntry = Editor.above(editor, {
+          match: (n) =>
+            SlateElement.isElement(n) &&
+            (n as CustomElement).type === "code-block",
+        });
+        if (codeEntry) {
+          event.preventDefault();
+          Transforms.insertText(editor, "\n");
+          return;
+        }
+
         const headingEntry = Editor.above(editor, {
           match: (n) =>
             SlateElement.isElement(n) &&
@@ -186,6 +197,65 @@ export default function useShortcuts(editor: Editor) {
       if (event.key === "Backspace") {
         const { selection } = editor;
         if (selection && Range.isCollapsed(selection)) {
+          const convertToParagraph = (path: Path) => {
+            Transforms.setNodes(
+              editor,
+              { type: "paragraph" } as Partial<CustomElement>,
+              { at: path },
+            );
+            Transforms.unwrapNodes(editor, {
+              at: path,
+              match: (n) =>
+                SlateElement.isElement(n) &&
+                (["block-quote"] as string[]).includes(
+                  (n as CustomElement).type as string,
+                ),
+              split: true,
+            });
+            try {
+              Transforms.select(editor, Editor.start(editor, path));
+            } catch {
+              /* ignore */
+            }
+          };
+          const convertCodeToParagraph = (path: Path) => {
+            try {
+              const paragraph: CustomElement = {
+                type: "paragraph",
+                children: [{ text: "" }],
+              };
+              Transforms.removeNodes(editor, { at: path });
+              Transforms.insertNodes(editor, paragraph, { at: path });
+              Transforms.select(editor, Editor.start(editor, path));
+            } catch {
+              /* ignore */
+            }
+          };
+
+          const convertSingleCodeToParagraphInline = (path: Path) => {
+            try {
+              Transforms.setNodes(
+                editor,
+                { type: "paragraph" } as Partial<CustomElement>,
+                { at: path },
+              );
+              const node = Editor.node(editor, path)[0] as CustomElement;
+              if (
+                SlateElement.isElement(node) &&
+                (!Array.isArray(node.children) || node.children.length === 0)
+              ) {
+                Transforms.insertNodes(
+                  editor,
+                  { text: "" },
+                  { at: path.concat(0) },
+                );
+              }
+              Transforms.select(editor, Editor.start(editor, path));
+            } catch {
+              /* ignore */
+            }
+          };
+
           const listItemEntry = Editor.above(editor, {
             match: (n) =>
               SlateElement.isElement(n) &&
@@ -208,41 +278,24 @@ export default function useShortcuts(editor: Editor) {
 
             if (text.length === 0) {
               event.preventDefault();
-              const listHasMultiple =
-                listParentEntry &&
-                Array.isArray((listParentEntry[0] as CustomElement).children) &&
-                (listParentEntry[0] as CustomElement).children.length > 1;
-
-              if (listHasMultiple) {
-                let targetPath: Path | null = null;
-                try {
-                  targetPath = Path.previous(itemPath);
-                } catch {
-                  targetPath = null;
-                }
-                Transforms.removeNodes(editor, { at: itemPath });
-                const fallbackPath = targetPath ?? itemPath;
-                try {
-                  Transforms.select(editor, Editor.end(editor, fallbackPath));
-                } catch {
-                  /* ignore */
-                }
-              } else {
-                Transforms.setNodes(
-                  editor,
-                  { type: "paragraph" } as Partial<CustomElement>,
-                  {
-                    at: itemPath,
-                  },
-                );
-                Transforms.unwrapNodes(editor, {
+              Transforms.setNodes(
+                editor,
+                { type: "paragraph" } as Partial<CustomElement>,
+                {
                   at: itemPath,
-                  match: (n) =>
-                    SlateElement.isElement(n) &&
-                    LIST_TYPES.includes((n as CustomElement).type as string),
-                  split: true,
-                });
-                moveCursorToBlockStart(editor);
+                },
+              );
+              Transforms.unwrapNodes(editor, {
+                at: itemPath,
+                match: (n) =>
+                  SlateElement.isElement(n) &&
+                  LIST_TYPES.includes((n as CustomElement).type as string),
+                split: true,
+              });
+              try {
+                Transforms.select(editor, Editor.start(editor, itemPath));
+              } catch {
+                /* ignore */
               }
               return;
             }
@@ -290,6 +343,21 @@ export default function useShortcuts(editor: Editor) {
               });
               moveCursorToBlockStart(editor);
               return;
+            }
+          } else {
+            const quoteEntry = Editor.above(editor, {
+              match: (n) =>
+                SlateElement.isElement(n) &&
+                (n as CustomElement).type === "block-quote",
+            });
+            if (quoteEntry) {
+              const [, path] = quoteEntry;
+              const text = Editor.string(editor, path);
+              if (text.length === 0) {
+                event.preventDefault();
+                convertToParagraph(path);
+                return;
+              }
             }
           }
         }

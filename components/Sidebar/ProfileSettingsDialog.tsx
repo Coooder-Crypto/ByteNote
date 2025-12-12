@@ -82,16 +82,15 @@ export default function ProfileSettingsDialog({
         {trigger ? (
           trigger
         ) : (
-          <button
+          <Button
             type="button"
-            className={cn(
-              "text-muted-foreground hover:text-foreground transition",
-              className,
-            )}
+            variant="ghost"
+            size="icon-sm"
+            className={cn("text-muted-foreground", className)}
             aria-label="编辑资料"
           >
             <Settings className="size-4" />
-          </button>
+          </Button>
         )}
       </DialogTrigger>
       <DialogContent className="max-w-md">

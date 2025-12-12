@@ -38,6 +38,7 @@ export default function CreateFolderDialog({
           value={name}
           onChange={(event) => onNameChange(event.target.value)}
           autoFocus
+          aria-label="分组名称"
         />
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={submitting}>

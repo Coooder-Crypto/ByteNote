@@ -1,7 +1,33 @@
 "use client";
 
-import { ArrowLeft, Save, Wifi, WifiOff } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  MoreHorizontal,
+  Save,
+  Star,
+  StretchHorizontal,
+  Trash2,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useState } from "react";
+
+import { Button } from "@/components/ui";
+
+import type { ToolbarActions } from "./slate/Toolbar";
+
+const SlateToolbar = dynamic(
+  () => import("./slate/Toolbar").then((m) => m.SlateToolbar),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
 
 type EditorHeaderProps = {
   isCollaborative: boolean;
@@ -18,6 +44,15 @@ type EditorHeaderProps = {
   onSave: () => void;
   onManageCollaborators: () => void;
   onToggleCollab?: () => void;
+  toolbarActions?: ToolbarActions;
+  wide?: boolean;
+  onToggleWidth?: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+  previewMode?: boolean;
+  onTogglePreview?: () => void;
+  onRequestDelete?: () => void;
+  deleting?: boolean;
 };
 
 export default function EditorHeader({
@@ -35,39 +70,55 @@ export default function EditorHeader({
   onSave,
   onManageCollaborators,
   onToggleCollab,
+  toolbarActions,
+  wide = false,
+  onToggleWidth,
+  isFavorite = false,
+  onToggleFavorite,
+  previewMode = false,
+  onTogglePreview,
+  onRequestDelete,
+  deleting = false,
 }: EditorHeaderProps) {
   const connected =
     collabStatus === "connected" || (collabEnabled && collabStatus === "idle");
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
   return (
-    <div className="border-border/70 bg-card/60 flex w-full flex-col rounded-lg border">
-      <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-xs">
+    <div className="bg-card/80 flex w-full flex-col shadow-sm">
+      <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs">
         <div className="flex flex-wrap items-center gap-3 overflow-hidden">
           {onBack && (
             <>
-              <button
+              <Button
                 onClick={onBack}
-                className="text-muted-foreground hover:bg-muted/60 rounded-full p-1 transition-colors"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground"
                 title="Back to List"
+                aria-label="返回列表"
               >
                 <ArrowLeft size={16} />
-              </button>
+              </Button>
               <div className="bg-border/80 h-4 w-px" />
             </>
           )}
-          <div className="text-foreground/80 flex items-center gap-2">
+          <div className="text-foreground flex items-center gap-2">
             <span className="text-[10px] font-semibold tracking-wider uppercase">
               {folderLabel}
             </span>
             <span>•</span>
             {isCollaborative && onToggleCollab ? (
-              <button
+              <Button
                 onClick={onToggleCollab}
-                className={`flex items-center gap-1 ${connected ? "text-emerald-600" : "text-rose-500"}`}
+                variant="ghost"
+                size="sm"
+                className={`px-2 py-1 text-[11px] ${connected ? "text-emerald-600" : "text-rose-500"}`}
+                aria-label={connected ? "协作已连接" : "协作未连接"}
               >
                 {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
                 {connected ? "Connected" : "Offline"}
-              </button>
+              </Button>
             ) : (
               <span className="text-muted-foreground">Local Draft</span>
             )}
@@ -79,8 +130,13 @@ export default function EditorHeader({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-muted-foreground">{charCount} chars</span>
-          <div className="flex -space-x-4" onClick={onManageCollaborators}>
+          <span className="text-muted-foreground text-xs">
+            {charCount} chars
+          </span>
+          <div
+            className="ml-auto flex -space-x-4"
+            onClick={onManageCollaborators}
+          >
             {currentUser && (
               <AvatarChip
                 key="me"
@@ -99,25 +155,223 @@ export default function EditorHeader({
               />
             ))}
           </div>
-
-          {canEdit && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="bg-card/80 border-border/60 text-foreground hover:border-primary inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={onSave}
-                disabled={isTrashed || saving}
-              >
-                <Save className="size-4" />
-                {saving ? "保存中..." : "保存"}
-              </button>
-            </div>
-          )}
         </div>
       </div>
+      {(toolbarActions ||
+        onTogglePreview ||
+        onRequestDelete ||
+        onToggleWidth) && (
+        <div className="px-4 pt-0 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-1 flex-wrap items-center gap-2">
+              {toolbarActions && (
+                <SlateToolbar
+                  visible
+                  disabled={!canEdit || isTrashed || previewMode}
+                  actions={toolbarActions}
+                />
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant={isFavorite ? "outline" : "ghost"}
+                    size="icon-sm"
+                    className={
+                      isFavorite
+                        ? "border-amber-200 bg-amber-50 text-amber-600"
+                        : "border-border/60"
+                    }
+                    onClick={onToggleFavorite}
+                    aria-pressed={isFavorite}
+                    title={isFavorite ? "取消收藏" : "收藏"}
+                    aria-label={isFavorite ? "取消收藏" : "收藏"}
+                  >
+                    <Star
+                      className={`size-4 ${isFavorite ? "fill-amber-400" : ""}`}
+                    />
+                  </Button>
+                )}
+
+                {onTogglePreview && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-border/60"
+                    onClick={onTogglePreview}
+                    aria-pressed={previewMode}
+                    title={previewMode ? "退出预览" : "预览"}
+                    aria-label={previewMode ? "退出预览" : "预览"}
+                  >
+                    {previewMode ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </Button>
+                )}
+
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-border/60"
+                    onClick={onSave}
+                    disabled={isTrashed || saving}
+                    title="保存"
+                    aria-label="保存"
+                  >
+                    {saving ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Save className="size-4" />
+                    )}
+                  </Button>
+                )}
+
+                {onToggleWidth && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-border/60"
+                    onClick={onToggleWidth}
+                    aria-label="切换编辑区域宽度"
+                    title="切换宽度"
+                  >
+                    <StretchHorizontal className="size-4" />
+                  </Button>
+                )}
+
+                {onRequestDelete && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon-sm"
+                    onClick={onRequestDelete}
+                    disabled={deleting}
+                    title="删除"
+                    aria-label="删除"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+              </div>
+
+              <div className="relative sm:hidden">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  className="border-border/60"
+                  onClick={() =>
+                    setMobileActionsOpen((prev) => !prev)
+                  }
+                  aria-expanded={mobileActionsOpen}
+                  aria-label="更多操作"
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+
+                {mobileActionsOpen && (
+                  <div className="bg-card border-border/60 absolute right-0 z-30 mt-2 w-40 space-y-1 rounded-xl border p-2 shadow-xl">
+                    {canEdit && onToggleFavorite && (
+                      <Button
+                        type="button"
+                        variant={isFavorite ? "secondary" : "ghost"}
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          onToggleFavorite();
+                          setMobileActionsOpen(false);
+                        }}
+                        aria-pressed={isFavorite}
+                      >
+                        <Star
+                          className={`size-4 ${isFavorite ? "fill-amber-400" : ""}`}
+                        />
+                        <span className="ml-2">
+                          {isFavorite ? "取消收藏" : "收藏"}
+                        </span>
+                      </Button>
+                    )}
+
+                    {onTogglePreview && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          onTogglePreview();
+                          setMobileActionsOpen(false);
+                        }}
+                        aria-pressed={previewMode}
+                      >
+                        {previewMode ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                        <span className="ml-2">
+                          {previewMode ? "退出预览" : "预览"}
+                        </span>
+                      </Button>
+                    )}
+
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          onSave();
+                          setMobileActionsOpen(false);
+                        }}
+                        disabled={isTrashed || saving}
+                      >
+                        {saving ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Save className="size-4" />
+                        )}
+                        <span className="ml-2">保存</span>
+                      </Button>
+                    )}
+
+                    {onRequestDelete && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          onRequestDelete();
+                          setMobileActionsOpen(false);
+                        }}
+                        disabled={deleting}
+                      >
+                        <Trash2 className="size-4" />
+                        <span className="ml-2">删除</span>
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+export type { EditorHeaderProps };
 
 function AvatarChip({
   src,
@@ -133,9 +387,9 @@ function AvatarChip({
   const fallback = name?.[0]?.toUpperCase?.() ?? "?";
   return (
     <div
-      className={`relative inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-white dark:border-slate-900 ${highlight ? "ring-primary/60 ring-2" : ""}`}
+      className={`relative inline-flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white dark:border-slate-900 ${highlight ? "ring-primary/60 ring-2" : ""}`}
       title={name}
-      style={zIndex ? { zIndex } : undefined}
+      style={{ width: 32, height: 32, ...(zIndex ? { zIndex } : {}) }}
     >
       {src ? (
         <Image

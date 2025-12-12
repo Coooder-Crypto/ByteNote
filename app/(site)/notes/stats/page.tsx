@@ -1,11 +1,11 @@
-import { Suspense } from "react";
+import dynamic from "next/dynamic";
 
-import StatsPageClient from "./pageClient";
+const StatsPageClient = dynamic(() => import("./pageClient"), {
+  loading: () => (
+    <div className="text-muted-foreground px-4 py-6 text-sm">Loading…</div>
+  ),
+});
 
 export default function NotesStatsPage() {
-  return (
-    <Suspense fallback={null}>
-      <StatsPageClient />
-    </Suspense>
-  );
+  return <StatsPageClient />;
 }

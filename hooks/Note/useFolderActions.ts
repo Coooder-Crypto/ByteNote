@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc/client";
 import type { BnFolder } from "@/types";
 
-import { useNetworkStatus } from "../Network";
+import { useNetworkStatus } from "../network";
 
 type FolderActionsResult = {
   folders: BnFolder[];

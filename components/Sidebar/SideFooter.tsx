@@ -2,13 +2,13 @@
 
 import { BarChart3, Moon, Sun } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui";
 import { useNetworkStatus, useTheme, useUserStore } from "@/hooks";
 import { cn } from "@/lib/utils";
 
+import NavItem from "./NavItem";
 import ProfileSettingsDialog from "./ProfileSettingsDialog";
 
 type SideFooterProps = {
@@ -38,8 +38,9 @@ export default function SideFooter({
         alt="avatar"
         width={40}
         height={40}
-        className="h-full w-full object-cover"
+        //TODO: nextjs/image --- IGNORE ---
         unoptimized
+        className="h-full w-full object-cover"
       />
     ) : (
       <div className="bg-primary/10 text-primary flex h-full w-full items-center justify-center text-sm font-semibold">
@@ -55,41 +56,36 @@ export default function SideFooter({
   return (
     <div className="border-border/60 border-t px-4 py-4">
       {user && (
-        <Link
+        <NavItem
           href="/notes/stats"
+          label="统计数据"
+          icon={BarChart3}
+          active={currentPath.startsWith("/notes/stats")}
+          collapsed={collapsed}
+          className="mb-3"
+        />
+      )}
+      <div
+        className={cn(
+          "text-muted-foreground mb-2 flex items-center gap-2 text-xs",
+          collapsed ? "justify-center" : "",
+        )}
+      >
+        <span
           className={cn(
-            "mb-3 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-            collapsed ? "justify-center" : "",
-            currentPath.startsWith("/notes/stats")
-              ? "bg-primary/10 text-primary border-primary/30 border shadow-sm"
-              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent",
+            "inline-block h-2.5 w-2.5 rounded-full",
+            online ? "bg-emerald-500" : "bg-rose-500",
           )}
-          title="统计数据"
+        />
+        <span
+          className={cn(
+            "whitespace-nowrap transition-[max-width,opacity] duration-200 ease-in-out",
+            collapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100",
+          )}
         >
-          <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-            <BarChart3 className="size-5" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span>统计数据</span>
-              <span className="text-muted-foreground text-xs">
-                笔记概览与趋势
-              </span>
-            </div>
-          )}
-        </Link>
-      )}
-      {!collapsed && (
-        <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs">
-          <span
-            className={cn(
-              "inline-block h-2.5 w-2.5 rounded-full",
-              online ? "bg-emerald-500" : "bg-rose-500",
-            )}
-          />
-          <span>{online ? "在线" : "离线"}</span>
-        </div>
-      )}
+          {online ? "在线" : "离线"}
+        </span>
+      </div>
       {user ? (
         <div className="space-y-3">
           {collapsed ? (
@@ -99,23 +95,27 @@ export default function SideFooter({
                 onUpdated={onProfileUpdated}
                 onLogout={onLogout}
                 trigger={
-                  <button
+                  <Button
                     type="button"
-                    className="border-border/60 focus-visible:ring-ring flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 shrink-0 overflow-hidden rounded-full"
                     aria-label="打开设置"
                   >
                     {avatar}
-                  </button>
+                  </Button>
                 }
               />
             </div>
           ) : (
-            <div className="bg-muted/60 flex items-center gap-3 rounded-xl px-3 py-2">
+            <div className="bg-muted/60 flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2">
               <div className="border-border/60 h-10 w-10 min-w-[2.5rem] shrink-0 overflow-hidden rounded-full border">
                 {avatar}
               </div>
-              <div className="flex-1">
-                <p className="text-foreground overflow-hidden text-sm font-medium">
+              <div className="flex-1 overflow-hidden">
+                <p
+                  className={`text-foreground text-sm font-medium whitespace-nowrap transition-[max-width,opacity] duration-200 ease-in-out ${collapsed ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100"}`}
+                >
                   {user.name ?? "未命名"}
                 </p>
               </div>
