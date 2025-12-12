@@ -86,7 +86,6 @@ export default function SlateEditor({
     [normalizedProp],
   );
 
-  const collabReady = Boolean(sharedType && sharedType.length > 0);
   const slateInitialValue = isCollab ? DEFAULT_VALUE : displayValue;
   const slateKey = valueKey;
   const slateOnChange = isCollab
@@ -95,7 +94,7 @@ export default function SlateEditor({
         const normalized = normalizeDescendants(val);
         onChange(normalized);
       };
-  const showSkeleton = loading || (isCollab && !collabReady);
+  const showSkeleton = loading;
 
   const focusedRef = useRef(false);
   useEffect(() => {
@@ -191,6 +190,7 @@ export default function SlateEditor({
             key={slateKey}
             editor={editor}
             initialValue={slateInitialValue}
+            {...(!isCollab ? { value: slateInitialValue } : {})}
             onChange={slateOnChange}
           >
             <Editable

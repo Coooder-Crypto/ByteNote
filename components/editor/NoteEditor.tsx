@@ -68,6 +68,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const {
     note,
     saving,
+    hydrated,
     sharedType,
     collabStatus,
     flushCollabToServer,
@@ -81,10 +82,6 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   } = useEditor(noteId, { collabEnabled });
 
   const { canEdit, isTrashed } = note.access;
-  const titlePlaceholder = useMemo(
-    () => (note.access.canEdit ? "Untitled note" : "无权限编辑"),
-    [note.access.canEdit],
-  );
 
   const value: EditorContent = useMemo(() => {
     if (Array.isArray(note.contentJson) && note.contentJson.length > 0) {
@@ -92,11 +89,6 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     }
     return DEFAULT_VALUE;
   }, [note.contentJson]);
-
-  const valueKey = useMemo(
-    () => `${noteId}-${note.version}`,
-    [noteId, note.version],
-  );
 
   const charCount = useMemo(() => toPlainText(value).length, [value]);
 
@@ -176,7 +168,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
       return withHistory(applyPlugins(ed));
     }
     return withHistory(applyPlugins(base));
-  }, [sharedType, valueKey]);
+  }, [sharedType, noteId]);
 
   const {
     handleKeyDown,
@@ -238,9 +230,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     });
   };
 
-  const editorValueKey = collabEnabled
-    ? `collab-${noteId}`
-    : `local-${valueKey}`;
+  const editorValueKey = collabEnabled ? `collab-${noteId}` : `local-${noteId}`;
 
   const handleEditorChange = useCallback(
     (val: Descendant[]) => handleContentChange(val as Descendant[]),
@@ -329,7 +319,7 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
             editor={editor}
             handleKeyDown={handleKeyDown}
             wide={wide}
-            loading={collabEnabled && !sharedType}
+            loading={!hydrated || (collabEnabled && !sharedType)}
           />
         </div>
       </div>

@@ -82,17 +82,20 @@ export default function useEditor(
   const [sharedType, setSharedType] = useState<SharedType | null>(null);
   const retryingRef = useRef(false);
 
+  // Reset hydration state when switching notes so Slate mounts with correct initialValue.
+  useEffect(() => {
+    setHydrated(false);
+    retryingRef.current = false;
+    setNote(manager.getNote());
+  }, [manager, noteId]);
+
   useEffect(() => {
     const serverNote = noteQuery?.data;
     if (serverNote) {
-      const contentJson = Array.isArray(serverNote.contentJson)
-        ? (serverNote.contentJson as Descendant[])
-        : [];
       const aiMeta = extractAiMeta(serverNote.aiMeta);
       const next = manager.hydrate({
         ...serverNote,
         aiMeta,
-        contentJson,
       });
       setNote(next);
       setHydrated(true);
@@ -102,11 +105,47 @@ export default function useEditor(
   useEffect(() => {
     if (hydrated) return;
     if (allowQueries && noteQuery?.data) return;
+    // If we're online and this is a remote note, wait for session to resolve
+    // so we don't mount Slate with empty local fallback first.
+    if (!isLocal && canUseNetwork() && session.status === "loading") return;
 
     let cancelled = false;
+    const hasMeaningfulContent = (raw: unknown): boolean => {
+      if (!Array.isArray(raw) || raw.length === 0) return false;
+      for (const node of raw as any[]) {
+        if (
+          node &&
+          typeof node === "object" &&
+          Array.isArray((node as any).children)
+        ) {
+          for (const child of (node as any).children) {
+            if (
+              child &&
+              typeof child === "object" &&
+              typeof (child as any).text === "string" &&
+              (child as any).text.trim() !== ""
+            ) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    };
     const loadLocal = async () => {
       const cached = await localManager.get(noteId);
       if (cancelled) return;
+
+      // For remote notes when queries are allowed, don't hydrate from empty local
+      // fallback. Wait for server content unless the query errors.
+      const shouldWaitForServer =
+        allowQueries &&
+        !isLocal &&
+        !noteQuery?.isError &&
+        (!cached || !hasMeaningfulContent(cached.contentJson));
+
+      if (shouldWaitForServer) return;
+
       if (cached) {
         manager.hydrate({
           title: cached.title ?? "",
@@ -137,7 +176,17 @@ export default function useEditor(
     return () => {
       cancelled = true;
     };
-  }, [allowQueries, hydrated, manager, noteId, noteQuery?.data]);
+  }, [
+    allowQueries,
+    canUseNetwork,
+    hydrated,
+    isLocal,
+    manager,
+    noteId,
+    noteQuery?.data,
+    noteQuery?.isError,
+    session.status,
+  ]);
 
   const collab = useSocket({
     noteId,
@@ -222,11 +271,12 @@ export default function useEditor(
       setSavingLocal(true);
       const current = manager.getNote();
       const now = Date.now();
+      const shouldSyncNow = canUseNetwork();
       const contentFromShared: Descendant[] =
         sharedType && sharedType.length > 0
           ? (toSlateDoc(sharedType) as unknown as Descendant[])
-          : note.contentJson.length > 0
-            ? note.contentJson
+          : current.contentJson.length > 0
+            ? current.contentJson
             : DEFAULT_VALUE;
       const baseRecord = {
         title: current.title || "未命名笔记",
@@ -245,12 +295,12 @@ export default function useEditor(
           ...baseRecord,
           updatedAt: now,
           version: current.version,
-          syncStatus: "dirty",
+          syncStatus: shouldSyncNow ? "pending" : "dirty",
         });
 
       await persistDirty();
 
-      if (!canUseNetwork()) {
+      if (!shouldSyncNow) {
         setSavingLocal(false);
         return;
       }
@@ -321,9 +371,23 @@ export default function useEditor(
               version: latestVersion,
             }));
             // retry once with refreshed version
-            await save(true);
+            return await save(true);
           }
         }
+        // mark dirty so background sync can retry later
+        await localManager.saveNote({
+          id: noteId,
+          title: baseRecord.title,
+          contentJson: baseRecord.contentJson,
+          tags: baseRecord.tags,
+          folderId: baseRecord.folderId ?? null,
+          isCollaborative: baseRecord.isCollaborative,
+          version: manager.getNote().version,
+          updatedAt: now,
+          syncStatus: "dirty",
+          summary: baseRecord.summary,
+          aiMeta: baseRecord.aiMeta,
+        });
       } finally {
         retryingRef.current = false;
         setSavingLocal(false);
@@ -338,6 +402,7 @@ export default function useEditor(
       manager,
       noteId,
       updateNoteAsync,
+      sharedType,
     ],
   );
 
@@ -398,6 +463,7 @@ export default function useEditor(
   return {
     note,
     saving,
+    hydrated,
     sharedType,
     collabStatus: collab.status,
     flushCollabToServer: async () => {

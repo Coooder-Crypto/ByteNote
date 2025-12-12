@@ -1,61 +1,17 @@
 "use client";
 
-import { Github, Globe, Lock, Users, Zap } from "lucide-react";
+import {
+  FilePenLine,
+  Github,
+  Sparkles,
+  Users,
+  WifiOff,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 
 import { Avatar, Button } from "@/components/ui";
-
-function ByteNoteLogo({ className = "w-8 h-8" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      <path
-        d="M6 3C4.89543 3 4 3.89543 4 5V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V9L14 3H6Z"
-        className="fill-primary/10 stroke-primary"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M14 3V9H20"
-        className="fill-primary/20 stroke-primary"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <circle
-        cx="9.5"
-        cy="13.5"
-        r="1.5"
-        className="fill-slate-800 dark:fill-slate-100"
-      />
-      <circle
-        cx="14.5"
-        cy="13.5"
-        r="1.5"
-        className="fill-slate-800 dark:fill-slate-100"
-      />
-      <path
-        d="M10.5 16.5C10.5 16.5 11.5 17.5 13.5 16.5"
-        className="stroke-slate-800 dark:stroke-slate-100"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <circle cx="8" cy="14.5" r="1.5" className="fill-pink-400/40" />
-      <circle cx="16" cy="14.5" r="1.5" className="fill-pink-400/40" />
-      <path
-        d="M19 8L22 6L21 11L23 12"
-        className="stroke-yellow-500 dark:stroke-yellow-400"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export default function LandingPage() {
   const { data: session } = useSession();
@@ -67,7 +23,12 @@ export default function LandingPage() {
       <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/80">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            <ByteNoteLogo className="h-8 w-8" />
+            <img
+              src="/favicon.svg"
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8"
+            />
             <span className="text-xl font-bold tracking-tight">ByteNote</span>
           </div>
           <div className="flex items-center gap-4">
@@ -108,15 +69,16 @@ export default function LandingPage() {
           <div className="bg-primary/10 absolute top-0 left-1/2 -z-10 h-[500px] w-[1000px] -translate-x-1/2 rounded-full blur-3xl" />
           <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
             <div className="bg-primary/10 text-primary mb-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase">
-              <Zap size={12} /> 协作 · 云同步 · 离线安全
+              <Zap size={12} /> 写作体验 · 轻协作 · 可自建
             </div>
-            <h1 className="via-primary-800 dark:via-primary-300 bg-gradient-to-r from-slate-900 to-slate-900 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl md:text-6xl dark:from-white dark:to-white">
-              ByteNote · 团队一起写作的空间
+            <h1 className="via-primary-800 dark:via-primary-300 bg-gradient-to-r from-slate-900 to-slate-900 bg-clip-text text-3xl font-bold tracking-tight whitespace-nowrap text-transparent sm:text-5xl md:text-6xl dark:from-white dark:to-white">
+              ByteNote
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600 dark:text-slate-400">
-              轻量的 Markdown
-              协作笔记，实时同步、自动保存。支持标签、分组、收藏、回收站，
-              GitHub 登录即可开始。
+              基于 Slate
+              的结构化编辑器，支持离线编辑与自动同步；协作能力可按需启用，
+              并支持通过 Docker 自建协作服务。内置 AI
+              摘要与报告，帮助更快回顾内容。
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               {user ? (
@@ -149,21 +111,26 @@ export default function LandingPage() {
           className="border-t border-slate-200/80 bg-white py-16 dark:border-slate-800/80 dark:bg-slate-950"
         >
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <FeatureCard
-                icon={<Users className="text-blue-500" />}
-                title="实时协作"
-                desc="多端同时编辑，光标可见，Yjs 自动合并冲突。"
+                icon={<FilePenLine className="text-blue-500" />}
+                title="写作体验"
+                desc="结构化编辑器（Slate），支持列表/引用/代码块等常用排版。"
               />
               <FeatureCard
-                icon={<Globe className="text-green-500" />}
-                title="离线可写"
-                desc="离线也能编辑，恢复网络后自动同步到云端。"
+                icon={<WifiOff className="text-green-500" />}
+                title="离线与同步"
+                desc="离线可完整编辑与管理笔记，联网后自动同步并尽量合并更新。"
               />
               <FeatureCard
-                icon={<Lock className="text-purple-500" />}
-                title="安全存储"
-                desc="云端持久化，GitHub 登录，权限与协作者可控。"
+                icon={<Users className="text-purple-500" />}
+                title="轻协作（可自建）"
+                desc="Yjs 实时协作，支持自定义/自建 WebSocket 协作服务。"
+              />
+              <FeatureCard
+                icon={<Sparkles className="text-amber-500" />}
+                title="AI 助手"
+                desc="支持 AI 自动生成笔记摘要与统计报告（按权限/网络条件启用）。"
               />
             </div>
           </div>
