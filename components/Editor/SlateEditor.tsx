@@ -77,22 +77,17 @@ export default function SlateEditor({
   const contentWidthClass = wide ? "w-full" : "mx-auto w-full max-w-4xl";
 
   const isCollab = Boolean(sharedType);
-
   const normalizedProp = useMemo(
     () => (isCollab ? [] : normalizeDescendants(value)),
     [isCollab, value],
   );
-
   const displayValue = useMemo(
     () => (normalizedProp.length > 0 ? normalizedProp : DEFAULT_VALUE),
     [normalizedProp],
   );
 
-  const safeInitialValue =
-    displayValue.length > 0 ? displayValue : DEFAULT_VALUE;
-  const collabInitialValue = DEFAULT_VALUE;
   const collabReady = Boolean(sharedType && sharedType.length > 0);
-  const slateInitialValue = isCollab ? collabInitialValue : safeInitialValue;
+  const slateInitialValue = isCollab ? DEFAULT_VALUE : displayValue;
   const slateKey = valueKey;
   const slateOnChange = isCollab
     ? () => {}
@@ -101,8 +96,8 @@ export default function SlateEditor({
         onChange(normalized);
       };
   const showSkeleton = loading || (isCollab && !collabReady);
-  const focusedRef = useRef(false);
 
+  const focusedRef = useRef(false);
   useEffect(() => {
     focusedRef.current = false;
   }, [noteId, valueKey]);
@@ -116,7 +111,7 @@ export default function SlateEditor({
         Transforms.select(editor, end);
         ReactEditor.focus(editor);
       } catch {
-        // ignore focus errors
+        /* ignore */
       }
     }, 0);
   }, [editor, showSkeleton, readOnly, valueKey]);
@@ -140,18 +135,17 @@ export default function SlateEditor({
             <input
               className="text-foreground placeholder:text-muted-foreground/60 w-full bg-transparent text-3xl font-bold tracking-tight focus:outline-none"
               value={title}
-              placeholder={"输入标题"}
               onChange={(e) => onTitleChange(e.target.value)}
               disabled={readOnly}
               aria-label="笔记标题"
             />
           </div>
         )}
+
         {!showSkeleton && (
           <TagInput
             value={tags}
             onChange={onTagsChange}
-            placeholder={"输入标签"}
             className="border-border/60 bg-card/40 w-full rounded-xl border"
             aria-label="标签输入"
             disabled={readOnly}
