@@ -5,8 +5,48 @@ import { createLocalId, isLocalId } from "@/lib/utils/offline/ids";
 import { noteStorage } from "@/lib/utils/offline/noteStorage";
 import type { AiMeta, ContentJson, LocalNoteRecord } from "@/types";
 
-const toContentJson = (raw: unknown): ContentJson =>
-  Array.isArray(raw) ? (raw as ContentJson) : [];
+type UnknownNode =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | { text?: unknown; children?: UnknownNode[]; content?: UnknownNode[] }
+  | UnknownNode[];
+
+const toPlainText = (node: UnknownNode): string => {
+  if (node === null || node === undefined) return "";
+  if (typeof node === "string") return node;
+  if (typeof node === "number" || typeof node === "boolean") return String(node);
+  if (Array.isArray(node)) return node.map((n) => toPlainText(n)).join("");
+  if (typeof node === "object") {
+    const candidate = node as {
+      text?: unknown;
+      children?: UnknownNode[];
+      content?: UnknownNode[];
+    };
+    if (typeof candidate.text === "string") return candidate.text;
+    if (Array.isArray(candidate.children))
+      return candidate.children.map((n) => toPlainText(n)).join("");
+    if (Array.isArray(candidate.content))
+      return candidate.content.map((n) => toPlainText(n)).join("");
+    return Object.values(candidate)
+      .map((v) => toPlainText(v as UnknownNode))
+      .join("");
+  }
+  return "";
+};
+
+const toContentJson = (raw: unknown): ContentJson => {
+  if (Array.isArray(raw) && raw.length > 0) return raw as ContentJson;
+  const text = toPlainText(raw as UnknownNode);
+  return [
+    {
+      type: "paragraph",
+      children: [{ text }],
+    },
+  ] as ContentJson;
+};
 
 const toTimestamp = (
   value: Date | string | number | null | undefined,
@@ -128,9 +168,11 @@ class LocalManager {
 
   async listDirty() {
     const all = await this.listAll();
-    return all.filter(
-      (note) => note.syncStatus !== "synced" || isLocalId(note.id),
-    );
+    return all.filter((note) => {
+      if (note.syncStatus === "pending") return false;
+      if (isLocalId(note.id)) return true;
+      return note.syncStatus !== "synced";
+    });
   }
 
   async mergeFromServer(

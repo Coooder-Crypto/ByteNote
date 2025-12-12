@@ -37,8 +37,17 @@ export default function useNoteActions<
   );
 
   const updateMutation = trpc.note.update.useMutation({
-    onSuccess: (data: NoteUpdateResult | null) => {
+    onSuccess: (data: NoteUpdateResult | null, variables) => {
       onDirtyChange?.(false);
+      const resolvedId =
+        (data && typeof data === "object" && "id" in data
+          ? (data as { id?: string }).id
+          : undefined) ??
+        (variables && typeof variables === "object" && "id" in variables
+          ? (variables as { id?: string }).id
+          : undefined) ??
+        noteId;
+
       if (data && onStateChange) {
         onStateChange((prev) => ({
           ...prev,
@@ -50,7 +59,9 @@ export default function useNoteActions<
             typeof data.version === "number" ? data.version : prev.version,
         }));
       }
-      utils.note.detail.invalidate({ id: noteId });
+      if (resolvedId) {
+        utils.note.detail.invalidate({ id: resolvedId });
+      }
       utils.note.list.invalidate();
     },
   });
@@ -58,7 +69,18 @@ export default function useNoteActions<
   const deleteMutation = trpc.note.remove.useMutation({
     onSuccess: () => {
       utils.note.list.invalidate();
-      router.push("/");
+      // If we are in editor mode (/notes?noteId=...), go back to the notes list
+      // while preserving the existing filters/search params.
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        if (url.pathname.startsWith("/notes")) {
+          url.searchParams.delete("noteId");
+          const next = `/notes${url.searchParams.toString() ? `?${url.searchParams}` : ""}`;
+          router.replace(next);
+          return;
+        }
+      }
+      router.back();
     },
   });
 

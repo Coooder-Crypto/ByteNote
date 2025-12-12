@@ -80,8 +80,8 @@ export default function EditorHeader({
   onRequestDelete,
   deleting = false,
 }: EditorHeaderProps) {
-  const connected =
-    collabStatus === "connected" || (collabEnabled && collabStatus === "idle");
+  const connecting = collabEnabled && collabStatus === "connecting";
+  const connected = collabStatus === "connected";
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
   return (
@@ -113,11 +113,29 @@ export default function EditorHeader({
                 onClick={onToggleCollab}
                 variant="ghost"
                 size="sm"
-                className={`px-2 py-1 text-[11px] ${connected ? "text-emerald-600" : "text-rose-500"}`}
-                aria-label={connected ? "协作已连接" : "协作未连接"}
+                className={`px-2 py-1 text-[11px] ${
+                  connecting
+                    ? "text-muted-foreground"
+                    : connected
+                      ? "text-emerald-600"
+                      : "text-rose-500"
+                }`}
+                aria-label={
+                  connecting
+                    ? "协作连接中"
+                    : connected
+                      ? "协作已连接"
+                      : "协作未连接"
+                }
               >
-                {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
-                {connected ? "Connected" : "Offline"}
+                {connecting ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : connected ? (
+                  <Wifi size={12} />
+                ) : (
+                  <WifiOff size={12} />
+                )}
+                {connecting ? "Connecting..." : connected ? "Connected" : "Offline"}
               </Button>
             ) : (
               <span className="text-muted-foreground">Local Draft</span>

@@ -3,16 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Descendant } from "slate";
 import type { SharedType } from "slate-yjs";
-import type { WebsocketProvider } from "y-websocket";
-import type * as Y from "yjs";
+import { toSharedType } from "slate-yjs";
+import { WebsocketProvider } from "y-websocket";
+import * as Y from "yjs";
 
 import { DEFAULT_VALUE } from "@/lib/constants/editor";
-
-type CollabDeps = {
-  toSharedType: typeof import("slate-yjs").toSharedType;
-  Y: typeof import("yjs");
-  WebsocketProvider: typeof import("y-websocket").WebsocketProvider;
-};
 
 type useSocketParams = {
   noteId: string;
@@ -30,7 +25,6 @@ export default function useSocket({
   seedContent,
   seedVersion,
 }: useSocketParams) {
-  const depsRef = useRef<CollabDeps | null>(null);
   const seedContentRef = useRef<Descendant[] | undefined>(seedContent);
   useEffect(() => {
     seedContentRef.current = seedContent;
@@ -55,29 +49,12 @@ export default function useSocket({
     noteId: string;
   } | null>(null);
 
-  const loadDeps = useCallback(async (): Promise<CollabDeps> => {
-    if (depsRef.current) return depsRef.current;
-    const [slateYjs, yjsModule, websocket] = await Promise.all([
-      import("slate-yjs"),
-      import("yjs"),
-      import("y-websocket"),
-    ]);
-    const deps: CollabDeps = {
-      toSharedType: slateYjs.toSharedType,
-      Y: yjsModule,
-      WebsocketProvider: websocket.WebsocketProvider,
-    };
-    depsRef.current = deps;
-    return deps;
-  }, []);
-
   useEffect(() => {
     let statusListener:
       | ((event: {
           status: "connecting" | "connected" | "disconnected";
         }) => void)
       | null = null;
-    let cancelled = false;
 
     const cleanup = () => {
       if (!syncRef.current) return;
@@ -114,119 +91,101 @@ export default function useSocket({
       0,
     );
 
-    const setup = async () => {
-      try {
-        const deps = await loadDeps();
-        if (cancelled) return;
+    cleanup();
 
-        cleanup();
+    const doc = new Y.Doc();
+    const shared = doc.getArray("content") as SharedType;
+    const meta = doc.getMap("meta");
 
-        const doc = new deps.Y.Doc();
-        const shared = doc.getArray("content") as SharedType;
-        const meta = doc.getMap("meta");
+    const readMetaVersion = () => {
+      const v = meta.get("version");
+      return typeof v === "number" ? v : null;
+    };
 
-        const readMetaVersion = () => {
-          const v = meta.get("version");
-          return typeof v === "number" ? v : null;
-        };
+    const existingVersion = readMetaVersion();
+    const nextVersion =
+      typeof seedVersion === "number"
+        ? seedVersion
+        : typeof existingVersion === "number"
+          ? existingVersion
+          : null;
 
-        const existingVersion = readMetaVersion();
-        const nextVersion =
-          typeof seedVersion === "number"
-            ? seedVersion
-            : typeof existingVersion === "number"
-              ? existingVersion
-              : null;
-        if (typeof nextVersion === "number") {
-          doc.transact(() => {
-            meta.set("version", nextVersion);
-          });
-          metaVersionRef.current = nextVersion;
-          setTimeout(() => setMetaVersionState(nextVersion), 0);
-        } else {
-          metaVersionRef.current = null;
-          setTimeout(() => setMetaVersionState(null), 0);
-        }
+    if (typeof nextVersion === "number") {
+      doc.transact(() => {
+        meta.set("version", nextVersion);
+      });
+      metaVersionRef.current = nextVersion;
+      setMetaVersionState(nextVersion);
+    } else {
+      metaVersionRef.current = null;
+      setMetaVersionState(null);
+    }
 
-        const handleMeta = () => {
-          const next = readMetaVersion();
-          if (metaVersionRef.current === next) return;
-          metaVersionRef.current = next;
-          setMetaVersionState(next);
-        };
-        metaListenerRef.current = handleMeta;
-        meta.observe(handleMeta);
-        handleMeta();
+    const handleMeta = () => {
+      const next = readMetaVersion();
+      if (metaVersionRef.current === next) return;
+      metaVersionRef.current = next;
+      setMetaVersionState(next);
+    };
+    metaListenerRef.current = handleMeta;
+    meta.observe(handleMeta);
+    handleMeta();
 
-        const seedOrFallback = (): Descendant[] =>
-          Array.isArray(seedContentRef.current) &&
-          seedContentRef.current.length > 0
-            ? seedContentRef.current
-            : DEFAULT_VALUE;
+    const seedOrFallback = (): Descendant[] =>
+      Array.isArray(seedContentRef.current) && seedContentRef.current.length > 0
+        ? seedContentRef.current
+        : DEFAULT_VALUE;
 
-        const applySeed = () => {
-          const seed = seedOrFallback();
-          doc.transact(() => {
-            shared.delete(0, shared.length);
-            deps.toSharedType(shared, seed);
-          });
-          seededRef.current = true;
-        };
+    const applySeed = () => {
+      const seed = seedOrFallback();
+      doc.transact(() => {
+        shared.delete(0, shared.length);
+        toSharedType(shared, seed);
+      });
+      seededRef.current = true;
+    };
 
-        const provider = new deps.WebsocketProvider(wsUrl!, noteId, doc);
-        provider.on("sync", (isSynced: boolean) => {
-          if (isSynced && !seededRef.current) {
-            applySeed();
-          }
-        });
-        statusListener = (event: {
-          status: "connecting" | "connected" | "disconnected";
-        }) => {
-          const next =
-            event.status === "connected"
-              ? "connected"
-              : event.status === "connecting"
-                ? "connecting"
-                : ("error" as const);
+    const provider = new WebsocketProvider(wsUrl!, noteId, doc);
 
-          setStatus(next);
-        };
-        provider.on("status", statusListener);
-        syncListenerRef.current = (isSynced: boolean) => {
-          if (!isSynced || seededRef.current) return;
-          const hasContent = shared.length > 0;
-          if (!hasContent) {
-            applySeed();
-          } else {
-            seededRef.current = true;
-          }
-        };
-        provider.on("sync", syncListenerRef.current);
+    statusListener = (event: {
+      status: "connecting" | "connected" | "disconnected";
+    }) => {
+      const next =
+        event.status === "connected"
+          ? "connected"
+          : event.status === "connecting"
+            ? "connecting"
+            : ("error" as const);
+      setStatus(next);
+    };
+    provider.on("status", statusListener);
 
-        syncRef.current = {
-          doc,
-          sharedType: shared,
-          meta,
-          provider,
-          wsUrl: wsUrl!,
-          noteId,
-        };
-        setTimeout(() => setSharedType(shared), 0);
-      } catch (err) {
-        if (cancelled) return;
-        console.warn("[collab] failed to init", err);
-        cleanup();
-        setStatus("error");
+    syncListenerRef.current = (isSynced: boolean) => {
+      if (!isSynced || seededRef.current) return;
+      const hasContent = shared.length > 0;
+      if (!hasContent) {
+        applySeed();
+      } else {
+        seededRef.current = true;
       }
     };
+    provider.on("sync", syncListenerRef.current);
 
-    void setup();
+    syncRef.current = {
+      doc,
+      sharedType: shared,
+      meta,
+      provider,
+      wsUrl: wsUrl!,
+      noteId,
+    };
+
+    setSharedType(shared);
 
     return () => {
-      cancelled = true;
       cleanup();
     };
-  }, [enabled, loadDeps, noteId, seedVersion, wsUrl]);
+  }, [enabled, noteId, seedVersion, wsUrl]);
 
   const setMetaVersion = useCallback((version: number) => {
     if (!syncRef.current) return;

@@ -158,10 +158,20 @@ export const noteRouter = router({
           where.AND = where.AND ? [where.AND] : [];
         }
         where.AND.push({
-          title: {
-            contains: searchTerm,
-            mode: "insensitive",
-          },
+          OR: [
+            {
+              title: {
+                contains: searchTerm,
+                mode: "insensitive",
+              },
+            },
+            {
+              summary: {
+                contains: searchTerm,
+                mode: "insensitive",
+              },
+            },
+          ],
         });
       }
 
@@ -574,7 +584,11 @@ export const noteRouter = router({
       const result = await ctx.prisma.note.updateMany({
         where: {
           id: input.id,
-          userId: ctx.session!.user.id,
+          OR: [
+            { userId: ctx.session!.user.id },
+            { collaborators: { some: { userId: ctx.session!.user.id } } },
+          ],
+          deletedAt: null,
         },
         data: { isFavorite: input.isFavorite },
       });
