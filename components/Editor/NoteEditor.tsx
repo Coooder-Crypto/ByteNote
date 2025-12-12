@@ -1,27 +1,53 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
-import type { Descendant } from "slate";
-import { toSharedType } from "slate-yjs";
-import { toast } from "sonner";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Descendant, Editor } from "slate";
+import { createEditor } from "slate";
+import { withHistory } from "slate-history";
+import { withReact } from "slate-react";
+import { toSharedType, withYjs } from "slate-yjs";
 import type { Doc } from "yjs";
 
+import EditorHeader from "@/components/editor/EditorHeader";
+import { toPlainText } from "@/components/editor/slate/normalize";
+import { Button } from "@/components/ui/button";
 import {
-  CollaboratorDialog,
-  EditorHeader,
-  SlateEditor,
-} from "@/components/Editor";
-import { toPlainText } from "@/components/Editor/slate/normalize";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   useEditor,
   useNetworkStatus,
   useNoteActions,
+  useShortcuts,
   useUserStore,
 } from "@/hooks";
-import { DEFAULT_VALUE } from "@/lib/constants/editor";
+import {
+  BLOCK_CONFIGS,
+  DEFAULT_VALUE,
+  MARK_KEYS,
+} from "@/lib/constants/editor";
 import { trpc } from "@/lib/trpc/client";
 import type { AiMeta, EditorContent } from "@/types/editor";
+
+import { withCustomDelete, withMarkdownPaste } from "./slate/plugins";
+import type { ToolbarActions } from "./slate/Toolbar";
+
+const SlateEditor = dynamic(() => import("./SlateEditor"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const CollaboratorDialog = dynamic(() => import("./CollaboratorDialog"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function NoteEditor({ noteId }: { noteId: string }) {
   const [collabOpen, setCollabOpen] = useState(false);
@@ -30,8 +56,15 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
   const searchParams = useSearchParams();
   const { user } = useUserStore();
   const { online } = useNetworkStatus();
-  const { setWsUrl, setWsPending } = useNoteActions({});
-  const utils = trpc.useUtils();
+  const {
+    setWsUrl,
+    setWsPending,
+    deleteNote,
+    deletePending,
+    toggleFavorite: toggleFavoriteMutation,
+  } = useNoteActions({
+    noteId,
+  });
   const {
     note,
     saving,
@@ -113,41 +146,13 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     [applyServerUpdate, note.contentJson, note.summary, syncSharedContent],
   );
 
-  const aiSummarize = trpc.note.aiSummarize.useMutation({
-    onSuccess: (data) => {
-      handleAiResult({
-        contentJson: Array.isArray(data?.contentJson)
-          ? (data.contentJson as Descendant[])
-          : null,
-        summary: typeof data?.summary === "string" ? data.summary : null,
-        aiMeta:
-          data?.aiMeta && typeof data.aiMeta === "object"
-            ? (data.aiMeta as AiMeta)
-            : undefined,
-        version: typeof data?.version === "number" ? data.version : undefined,
-      });
-      void utils.note.detail.invalidate({ id: noteId });
-      void utils.note.list.invalidate();
-      toast.success("已生成摘要");
-    },
-    onError: (err) => {
-      toast.error(err?.message ?? "生成摘要失败");
-    },
-  });
-
-  const triggerSummary = useCallback(() => {
-    if (!canEdit || isTrashed) return;
-    if (!online) {
-      toast.error("当前离线，无法使用 AI");
-      return;
-    }
-    aiSummarize.mutate({ id: noteId });
-  }, [aiSummarize, canEdit, isTrashed, noteId, online]);
-
   const collaboratorsQuery = trpc.collaborator.list.useQuery(
     { noteId },
     { enabled: note.isCollaborative },
   );
+  const canUseAi = canEdit && !isTrashed && online;
+  const [previewMode, setPreviewMode] = useState(false);
+  const isReadOnly = previewMode || !canEdit || isTrashed;
 
   const collaboratorAvatars = useMemo(
     () =>
@@ -160,83 +165,174 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     [collaboratorsQuery.data, user?.id],
   );
 
-  return (
-    <div className="bg-background flex h-full min-h-screen flex-col overflow-hidden">
-      <EditorHeader
-        isCollaborative={note.isCollaborative}
-        collabEnabled={collabEnabled}
-        collabStatus={collabStatus}
-        isTrashed={isTrashed}
-        canEdit={canEdit}
-        charCount={charCount}
-        saving={saving}
-        folderLabel="Notes"
-        currentUser={{
-          name: user?.name ?? user?.email ?? "我",
-          avatarUrl: user?.avatarUrl,
-        }}
-        collaborators={collaboratorAvatars}
-        onSave={handleSave}
-        onManageCollaborators={() => setCollabOpen(true)}
-        onToggleCollab={async () => {
-          if (!note.isCollaborative) return;
-          if (collabEnabled) {
-            await flushCollabToServer?.();
-            setCollabEnabled(false);
-          } else {
-            setCollabEnabled(true);
-          }
-        }}
-        onBack={() => {
-          const params = new URLSearchParams(searchParams ?? undefined);
-          params.delete("noteId");
-          router.replace(
-            `/notes${params.toString() ? `?${params.toString()}` : ""}`,
-          );
-        }}
-      />
+  const editor: Editor = useMemo(() => {
+    const base = withReact(createEditor());
+    const applyPlugins = (ed: Editor) =>
+      withMarkdownPaste(withCustomDelete(ed));
 
-      {collabEnabled ? (
-        sharedType ? (
+    if (sharedType) {
+      const ed = withYjs(base, sharedType);
+      (ed as Editor & { __collab?: boolean }).__collab = true;
+      return withHistory(applyPlugins(ed));
+    }
+    return withHistory(applyPlugins(base));
+  }, [sharedType, valueKey]);
+
+  const {
+    handleKeyDown,
+    isMarkActive,
+    isBlockActive,
+    toggleMark,
+    toggleBlock,
+  } = useShortcuts(editor);
+
+  const toolbarActions: ToolbarActions = useMemo(() => {
+    const marks = MARK_KEYS.reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]: {
+          active: isMarkActive(key),
+          onClick: () => toggleMark(key),
+        },
+      }),
+      {} as Record<
+        (typeof MARK_KEYS)[number],
+        { active: boolean; onClick: () => void }
+      >,
+    );
+
+    const blocks = BLOCK_CONFIGS.reduce(
+      (acc, item) => ({
+        ...acc,
+        [item.key]: {
+          active: isBlockActive(item.type),
+          onClick: () => toggleBlock(item.type),
+        },
+      }),
+      {} as Record<
+        (typeof BLOCK_CONFIGS)[number]["key"],
+        { active: boolean; onClick: () => void }
+      >,
+    );
+
+    return { ...marks, ...blocks };
+  }, [isBlockActive, isMarkActive, toggleBlock, toggleMark]);
+
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("bn-editor-width");
+    setTimeout(() => setWide(saved === "wide"), 0);
+  }, []);
+
+  const toggleWidth = () => {
+    setWide((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "bn-editor-width",
+          next ? "wide" : "default",
+        );
+      }
+      return next;
+    });
+  };
+
+  const editorValueKey = collabEnabled
+    ? `collab-${noteId}`
+    : `local-${valueKey}`;
+
+  const handleEditorChange = useCallback(
+    (val: Descendant[]) => handleContentChange(val as Descendant[]),
+    [handleContentChange],
+  );
+
+  const togglePreview = () => setPreviewMode((prev) => !prev);
+  const toggleFavorite = () => {
+    const next = !note.isFavorite;
+    applyServerUpdate({ isFavorite: next });
+    toggleFavoriteMutation(next);
+  };
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const handleConfirmDelete = () => {
+    deleteNote();
+    setConfirmDeleteOpen(false);
+  };
+
+  const headerProps = {
+    isCollaborative: note.isCollaborative,
+    collabEnabled,
+    collabStatus,
+    isTrashed,
+    canEdit,
+    charCount,
+    saving,
+    isFavorite: note.isFavorite,
+    folderLabel: "Notes",
+    currentUser: {
+      name: user?.name ?? user?.email ?? "我",
+      avatarUrl: user?.avatarUrl,
+    },
+    collaborators: collaboratorAvatars,
+    onSave: handleSave,
+    onManageCollaborators: () => setCollabOpen(true),
+    onToggleCollab: async () => {
+      if (!note.isCollaborative) return;
+      if (collabEnabled) {
+        await flushCollabToServer?.();
+        setCollabEnabled(false);
+      } else {
+        setCollabEnabled(true);
+      }
+    },
+    onBack: () => {
+      const params = new URLSearchParams(searchParams ?? undefined);
+      params.delete("noteId");
+      router.replace(
+        `/notes${params.toString() ? `?${params.toString()}` : ""}`,
+      );
+    },
+    toolbarActions,
+    wide,
+    onToggleFavorite: canEdit && !isTrashed ? toggleFavorite : undefined,
+    onToggleWidth: toggleWidth,
+    previewMode,
+    onTogglePreview: canEdit && !isTrashed ? togglePreview : undefined,
+    onRequestDelete:
+      canEdit && !isTrashed ? () => setConfirmDeleteOpen(true) : undefined,
+    deleting: deletePending,
+  };
+
+  return (
+    <div className="bg-card/40 flex h-screen flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-auto overscroll-contain">
+        <div className="bg-background/95 sticky top-0 z-10 backdrop-blur">
+          <EditorHeader {...headerProps} />
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col">
           <SlateEditor
-            valueKey={`collab-${noteId}`}
+            noteId={noteId}
+            valueKey={editorValueKey}
             value={value}
-            onChange={(val) => handleContentChange(val as Descendant[])}
+            onChange={handleEditorChange}
             title={note.title}
             onTitleChange={handleTitleChange}
-            titlePlaceholder={titlePlaceholder}
             tags={note.tags}
             onTagsChange={handleTagsChange}
-            tagPlaceholder="添加标签"
-            summary={note.summary ?? ""}
-            summarizing={aiSummarize.isPending}
-            onGenerateSummary={triggerSummary}
-            readOnly={!canEdit || isTrashed}
-            placeholder="Start writing..."
-            sharedType={sharedType}
+            summary={note.summary}
+            canUseAi={canUseAi}
+            onAiResult={handleAiResult}
+            readOnly={isReadOnly}
+            sharedType={collabEnabled ? sharedType : null}
+            editor={editor}
+            handleKeyDown={handleKeyDown}
+            wide={wide}
+            loading={collabEnabled && !sharedType}
           />
-        ) : (
-          <div className="text-muted-foreground text-sm">协作连接中...</div>
-        )
-      ) : (
-        <SlateEditor
-          valueKey={`local-${valueKey}`}
-          value={value}
-          onChange={(val) => handleContentChange(val as Descendant[])}
-          title={note.title}
-          onTitleChange={handleTitleChange}
-          titlePlaceholder={titlePlaceholder}
-          tags={note.tags}
-          onTagsChange={handleTagsChange}
-          tagPlaceholder="添加标签"
-          summary={note.summary ?? ""}
-          summarizing={aiSummarize.isPending}
-          onGenerateSummary={triggerSummary}
-          readOnly={!canEdit || isTrashed}
-          placeholder="Start writing..."
-          sharedType={null}
-        />
-      )}
+        </div>
+      </div>
 
       <CollaboratorDialog
         noteId={noteId}
@@ -254,6 +350,33 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
           setCollabEnabled((prev) => (next ? prev : false));
         }}
       />
+
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除笔记</DialogTitle>
+            <DialogDescription>
+              删除后可在回收站恢复，确认删除这条笔记吗？
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDeleteOpen(false)}
+              disabled={deletePending}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deletePending}
+            >
+              {deletePending ? "删除中..." : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

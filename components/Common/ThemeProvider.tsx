@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-import { ThemeContext } from "@/hooks/App/themeContext";
+import { ThemeContext } from "@/hooks/app/themeContext";
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/constants/theme";
 import type { Theme } from "@/types";
 

@@ -13,8 +13,8 @@ import { localManager } from "@/lib/manager/LocalManager";
 import { isLocalId } from "@/lib/utils/offline/ids";
 import { type AiMeta, type EditorNote } from "@/types";
 
-import { useNetworkStatus, useSocket } from "../Network";
-import { useNoteActions } from "../Note";
+import { useNetworkStatus, useSocket } from "../network";
+import { useNoteActions } from "../note";
 
 export default function useEditor(
   noteId: string,
@@ -375,6 +375,7 @@ export default function useEditor(
       tags?: string[];
       version?: number;
       aiMeta?: AiMeta;
+      isFavorite?: boolean;
     }) => {
       if (!hydrated) return;
       if (typeof payload.title === "string") manager.updateTitle(payload.title);
@@ -383,6 +384,8 @@ export default function useEditor(
       if (payload.summary !== undefined)
         manager.updateSummary(payload.summary ?? "");
       if (payload.aiMeta !== undefined) manager.updateAiMeta(payload.aiMeta);
+      if (typeof payload.isFavorite === "boolean")
+        manager.updateFavorite(payload.isFavorite);
       if (typeof payload.version === "number") {
         manager.updateVersion(payload.version);
         collab.setMetaVersion?.(payload.version);

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { localManager } from "@/lib/manager/LocalManager";
 
-import useNoteActions from "../Note/useNoteActions";
+import useNoteActions from "../note/useNoteActions";
 import useNetworkStatus from "./useNetworkStore";
 
 type SyncStats = {

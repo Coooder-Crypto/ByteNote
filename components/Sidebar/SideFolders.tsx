@@ -1,8 +1,9 @@
-import { Plus } from "lucide-react";
+import { Folder, Plus } from "lucide-react";
 
+import { Button } from "@/components/ui";
 import type { BnFolder } from "@/types";
 
-import FolderItem from "./FolderItem";
+import NavItem from "./NavItem";
 
 type SideFoldersProps = {
   folders: BnFolder[];
@@ -11,6 +12,7 @@ type SideFoldersProps = {
   onSelectFolder: (id: string | null) => void;
   onCreateFolder?: () => void;
   collapsed?: boolean;
+  onNavigate?: () => void;
 };
 
 export default function SideFolders({
@@ -20,27 +22,36 @@ export default function SideFolders({
   onSelectFolder,
   onCreateFolder,
   collapsed = false,
+  onNavigate,
 }: SideFoldersProps) {
   return (
     <div>
       <div className="flex items-center justify-between px-2">
-        <button
-          className="text-muted-foreground hover:bg-muted rounded-md p-1"
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground"
           onClick={onCreateFolder}
           disabled={loading}
           aria-label="新建分组"
         >
           <Plus className="size-3" />
-        </button>
+        </Button>
       </div>
       <div className="mt-1 space-y-1">
         {folders.map((folder) => (
-          <FolderItem
+          <NavItem
             key={folder.id}
-            folder={folder}
+            href="#"
+            label={folder.name}
+            icon={Folder}
             active={activeFolderId === folder.id}
             collapsed={collapsed}
-            onClick={() => onSelectFolder(folder.id)}
+            className={collapsed ? "justify-center" : undefined}
+            onClick={() => {
+              onSelectFolder(folder.id);
+              onNavigate?.();
+            }}
           />
         ))}
       </div>

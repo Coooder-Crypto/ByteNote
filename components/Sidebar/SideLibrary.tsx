@@ -1,6 +1,6 @@
 import type { BnNav } from "@/types";
 
-import { LibraryItem } from "./LibraryItem";
+import NavItem from "./NavItem";
 
 type SideLibraryProps = {
   items: BnNav[];
@@ -35,12 +35,15 @@ export default function SideLibrary({
     <div>
       <div className="space-y-1">
         {items.map((item) => (
-          <LibraryItem
+          <NavItem
             key={item.path}
-            item={item}
+            href={item.path}
+            label={item.label}
+            icon={item.icon}
             active={isActive(item.path)}
-            onNavigate={onNavigate}
             collapsed={collapsed}
+            className={collapsed ? "justify-center" : undefined}
+            onClick={onNavigate}
           />
         ))}
       </div>

@@ -1,11 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { CreateNoteDialog, NoteList, NotesHeader } from "@/components/Notes";
+import { NoteList, NotesHeader } from "@/components/note";
+import { Button } from "@/components/ui";
 import { useNetworkStatus, useNoteList } from "@/hooks";
 import { trpc } from "@/lib/trpc/client";
+
+const CreateNoteDialog = dynamic(() => import("./CreateNoteDialog"), {
+  loading: () => null,
+});
 
 type NoteBoardProps = {
   onSelectNote: (id: string | null) => void;
@@ -58,8 +64,21 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
     searchQuery,
   });
 
-  const { notes, filteredNotes, availableTags } = notesQuery;
+  const {
+    notes,
+    filteredNotes,
+    availableTags,
+    refetch: refetchServer,
+    hasMore,
+    loadMore,
+    loadingMore,
+    isLoading,
+  } = notesQuery;
   const { online } = useNetworkStatus();
+  const handleRefresh = () => {
+    void refetchServer?.();
+    // 本地缓存刷新由 hook 内 requestIdleCallback 启动，服务器数据 refetch 即可
+  };
 
   const handleCreate = () => {
     if (!meQuery.data) {
@@ -102,6 +121,7 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
             onSortChange={setSortKey}
             onClearTags={() => setSelectedTags([])}
             activeFilter={filter}
+            onRefresh={handleRefresh}
           />
         </div>
       </div>
@@ -109,7 +129,7 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
       <NoteList
         notes={filteredNotes}
         sortKey={sortKey}
-        emptyMessage={notesQuery.isLoading ? "加载中..." : "暂无符合条件的笔记"}
+        emptyMessage={isLoading ? "加载中..." : "暂无符合条件的笔记"}
         onSelect={(id) => {
           if (!online) {
             setSelectedNote(id);
@@ -117,15 +137,25 @@ export default function NotesBoard({ onSelectNote }: NoteBoardProps) {
             setSelectedNote(id);
           }
         }}
+        onEndReached={() => {
+          if (hasMore && !loadingMore) {
+            void loadMore?.();
+          }
+        }}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        loading={isLoading}
       />
 
-      <CreateNoteDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onUnauthorized={() => router.push(authUrl)}
-        onCreated={(id) => setSelectedNote(id)}
-        onCreatedLocal={(id) => setSelectedNote(id)}
-      />
+      {createOpen ? (
+        <CreateNoteDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onUnauthorized={() => router.push(authUrl)}
+          onCreated={(id) => setSelectedNote(id)}
+          onCreatedLocal={(id) => setSelectedNote(id)}
+        />
+      ) : null}
     </>
   );
 }

@@ -1,13 +1,13 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { parseStoredTags } from "@/lib/constants/tags";
 import { localManager } from "@/lib/manager/LocalManager";
 import type { BnNote, LocalNoteRecord } from "@/types";
 
-import { useNetworkStatus } from "../Network";
+import { useNetworkStatus } from "../network";
 import useNoteActions from "./useNoteActions";
 
 type NoteListParams = {
@@ -32,18 +32,20 @@ export default function useNoteList({
   searchQuery = "",
 }: NoteListParams) {
   const { canUseNetwork } = useNetworkStatus();
-  const { useNoteListQuery } = useNoteActions({});
+  const { useNoteListInfinite } = useNoteActions({});
   const { status } = useSession();
   const loggedIn = status === "authenticated";
   const queryEnabled = enabled && canUseNetwork() && loggedIn;
-  const query = useNoteListQuery(
+  const query = useNoteListInfinite(
     {
       filter,
       folderId,
       search: search || undefined,
       collaborativeOnly: collaborativeOnly || undefined,
+      limit: 20,
     },
     {
+      getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
       enabled: queryEnabled,
       staleTime: 60000,
       refetchOnWindowFocus: false,
@@ -51,21 +53,45 @@ export default function useNoteList({
     },
   );
   const [localNotes, setLocalNotes] = useState<LocalNoteRecord[]>([]);
+  const [localRefreshing, setLocalRefreshing] = useState(false);
+  const [localLoadedOnce, setLocalLoadedOnce] = useState(false);
+
+  const refreshLocal = useCallback(async () => {
+    if (localRefreshing) return;
+    setLocalRefreshing(true);
+    try {
+      const cached = await localManager.listAll();
+      setLocalNotes(cached);
+    } finally {
+      setLocalRefreshing(false);
+    }
+  }, [localRefreshing]);
 
   useEffect(() => {
     let cancelled = false;
-    const loadLocal = async () => {
-      const cached = await localManager.listAll();
+
+    if (!cancelled && !localLoadedOnce) {
+      void (async () => {
+        await refreshLocal();
+        setLocalLoadedOnce(true);
+      })();
+    }
+
+    const load = () => {
       if (cancelled) return;
-      setLocalNotes(cached);
+      void refreshLocal();
     };
-    void loadLocal();
-    const tick = window.setInterval(() => void loadLocal(), 5000);
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      (
+        window as typeof window & { requestIdleCallback?: IdleRequestCallback }
+      ).requestIdleCallback?.(() => load());
+    } else {
+      setTimeout(load, 0);
+    }
     return () => {
       cancelled = true;
-      window.clearInterval(tick);
     };
-  }, []);
+  }, [localLoadedOnce, refreshLocal]);
 
   const notes: BnNote[] = useMemo(() => {
     const extractText = (contentJson: any): string => {
@@ -105,8 +131,10 @@ export default function useNoteList({
       };
     };
 
-    if (queryEnabled && Array.isArray(query.data)) {
-      return query.data.map((note) => {
+    const pages = (query.data as any)?.pages;
+    if (queryEnabled && Array.isArray(pages)) {
+      const remoteNotes = pages.flatMap((page: any) => page?.items ?? []);
+      return remoteNotes.map((note) => {
         const contentJson = (note as any).contentJson as any;
         const text = extractText(contentJson);
         return {
@@ -162,5 +190,15 @@ export default function useNoteList({
     notes,
     filteredNotes,
     availableTags,
+    hasMore: queryEnabled
+      ? Boolean(
+          (query.data as any)?.pages?.[
+            ((query.data as any)?.pages?.length ?? 0) - 1
+          ]?.nextCursor,
+        )
+      : false,
+    loadMore: queryEnabled ? () => query.fetchNextPage?.() : undefined,
+    loadingMore: queryEnabled ? query.isFetchingNextPage : false,
+    loading: queryEnabled ? query.isLoading : !localLoadedOnce && localRefreshing,
   };
 }

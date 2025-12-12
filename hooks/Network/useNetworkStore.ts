@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import { create } from "zustand";
 
@@ -17,7 +18,6 @@ const useNetworkStore = create<NetworkState>((set) => ({
 
 const HEALTH_URL = "/api/trpc/health";
 let monitorStarted = false;
-let monitorCleanup: (() => void) | null = null;
 
 function startNetworkMonitor(setStatus: NetworkState["setStatus"]) {
   if (monitorStarted || typeof window === "undefined") return;
@@ -58,28 +58,35 @@ function startNetworkMonitor(setStatus: NetworkState["setStatus"]) {
   window.addEventListener("online", handle);
   window.addEventListener("offline", handle);
   handle();
-  const timer = window.setInterval(() => {
+  window.setInterval(() => {
     void probe();
   }, 15000);
-
-  monitorCleanup = () => {
-    window.removeEventListener("online", handle);
-    window.removeEventListener("offline", handle);
-    window.clearInterval(timer);
-  };
+  monitorStarted = true;
 }
 
 export default function useNetworkStatus() {
   const { online, reachable, setStatus } = useNetworkStore();
+  const { status } = useSession();
+  const loggedIn = status === "authenticated";
 
   useEffect(() => {
-    startNetworkMonitor(setStatus);
+    if (!loggedIn) {
+      setStatus(false, false);
+      return;
+    }
+    const start = () => startNetworkMonitor(setStatus);
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      (window as typeof window & { requestIdleCallback?: IdleRequestCallback })
+        .requestIdleCallback?.(() => start());
+    } else {
+      setTimeout(start, 0);
+    }
     return () => {
       // keep monitor running globally; no cleanup on unmount to avoid losing listeners
     };
-  }, [setStatus]);
+  }, [loggedIn, setStatus]);
 
-  const canUseNetwork = () => online && reachable;
+  const canUseNetwork = () => loggedIn && online && reachable;
 
-  return { online: online && reachable, reachable, canUseNetwork };
+  return { online: loggedIn && online && reachable, reachable, canUseNetwork };
 }

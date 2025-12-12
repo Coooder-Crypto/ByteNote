@@ -3,6 +3,7 @@
 import { type KeyboardEvent, useState } from "react";
 
 import {
+  Button,
   Select,
   SelectContent,
   SelectItem,
@@ -18,6 +19,7 @@ type TagInputProps = {
   placeholder?: string;
   className?: string;
   suggestions?: string[];
+  disabled?: boolean;
 };
 
 export default function TagInput({
@@ -26,10 +28,12 @@ export default function TagInput({
   placeholder,
   className,
   suggestions,
+  disabled = false,
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState("");
 
   const addTag = (raw: string) => {
+    if (disabled) return;
     const tag = raw.trim();
     if (!tag || value.includes(tag)) {
       setInputValue("");
@@ -40,10 +44,12 @@ export default function TagInput({
   };
 
   const removeTag = (tag: string) => {
+    if (disabled) return;
     onChange(value.filter((item) => item !== tag));
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) return;
     if (["Enter", "Tab", ","].includes(event.key)) {
       event.preventDefault();
       addTag(inputValue);
@@ -69,14 +75,17 @@ export default function TagInput({
             className="bg-muted/70 text-foreground/80 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm"
           >
             {getTagLabel(tag)}
-            <button
+            <Button
               type="button"
-              className="text-muted-foreground hover:text-foreground"
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground h-5 w-5 p-0"
               onClick={() => removeTag(tag)}
+              disabled={disabled}
               aria-label={`移除 ${tag}`}
             >
               ×
-            </button>
+            </Button>
           </span>
         ))}
         <input
@@ -86,11 +95,14 @@ export default function TagInput({
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           placeholder={value.length === 0 ? placeholder : undefined}
+          aria-label={placeholder ?? "添加标签"}
+          disabled={disabled}
         />
       </div>
 
       <Select
         key={value.join("|")}
+        disabled={disabled}
         onValueChange={(selection) => addTag(selection)}
       >
         <SelectTrigger className="text-muted-foreground hover:bg-muted/60 h-8 w-[110px] flex-none rounded-lg border-none bg-transparent px-2 text-xs shadow-none">

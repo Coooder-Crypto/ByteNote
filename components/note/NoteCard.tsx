@@ -1,6 +1,7 @@
 "use client";
 
 import { Star, Users } from "lucide-react";
+import { memo, useMemo } from "react";
 
 import { isLocalId } from "@/lib/utils/offline/ids";
 import type { BnNote } from "@/types";
@@ -13,18 +14,21 @@ type NoteCardProps = {
   offline?: boolean;
 };
 
-export default function NoteCard({
+function NoteCardComponent({
   note,
   sortKey,
   onLocalSelect,
   onSelect,
   offline = false,
 }: NoteCardProps) {
-  const summary =
-    note.summary?.trim() && note.summary.trim().length > 0
-      ? note.summary.trim()
-      : note.content?.slice(0, 220).replace(/\n+/g, " ").trim() ??
-        "Empty note content...";
+  const summary = useMemo(
+    () =>
+      note.summary?.trim() && note.summary.trim().length > 0
+        ? note.summary.trim()
+        : (note.content?.slice(0, 220).replace(/\n+/g, " ").trim() ??
+          "Empty note content..."),
+    [note.content, note.summary],
+  );
   const displayDate = sortKey === "createdAt" ? note.createdAt : note.updatedAt;
   const localOnly = isLocalId(note.id);
   const isOfflineCard = offline || localOnly;
@@ -48,33 +52,40 @@ export default function NoteCard({
           handleSelect();
         }
       }}
-      className="flex h-64 flex-col bg-card p-5 rounded-2xl border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
+      className="bg-card border-border/60 hover:border-primary/50 group relative flex h-56 cursor-pointer flex-col overflow-hidden rounded-2xl border p-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0 pr-3">
-          <h3 className="font-bold text-lg text-foreground truncate">
-            {note.title || <span className="text-muted-foreground italic">Untitled</span>}
+      <div className="mb-2 flex items-start justify-between">
+        <div className="min-w-0 flex-1 pr-3">
+          <h3 className="text-foreground truncate text-lg font-bold">
+            {note.title || (
+              <span className="text-muted-foreground italic">Untitled</span>
+            )}
           </h3>
         </div>
-        <div className="flex items-start gap-2 shrink-0">
-          <span className="text-[11px] font-semibold text-muted-foreground/90">
+        <div className="flex shrink-0 items-start gap-2">
+          <span className="text-muted-foreground/90 text-[11px] font-semibold">
             {formatDate(displayDate)}
           </span>
           {note.isFavorite && (
-            <Star size={18} className="text-amber-400 fill-amber-400 shrink-0 mt-0.5" />
+            <Star
+              size={18}
+              className="mt-0.5 shrink-0 fill-amber-400 text-amber-400"
+            />
           )}
         </div>
       </div>
 
-      <p className="flex-1 text-sm text-muted-foreground line-clamp-5 leading-relaxed font-medium">
-        {summary || <span className="italic opacity-50">Empty note content...</span>}
+      <p className="text-muted-foreground line-clamp-4 flex-1 text-sm leading-relaxed font-medium">
+        {summary || (
+          <span className="italic opacity-50">Empty note content...</span>
+        )}
       </p>
 
-      <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
+      <div className="border-border/50 mt-3 flex items-center justify-between border-t pt-3">
         <div className="flex items-center gap-2 overflow-hidden">
           {note.isCollaborative && (
             <div
-              className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center border border-primary/20"
+              className="bg-primary/10 text-primary border-primary/20 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
               title="Collaborative"
             >
               <Users size={12} />
@@ -83,18 +94,18 @@ export default function NoteCard({
           {note.tags.slice(0, 2).map((tag) => (
             <span
               key={tag}
-              className="px-2 py-1 bg-muted text-foreground/80 rounded-md text-xs font-medium truncate"
+              className="bg-muted text-foreground/80 truncate rounded-md px-2 py-1 text-xs font-medium"
             >
               #{tag}
             </span>
           ))}
           {note.tags.length > 2 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               +{note.tags.length - 2}
             </span>
           )}
           {isOfflineCard && (
-            <span className="text-[10px] rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-700">
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] text-sky-700">
               未同步
             </span>
           )}
@@ -103,6 +114,10 @@ export default function NoteCard({
     </div>
   );
 }
+
+const NoteCard = memo(NoteCardComponent);
+
+export default NoteCard;
 
 function formatDate(dateStr: string | number | Date) {
   const date = new Date(dateStr);

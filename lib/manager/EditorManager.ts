@@ -1,7 +1,7 @@
 import {
   toPlainText,
   type UnknownNode,
-} from "@/components/Editor/slate/normalize";
+} from "@/components/editor/slate/normalize";
 import { parseStoredTags } from "@/lib/constants/tags";
 import { isLocalId } from "@/lib/utils/offline/ids";
 import type {

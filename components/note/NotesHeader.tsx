@@ -7,6 +7,7 @@ import {
   FolderOpen,
   Menu,
   Plus,
+  RefreshCcw,
   Search,
   Star,
   Trash2,
@@ -14,8 +15,10 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { Input } from "@/components/ui";
+import { Button, Input } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+import TagPills from "./NotesTags";
 
 type NotesHeaderProps = {
   total: number;
@@ -30,6 +33,7 @@ type NotesHeaderProps = {
   onClearTags?: () => void;
   activeFilter?: "all" | "favorite" | "trash" | "collab";
   onToggleMobileMenu?: () => void;
+  onRefresh?: () => void;
 };
 
 export default function NotesHeader({
@@ -45,6 +49,7 @@ export default function NotesHeader({
   onClearTags,
   activeFilter = "all",
   onToggleMobileMenu,
+  onRefresh,
 }: NotesHeaderProps) {
   const sortedTags = useMemo(() => [...tags].sort(), [tags]);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
@@ -92,20 +97,17 @@ export default function NotesHeader({
   return (
     <div className="flex flex-col gap-4">
       <div className="mb-2 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <button
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Button
             onClick={onToggleMobileMenu}
-            className={cn(
-              "-ml-2 rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 lg:hidden dark:text-slate-300 dark:hover:bg-slate-800",
-              onToggleMobileMenu
-                ? "opacity-100"
-                : "pointer-events-none opacity-0",
-            )}
-            aria-label="Toggle sidebar"
+            variant="ghost"
+            size="icon-sm"
+            className="hidden"
+            aria-label="打开/关闭侧边栏"
           >
-            <Menu size={24} />
-          </button>
-          <div className="flex items-center gap-3 truncate">
+            <Menu size={20} />
+          </Button>
+          <div className="flex items-center gap-2 truncate">
             <Icon className={cn("shrink-0", filterMeta.tone)} size={28} />
             <span className="text-foreground truncate text-2xl font-bold capitalize">
               {filterMeta.title}
@@ -113,20 +115,36 @@ export default function NotesHeader({
           </div>
         </div>
 
-        {!createDisabled && (
-          <button
-            onClick={onCreate}
-            className="bg-card/80 border-border/60 text-foreground hover:border-primary flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors"
-            title="New Note"
-          >
-            <Plus size={18} />
-            <span className="hidden sm:inline">Create</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onRefresh && (
+            <Button
+              onClick={onRefresh}
+              variant="outline"
+              size="icon-sm"
+              title="刷新"
+              aria-label="刷新列表"
+            >
+              <RefreshCcw className="size-4" />
+            </Button>
+          )}
+          {!createDisabled && (
+            <Button
+              onClick={onCreate}
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              title="新建笔记"
+              aria-label="新建笔记"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Create</span>
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="mb-2 flex flex-col gap-3 sm:flex-row">
-        <div className="group relative flex-1">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="group relative flex-1 min-w-[220px]">
           <Search
             className="group-focus-within:text-primary absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 transition-colors"
             size={20}
@@ -136,16 +154,19 @@ export default function NotesHeader({
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search titles and content..."
             className="bg-muted/70 focus:ring-primary text-foreground placeholder:text-muted-foreground h-[44px] w-full rounded-xl border-none py-2.5 pr-4 pl-10 text-base shadow-inner transition-all focus:ring-2 focus:outline-none"
+            aria-label="搜索笔记"
           />
         </div>
 
         <div className="relative">
-          <button
+          <Button
             onClick={(event) => {
               event.stopPropagation();
               setIsSortMenuOpen((prev) => !prev);
             }}
-            className="bg-card/80 border-border/60 text-foreground hover:border-primary flex h-full items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium whitespace-nowrap shadow-sm transition-colors"
+            variant="outline"
+            size="sm"
+            className="h-[44px] whitespace-nowrap px-3"
           >
             <ArrowUpDown size={16} />
             <span className="hidden sm:inline">
@@ -154,7 +175,7 @@ export default function NotesHeader({
                 {sortKey === "updatedAt" ? "updated" : "created"}
               </span>
             </span>
-          </button>
+          </Button>
 
           {isSortMenuOpen && (
             <div className="bg-card border-border/60 animate-in fade-in zoom-in-95 absolute top-full right-0 z-20 mt-2 w-48 rounded-xl border p-1.5 shadow-xl duration-100">
@@ -182,36 +203,12 @@ export default function NotesHeader({
       </div>
 
       {sortedTags.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-2">
-          <span className="text-muted-foreground mr-1 text-xs font-bold uppercase">
-            Tags:
-          </span>
-          {sortedTags.map((tag) => {
-            const active = selectedTags.includes(tag);
-            return (
-              <button
-                key={tag}
-                onClick={() => onToggleTag(tag)}
-                className={cn(
-                  "shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                  active
-                    ? "bg-primary border-primary shadow-primary/20 text-white shadow-md"
-                    : "bg-card border-border/60 text-muted-foreground hover:border-primary/60",
-                )}
-              >
-                #{tag}
-              </button>
-            );
-          })}
-          {selectedTags.length > 0 && (
-            <button
-              onClick={() => onClearTags?.()}
-              className="text-muted-foreground hover:text-destructive hover:decoration-destructive ml-1 shrink-0 px-2 text-xs underline decoration-slate-300"
-            >
-              Clear
-            </button>
-          )}
-        </div>
+        <TagPills
+          tags={sortedTags}
+          selectedTags={selectedTags}
+          onToggleTag={onToggleTag}
+          onClearTags={onClearTags}
+        />
       )}
     </div>
   );
@@ -224,23 +221,16 @@ type SortOptionProps = {
   icon: typeof Clock;
 };
 
-function SortOption({
-  active,
-  label,
-  onClick,
-  icon: IconNode,
-}: SortOptionProps) {
+function SortOption({ active, label, onClick, icon: Icon }: SortOptionProps) {
   return (
-    <button
+    <Button
       onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
-        active
-          ? "bg-primary/10 text-primary font-medium"
-          : "text-muted-foreground hover:bg-muted/80",
-      )}
+      variant={active ? "secondary" : "ghost"}
+      size="sm"
+      className="w-full justify-start gap-2 text-left"
     >
-      <IconNode size={16} /> {label}
-    </button>
+      <Icon size={16} />
+      <span className="flex-1 text-left">{label}</span>
+    </Button>
   );
 }
